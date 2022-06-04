@@ -1,0 +1,7 @@
+name = "Examples"
+uuid = "2a23f84a-74eb-442a-8f05-bfffae2f5d93"
+authors = ["Frederik Mathiesen <frederik_mathies@hotmail.com>"]
+version = "0.1.0"
+
+[deps]
+BarrierFunctions = "5dedeccf-5cb2-488c-aeb7-5be8ae7c4d1f"
