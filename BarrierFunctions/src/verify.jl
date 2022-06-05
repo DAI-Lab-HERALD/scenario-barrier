@@ -1,10 +1,9 @@
 using JuMP, MosekTools, SumOfSquares, Hypatia
 using SemialgebraicSets, DynamicPolynomials, MultivariatePolynomials
 
-function verify(system::System, σ::Number, H::Int; B_deg::Int = 4, 𝔼::Expectation = AnalyticExpectation())
+function verify(system::System, σ::Number, H::Int; 𝔼::Expectation = AnalyticExpectation())
     @assert(σ >= 0, "Standard deviation must be greater or equal to zero (is $σ)")
     @assert(H >= 1, "Horizon N must be greater than or equal to one (is $H)")
-    @assert(B_deg >= 1, "Barrier polynomial degree must be greater than or equal to 1 (is $B_deg)")
 
     solver = optimizer_with_attributes(Mosek.Optimizer, 
         "QUIET" => false
@@ -15,15 +14,11 @@ function verify(system::System, σ::Number, H::Int; B_deg::Int = 4, 𝔼::Expect
     @variable(model, γ, lower_bound = 0, upper_bound = 1)
     @variable(model, β, lower_bound = 0, upper_bound = 1)
 
+    monos = monomials(state(system), 0:2)
+    @variable(model, B[partitions(system)], Poly(ScaledMonomialBasis(monos)))
+
     # Constraints
-    monos = monomials(state(system), 0:B_deg)
-    @variable(model, B, Poly(ScaledMonomialBasis(monos)))
-
-    @constraint(model, B >= 0, basis = ScaledMonomialBasis, domain = state_space(system))
-    unsafe_constraint!(model, system, B)
-    initial_constraint!(model, system, B, γ)
-
-    expectation_constraint!(model, system, B, β, σ, 𝔼)
+    partition_constraints!(model, system, B, β, γ, σ, 𝔼)
 
     # Objective
     @objective(model, Min, γ + β * H)
@@ -48,31 +43,57 @@ function verify(system::System, σ::Number, H::Int; B_deg::Int = 4, 𝔼::Expect
     return succ, B, prob
 end
 
-function initial_constraint!(model, system, B, γ)
-    for initial_subset in initial_set(system)
-        println("Initial subset ", initial_subset)
-        @constraint(model, B <= γ, domain = initial_subset, basis = ScaledMonomialBasis)
-    end
-end
-
-function unsafe_constraint!(model, system, B)
-    for unsafe_subset in unsafe_set(system)
-        println("Unsafe subset ", unsafe_subset)
-        @constraint(model, B >= 1, domain = unsafe_subset, basis = ScaledMonomialBasis)
-    end
-end
-
-function expectation_constraint!(model, system, B, β, σ, 𝔼)
+function partition_constraints!(model, system, B, β, γ, σ, 𝔼)
     for p in partitions(system)
         println("Partition $p")
-        partition_constraint!(model, system, B, β, σ, 𝔼, p)
+
+        non_negativity_constraint(model, B, p)
+        unsafe_constraint!(model, system, B, p)
+        initial_constraint!(model, system, B, γ, p)
+
+        expectation_constraint!(model, system, B, β, σ, 𝔼, p)
     end
 end
 
-function partition_constraint!(model, system, B, β, σ, 𝔼, p)
-    𝔼Bfx = expectation(𝔼, system, B, σ, p)
+function non_negativity_constraint(model, B, p) 
+    @constraint(model, B[p] >= 0, basis = ScaledMonomialBasis, domain = p)
+    # TODO: Replace with LMI
+end
 
-    @constraint(model, 𝔼Bfx <= B / α + β, domain = domain, certificate = certificate, basis = ScaledMonomialBasis)
+function unsafe_constraint!(model, system, B, p)
+    # Note unsafe set can consist of multiple disjoint components
+    for unsafe_subset in unsafe_set(system)
+        println("Unsafe subset ", unsafe_subset)
+        # TODO ignore constraint if (ℝ^n \ S) ∩ p = ∅
+    end
+
+    # We may need to refine partitions if a partition cover too large part of the safe set
+
+    @constraint(model, B >= 1, domain = p, basis = ScaledMonomialBasis)
+    # TODO: Replace with LMI
+end
+
+function initial_constraint!(model, system, B, γ, p)
+    X_0 = initial_set(system)
+    # TODO ignore constraint if X_0 ∩ p = ∅
+
+    @constraint(model, B[p] <= γ, domain = X_0 ∩ p, basis = ScaledMonomialBasis)
+    # TODO: Replace with LMI
+end
+
+function expectation_constraint!(model, system, B, β, σ, 𝔼, p_i)
+    for p_j in partitions(system)
+        println("Partition $p")
+        partition_constraint!(model, system, B, β, σ, 𝔼, p_i, p_j)
+    end
+end
+
+function partition_constraint!(model, system, B, β, σ, 𝔼, p_i, p_j)
+    𝔼Bfx = expectation(𝔼, system, B[p_j], σ, p)
+
+    @constraint(model, 𝔼Bfx <= B[p_i] + β, domain = p_i, basis = ScaledMonomialBasis)
+    # TODO: Replace with LMI
+    # TODO: Include d
 end
 
 # Patch for ScaledMonomialBasis to match regular MonomialBasis
