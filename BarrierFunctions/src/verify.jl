@@ -15,7 +15,7 @@ function verify(system::System, σ::Number, H::Int; 𝔼::Expectation = Analytic
     B = barrier_variable!(model, system)
 
     # Constraints
-    partition_constraints!(model, system, B, β, γ, σ, 𝔼)
+    constraints!(model, system, B, β, γ, σ, 𝔼)
 
     # Objective
     @objective(model, Min, γ + β * H)
@@ -26,10 +26,7 @@ function verify(system::System, σ::Number, H::Int; 𝔼::Expectation = Analytic
 
     succ = JuMP.primal_status(model) == FEASIBLE_POINT
 
-    B = value(B)
-    β = value(β)
-    γ = value(γ)
-
+    B, β, γ = value(B), value(β), value(γ)
     println("γ $γ, beta $β")
 
     # Alternatively use B(x_0) for γ if x_0 is a point
@@ -40,10 +37,10 @@ function verify(system::System, σ::Number, H::Int; 𝔼::Expectation = Analytic
     return succ, B, prob
 end
 
-function barrier_variable!{T}(model, system)
+function barrier_variable!(model, system)
     n = size(state(system))
 
-    B = Dict{T, Array{VariableRef, 2}}(
+    B = Dict{Int, Array{VariableRef, 2}}(
            p.i => @variable(model, [1:n, 1:n], Symmetric, base_name = "B[$p]")
            for p in partitions(system)
        )
@@ -51,16 +48,18 @@ function barrier_variable!{T}(model, system)
     return B
 end
 
-function partition_constraints!(model, system, B, β, γ, σ, 𝔼)
+function constraints!(model, system, B, β, γ, σ, 𝔼)
     for p in partitions(system)
         println("Partition $p")
-
-        non_negativity_constraint(model, B, p)
-        unsafe_constraint!(model, system, B, p)
-        initial_constraint!(model, system, B, γ, p)
-
-        expectation_constraint!(model, system, B, β, σ, 𝔼, p)
+        partition_constraints!(model, system, B, β, γ, σ, 𝔼, p)
     end
+end
+
+function partition_constraints!(model, system, B, β, γ, σ, 𝔼, p)
+    non_negativity_constraint(model, B, p)
+    unsafe_constraint!(model, system, B, p)
+    initial_constraint!(model, system, B, γ, p)
+    expectation_constraint!(model, system, B, β, σ, 𝔼, p)
 end
 
 s_procedure(p::IndexedConvexPolytope) = s_procedure(p.p)
