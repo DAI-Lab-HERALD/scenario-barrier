@@ -4,7 +4,7 @@ using SemialgebraicSets, DynamicPolynomials, MultivariatePolynomials
 abstract type AbstractExpectation end
 struct AnalyticExpectation <: AbstractExpectation end
 
-function expectation(::AnalyticExpectation, system::System{V, VectorDynamics{V}, P}, B, σ, p) where {V, P}
+function expectation(::AnalyticExpectation, system::System{V, VectorDynamics{V}}, B, σ, p) where {V}
     x, z = state(system), noise(system)
     B_next = subs(B, x => next_state(system, p))
 

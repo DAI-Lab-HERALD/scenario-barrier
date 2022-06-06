@@ -1,5 +1,4 @@
-using JuMP, MosekTools, SumOfSquares, Hypatia
-using SemialgebraicSets, DynamicPolynomials, MultivariatePolynomials
+using JuMP, MosekTools
 
 function verify(system::System, σ::Number, H::Int; 𝔼::Expectation = AnalyticExpectation())
     @assert(σ >= 0, "Standard deviation must be greater or equal to zero (is $σ)")
@@ -8,14 +7,12 @@ function verify(system::System, σ::Number, H::Int; 𝔼::Expectation = Analytic
     solver = optimizer_with_attributes(Mosek.Optimizer, 
         "QUIET" => false
         )
-    model = SOSModel(solver)
+    model = Model(solver)
 
     # Decision variables
     @variable(model, γ, lower_bound = 0, upper_bound = 1)
     @variable(model, β, lower_bound = 0, upper_bound = 1)
-
-    monos = monomials(state(system), 0:2)
-    @variable(model, B[partitions(system)], Poly(ScaledMonomialBasis(monos)))
+    B = barrier_variable!(model, system)
 
     # Constraints
     partition_constraints!(model, system, B, β, γ, σ, 𝔼)
@@ -43,6 +40,17 @@ function verify(system::System, σ::Number, H::Int; 𝔼::Expectation = Analytic
     return succ, B, prob
 end
 
+function barrier_variable!{T}(model, system)
+    n = size(state(system))
+
+    B = Dict{T, Array{VariableRef, 2}}(
+           p.i => @variable(model, [1:n, 1:n], Symmetric, base_name = "B[$p]")
+           for p in partitions(system)
+       )
+
+    return B
+end
+
 function partition_constraints!(model, system, B, β, γ, σ, 𝔼)
     for p in partitions(system)
         println("Partition $p")
@@ -55,9 +63,26 @@ function partition_constraints!(model, system, B, β, γ, σ, 𝔼)
     end
 end
 
-function non_negativity_constraint(model, B, p) 
-    @constraint(model, B[p] >= 0, basis = ScaledMonomialBasis, domain = p)
-    # TODO: Replace with LMI
+s_procedure(p::IndexedConvexPolytope) = s_procedure(p.p)
+function s_procedure(p)
+    m, n = size(p)
+    τ = @variable(model, [1:m], lower_bound = 0)
+
+    Hτ = p.H' * τ
+    hτ = -2 * p.h' * τ
+
+    mat = vcat(
+        hcat(zeros(n), Hτ),
+        hcat(Hτ', hτ)
+    )
+
+    return mat
+end
+
+function non_negativity_constraint(model, B, p)
+    s_mat = s_procedure(p)
+
+    @constraint(model, B[p.i] + s_mat >= 0, PSDCone())
 end
 
 function unsafe_constraint!(model, system, B, p)
@@ -69,16 +94,26 @@ function unsafe_constraint!(model, system, B, p)
 
     # We may need to refine partitions if a partition cover too large part of the safe set
 
-    @constraint(model, B >= 1, domain = p, basis = ScaledMonomialBasis)
-    # TODO: Replace with LMI
+    s_mat = s_procedure(p)
+
+    one_mat = zero(s_mat)
+    one_mat[end, end] = 1
+
+    @constraint(model, B - one_mat + s_mat >= 0, PSDCone())
 end
 
 function initial_constraint!(model, system, B, γ, p)
     X_0 = initial_set(system)
-    # TODO ignore constraint if X_0 ∩ p = ∅
 
-    @constraint(model, B[p] <= γ, domain = X_0 ∩ p, basis = ScaledMonomialBasis)
-    # TODO: Replace with LMI
+    if isempty(X_0 ∩ p)
+        return
+
+    s_mat = s_procedure(X_0 ∩ p)
+
+    γ_mat = zero(s_mat)
+    γ_mat[end, end] = γ
+
+    @constraint(model, -B[p] + γ_mat + s_mat ≥ 0, PSDCone())
 end
 
 function expectation_constraint!(model, system, B, β, σ, 𝔼, p_i)
