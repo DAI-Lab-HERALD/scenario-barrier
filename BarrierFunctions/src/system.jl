@@ -9,9 +9,25 @@ struct System{T<:Real}
     Xu::ConvexPolytope{T}
     Xi::ConvexPolytope{T}
     Xs::ConvexPolytope{T}
+
+    function System(A, Q, Xu, Xi, Xs)
+        n1, n2 = length(A), size(Q, 1)
+        @assert(n1 == n2, "Number of partitions and dynamics matrices must match")
+
+        return new(A, Q, Xu, Xi, Xs)
+    end
 end
 
-System(A, Q, Xu::AbstractSemialgebraicSet, Xi, Xs) = System(A, Q, [Xu], Xi, Xs)
+function System(A::Vector{Matrix}, Q::Vector{ConvexPolytope}, Xu, Xi, Xs) 
+    n1, n2 = size(A, 1), size(Q, 1)
+    @assert(n1 == n2, "Number of partitions and dynamics matrices must match")
+
+    index_set = 1:n1
+    A = Dict(i => Ai for (i, Ai) in zip(index_set, A))
+    Q = [IndexedConvexPolytope(i, p) for (i, p) in zip(index_set, Q)]
+
+    return System(A, Q, Xu, Xi, Xs)
+end
 
 unsafe_set(s::System) = s.Xu
 initial_set(s::System) = s.Xi
