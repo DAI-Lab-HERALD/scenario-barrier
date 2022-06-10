@@ -8,4 +8,4 @@ end
 dynamics(fx::AbstractPolynomialLike) = dynamics([fx])
 dynamics(fx::AbstractVector{V}) where {V} = VectorDynamics(fx)
 
-next_state(d::VectorDynamics{V}, p) where {V} = d.fx
+next_state(d::VectorDynamics{V}, q) where {V} = d.fx

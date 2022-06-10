@@ -36,16 +36,16 @@ function Base.isempty(p::ConvexPolytope)
 end
 
 struct IndexedConvexPolytope{T<:Real}
-    i::Int
-    p::ConvexPolytope{T}
+    index::Int
+    polytope::ConvexPolytope{T}
 end
 
-Base.show(io::IO, p::IndexedConvexPolytope) = print(io, p.i)
-Base.intersect(p1::IndexedConvexPolytope, p2::IndexedConvexPolytope) = p1.p ∩ p2.p
-Base.intersect(p1::IndexedConvexPolytope, p2::ConvexPolytope) = p1.p ∩ p2
+Base.show(io::IO, p::IndexedConvexPolytope) = print(io, p.index)
+Base.intersect(p1::IndexedConvexPolytope, p2::IndexedConvexPolytope) = p1.polytope ∩ p2.polytope
+Base.intersect(p1::IndexedConvexPolytope, p2::ConvexPolytope) = p1.polytope ∩ p2
 Base.intersect(p1::ConvexPolytope, p2::IndexedConvexPolytope) = p2 ∩ p1
-Base.size(p::IndexedConvexPolytope) = size(p.p)
-Base.size(p::IndexedConvexPolytope, d) = size(p.p, d)
-Base.isempty(p::IndexedConvexPolytope) = isempty(p.p)
+Base.size(p::IndexedConvexPolytope) = size(p.polytope)
+Base.size(p::IndexedConvexPolytope, d) = size(p.polytope, d)
+Base.isempty(p::IndexedConvexPolytope) = isempty(p.polytope)
 
 PolytopePartitioning = Vector{IndexedConvexPolytope}
