@@ -1,7 +1,9 @@
+import Base.@kwdef
+
 using MathOptInterface
 const MOI = MathOptInterface
 
-struct ConvexPolytope{T<:Real}
+@kwdef struct ConvexPolytope{T<:Real}
     # Convex polytope defined by Hx ≤ h
     H::Matrix{T}
     h::Vector{T}
@@ -11,7 +13,7 @@ function Base.show(io::IO, p::ConvexPolytope)
     m, n = size(p.H)
 
     lines = [
-        join(["$(H[j, i])x_$i", " + " for i in 1:n]) * " ≤ $(h[j])"
+        join(["$(H[j, i])x_$i" for i in 1:n], " + ") * " ≤ $(h[j])"
         for j in 1:m
     ]
     print(io, join(lines, "\n"))
@@ -26,7 +28,7 @@ function Base.isempty(p::ConvexPolytope)
 
     n = size(p.H, 2)
     @variable(model, x[1:n])
-    @constraint(p.H * x ≤ p.h)
+    @constraint(model, p.H * x ≤ p.h)
     # Default objective is FEASIBLE_SENSE
     
     optimize!(model)
@@ -35,7 +37,7 @@ function Base.isempty(p::ConvexPolytope)
     return infeasible
 end
 
-struct IndexedConvexPolytope{T<:Real}
+@kwdef struct IndexedConvexPolytope{T<:Real}
     index::Int
     polytope::ConvexPolytope{T}
 end

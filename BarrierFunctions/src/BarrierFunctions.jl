@@ -1,4 +1,6 @@
 module BarrierFunctions
+    using JuMP
+
     include("partitioning.jl")
     export ConvexPolytope, IndexedConvexPolytope, PolytopePartitioning
 

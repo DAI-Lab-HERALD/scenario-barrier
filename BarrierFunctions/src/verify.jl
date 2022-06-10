@@ -90,9 +90,16 @@ end
 
 function unsafe_constraint!(model, system, B, q)
     # Note unsafe set can consist of multiple disjoint components
+    overlaps_unsafe = false
     for unsafe_subset in unsafe_set(system)
-        println("Unsafe subset ", unsafe_subset)
-        # TODO ignore constraint if (ℝ^n \ S) ∩ q = ∅
+        if !isempty(unsafe_subset ∩ q)
+            overlaps_unsafe = true
+            break
+        end
+    end
+
+    if !overlaps_unsafe
+        return
     end
 
     # We may need to refine partitions if a partition cover too large part of the safe set
@@ -110,6 +117,7 @@ function initial_constraint!(model, system, B, γ, q)
 
     if isempty(X_0 ∩ q)
         return
+    end
 
     s_mat = s_procedure(X_0 ∩ q)
 
@@ -141,7 +149,7 @@ function expectation_partition_constraint!(model, system, B, c, ϵ, q_i, q_j, η
     # This way, we can share computations between constraints
 
     shared_mat = vcat(
-        hcat(A_i' * P_j * A_i - P_i, -p_i / 2)
+        hcat(A_i' * P_j * A_i - P_i, -p_i / 2),
         hcat(-p_i' / 2, v_j - v_i - c + d)
     )
 
@@ -151,7 +159,7 @@ function expectation_partition_constraint!(model, system, B, c, ϵ, q_i, q_j, η
         A_iη = A_i * η
 
         η_mat = vcat(
-            hcat(zeros(P_i), A_iη)
+            hcat(zeros(P_i), A_iη),
             hcat(A_iη', η' * P_j * η + p_j' * η)
         )
 
