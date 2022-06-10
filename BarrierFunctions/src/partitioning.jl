@@ -1,3 +1,6 @@
+using MathOptInterface
+const MOI = MathOptInterface
+
 struct ConvexPolytope{T<:Real}
     # Convex polytope defined by Hx ≤ h
     H::Matrix{T}
@@ -19,8 +22,17 @@ Base.size(p::ConvexPolytope) = size(p.H)
 Base.size(p::ConvexPolytope, d) = size(p.H, d)
 
 function Base.isempty(p::ConvexPolytope)
-    #TODO: make LP and test infeasibility
-    return false
+    model = Model()
+
+    n = size(p.H, 2)
+    @variable(model, x[1:n])
+    @constraint(p.H * x ≤ p.h)
+    # Default objective is FEASIBLE_SENSE
+    
+    optimize!(model)
+    infeasible = termination_status(model) ∈ [MOI.INFEASIBLE, MOI.DUAL_INFEASIBLE]
+
+    return infeasible
 end
 
 struct IndexedConvexPolytope{T<:Real}
@@ -34,5 +46,6 @@ Base.intersect(p1::IndexedConvexPolytope, p2::ConvexPolytope) = p1.p ∩ p2
 Base.intersect(p1::ConvexPolytope, p2::IndexedConvexPolytope) = p2 ∩ p1
 Base.size(p::IndexedConvexPolytope) = size(p.p)
 Base.size(p::IndexedConvexPolytope, d) = size(p.p, d)
+Base.isempty(p::IndexedConvexPolytope) = isempty(p.p)
 
 PolyhedralPartitioning = Vector{IndexedConvexPolytope}
