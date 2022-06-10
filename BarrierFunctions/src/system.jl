@@ -1,4 +1,3 @@
-using SemialgebraicSets
 using Distributions
 
 struct System{T<:Real}
@@ -7,9 +6,9 @@ struct System{T<:Real}
 
     η::Sampleable
 
-    Xu::AbstractVector{<:AbstractSemialgebraicSet}
+    Xu::ConvexPolytope{T}
     Xi::ConvexPolytope{T}
-    Xs::Union{<:AbstractSemialgebraicSet, Nothing}
+    Xs::ConvexPolytope{T}
 end
 
 System(A, Q, Xu::AbstractSemialgebraicSet, Xi, Xs) = System(A, Q, [Xu], Xi, Xs)
