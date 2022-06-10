@@ -48,4 +48,4 @@ Base.size(p::IndexedConvexPolytope) = size(p.p)
 Base.size(p::IndexedConvexPolytope, d) = size(p.p, d)
 Base.isempty(p::IndexedConvexPolytope) = isempty(p.p)
 
-PolyhedralPartitioning = Vector{IndexedConvexPolytope}
+PolytopePartitioning = Vector{IndexedConvexPolytope}

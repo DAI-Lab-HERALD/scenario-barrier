@@ -8,7 +8,7 @@ struct System{V <: AbstractSystemVariables, D <: AbstractDynamics}
 
     v::V
     d::D
-    p::PolyhedralPartitioning
+    p::PolytopePartitioning
 end
 
 system(fx, x, z, X, Xu, Xi, Xs, p) = System(X, Xu, Xi, Xs, variables(x, z), dynamics(fx), p)
