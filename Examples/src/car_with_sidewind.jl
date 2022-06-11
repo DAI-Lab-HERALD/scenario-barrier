@@ -5,10 +5,10 @@ using Distributions, PDMats
 # x[1] = longitudinal coordinate in meters
 # x[2] = lateral coordinate in meters
 
-A = Matrix{Real}[]
-b = Vector{Real}[]
+A = Matrix{Float64}[]
+b = Vector{Float64}[]
 
-Q = ConvexPolytope{Real}[]
+Q = ConvexPolytope{Float64}[]
 
 μ = [0, 0]
 Σ = PDiagMat([0.1, 0.1])

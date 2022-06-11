@@ -127,21 +127,21 @@ function initial_constraint!(model, system, B, γ, q)
     @constraint(model, -B[q.index] + γ_mat + s_mat ≥ 0, PSDCone())
 end
 
-function expectation_constraint!(model, system, B, c, ϵ, q_i, ηs)
+function expectation_constraint!(model, system, B, c, ϵ, qi, ηs)
     for q_j in partitions(system)
         println("Next partition $q_j")
-        expectation_partition_constraint!(model, system, B, c, q_i, q_j, ηs)
+        expectation_partition_constraint!(model, system, B, c, ϵ, qi, qj, ηs)
     end
 end
 
 barrier_blocks(B, q) = B[q.index][:end - 1, :end - 1], B[q.index][:end - 1, end], B[q.index][end, end]
-function expectation_partition_constraint!(model, system, B, c, ϵ, q_i, q_j, ηs)
-    P_i, p_i, v_i = barrier_blocks(B, q_i)
-    P_j, p_j, v_j = barrier_blocks(B, q_j)
+function expectation_partition_constraint!(model, system, B, c, ϵ, qi, qj, ηs)
+    Pi, pi, vi = barrier_blocks(B, qi)
+    Pj, pj, vj = barrier_blocks(B, qj)
 
-    A_i = next_state(system, q_i)
+    Ai, bi = next_state(system, qi)
 
-    # We can let M = 1 as B(x) can be modified aposterori to be capped at 1 without violating the theory
+    # We can let M = 1 [max B(x)] as B(x) can be modified aposterori to be capped at 1 without violating the theory
     M = 1  
     d = ϵ * M
 
@@ -149,18 +149,20 @@ function expectation_partition_constraint!(model, system, B, c, ϵ, q_i, q_j, η
     # This way, we can share computations between constraints
 
     shared_mat = vcat(
-        hcat(A_i' * P_j * A_i - P_i, -p_i / 2),
-        hcat(-p_i' / 2, v_j - v_i - c + d)
+        hcat(Ai' * Pj * Ai - Pi, -pi / 2),
+        hcat(-pi' / 2, vj - vi - c + d)
     )
 
     for η in ηs
-        s_mat = s_procedure(q_i)
+        s_mat = s_procedure(qi)
 
-        A_iη = A_i * η
+        biη = bi + η
+
+        Aibiη = A_i * biη
 
         η_mat = vcat(
-            hcat(zeros(P_i), A_iη),
-            hcat(A_iη', η' * P_j * η + p_j' * η)
+            hcat(zeros(Pi), Aibiη),
+            hcat(Aibiη', biη' * Pj * biη + pj' * biη)
         )
 
         @constraint(model, -shared_mat - η_mat + s_mat ≥ 0, PSDCone())
