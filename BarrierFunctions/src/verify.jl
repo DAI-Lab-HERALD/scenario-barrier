@@ -1,6 +1,6 @@
 using JuMP, MosekTools
 
-function verify(system::System, H::Int, ϵ::Number, num_samples::Int)
+function verify(system::System; H::Int, ϵ::Number, num_samples::Int)
     @assert(H >= 1, "Horizon H must be greater than or equal to one (is $H)")
     @assert(0 < ϵ < 1, "Epsilon must be in range (0, 1) (is $ϵ)")
     @assert(num_samples >= 1, "Number of samples must be greater than or equal to one (is $num_samples)")
@@ -27,7 +27,7 @@ function verify(system::System, H::Int, ϵ::Number, num_samples::Int)
 
     succ = JuMP.primal_status(model) == FEASIBLE_POINT
 
-    B, c, γ = value(B), value(c), value(γ)
+    B, c, γ = barrier_value(B), value(c), value(γ)
     println("γ $γ, c $c")
 
     # Alternatively use B(x_0) for γ if x_0 is a point
@@ -39,11 +39,19 @@ function verify(system::System, H::Int, ϵ::Number, num_samples::Int)
 end
 
 function barrier_variable!(model, system)
-    n = size(state(system)) + 1
+    n = state_space_size(system) + 1
 
-    B = Dict{Int, Array{VariableRef, 2}}(
+    B = Dict{Int, Matrix{VariableRef}}(
            q.index => @variable(model, [1:n, 1:n], Symmetric, base_name = "B[$q]")
            for q in partitions(system)
+       )
+
+    return B
+end
+
+function barrier_value(B)
+    B = Dict{Int, Matrix{Real}}(
+           i => value(Bi) for (i, Bi) in B
        )
 
     return B

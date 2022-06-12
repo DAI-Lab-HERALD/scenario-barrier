@@ -46,4 +46,4 @@ Xu = [
     )
 ]
 
-car_with_sidewind = System(A, b, Q, η, X0, Xs, Xu)
+car_with_sidewind = System{2}(A, b, Q, η, X0, Xs, Xu)

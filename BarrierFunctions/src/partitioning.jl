@@ -22,6 +22,7 @@ end
 Base.intersect(p1::ConvexPolytope, p2::ConvexPolytope) = ConvexPolytope(vcat(p1.H, p2.H), vcat(p1.h, p2.h))
 Base.size(p::ConvexPolytope) = size(p.H)
 Base.size(p::ConvexPolytope, d) = size(p.H, d)
+Base.eltype(p::ConvexPolytope) = eltype(p.H)
 
 function Base.isempty(p::ConvexPolytope)
     model = Model()
