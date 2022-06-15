@@ -164,9 +164,10 @@ function expectation_partition_constraint!(model, system::System{N, I, T}, B, c,
     # Separate LMI into two matrices where one depends on η and one does not
     # This way, we can share computations between constraints
 
+    Aipjpi = (Ai' * pj - pi) / 2
     shared_mat = vcat(
-        hcat(Ai' * Pj * Ai - Pi, -pi / 2),
-        hcat(-pi' / 2, vj - vi - c + d)
+        hcat(Ai' * Pj * Ai - Pi, Aipjpi),
+        hcat(Aipjpi', vj - vi - c + d)
     )
 
     for η in eachcol(ηs)
@@ -174,11 +175,11 @@ function expectation_partition_constraint!(model, system::System{N, I, T}, B, c,
 
         biη = bi + η
 
-        Aibiη = Ai * biη
+        AiPjbiη = Ai' * Pj * biη
 
         η_mat = vcat(
-            hcat(zero(Ai), Aibiη),
-            hcat(Aibiη', biη' * Pj * biη .+ pj' * biη)
+            hcat(zero(Ai), AiPjbiη),
+            hcat(AiPjbiη', biη' * Pj * biη .+ pj' * biη)
         )
 
         @constraint(model, shared_mat + η_mat - s_mat ≤ 0, PSDCone())
