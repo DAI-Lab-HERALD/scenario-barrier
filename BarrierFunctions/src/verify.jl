@@ -95,7 +95,7 @@ end
 function non_negativity_constraint(model, B, q)
     s_mat = s_procedure(model, q)
 
-    @constraint(model, B[q.index] + s_mat >= 0, PSDCone())
+    @constraint(model, -B[q.index] - s_mat ≤ 0, PSDCone())
 end
 
 function unsafe_constraint!(model, system, B, q)
@@ -119,7 +119,7 @@ function unsafe_constraint!(model, system, B, q)
     one_mat = zero(s_mat)
     one_mat[end, end] = 1
 
-    @constraint(model, B[q.index] - one_mat + s_mat >= 0, PSDCone())
+    @constraint(model, -B[q.index] + one_mat - s_mat ≤ 0, PSDCone())
 end
 
 function initial_constraint!(model, system, B, γ, q)
@@ -134,7 +134,7 @@ function initial_constraint!(model, system, B, γ, q)
     γ_mat = zero(s_mat)
     γ_mat[end, end] = γ
 
-    @constraint(model, -B[q.index] + γ_mat + s_mat ≥ 0, PSDCone())
+    @constraint(model, B[q.index] - γ_mat - s_mat ≤ 0, PSDCone())
 end
 
 function expectation_constraint!(model, system, B, c, ϵ, qi, ηs)
@@ -181,6 +181,6 @@ function expectation_partition_constraint!(model, system::System{N, I, T}, B, c,
             hcat(Aibiη', biη' * Pj * biη .+ pj' * biη)
         )
 
-        @constraint(model, -shared_mat - η_mat + s_mat ≥ 0, PSDCone())
+        @constraint(model, shared_mat + η_mat - s_mat ≤ 0, PSDCone())
     end
 end
