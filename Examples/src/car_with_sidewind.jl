@@ -21,13 +21,33 @@ A = Matrix{Float64}[
     [
         1 0;
         0 1;
+    ],
+    [
+        1 0;
+        0 1;
+    ],
+    [
+        1 0;
+        0 1;
+    ],
+    [
+        1 0;
+        0 1;
+    ],
+    [
+        1 0;
+        0 1;
     ]
 ]
 b = Vector{Float64}[
     [0, 0],
     [0, 0],
     [0, 0],
-    [0, 0]
+    [0, 0],
+    [0, 0],
+    [0, 0],
+    [50 * (1000 / 3600), 0], # 50 km/h in m/s (assuming 1s time steps)
+    [50 * (1000 / 3600), 0]
 ]
 
 Q = ConvexPolytope{Float64}[
@@ -52,7 +72,41 @@ Q = ConvexPolytope{Float64}[
     ConvexPolytope(
         H = Float64[0 1],
         h = [-2.51]
-    )
+    ),
+    ConvexPolytope(
+        H = Float64[
+            0  1;
+            0 -1;
+            1  0
+        ],
+        h = [2.5, 2.5, 0.0]
+    ),
+    ConvexPolytope(
+        H = Float64[
+             0  1;
+             0 -1;
+            -1  0
+        ],
+        h = [2.5, 2.5, -100]
+    ),
+    ConvexPolytope(
+        H = Float64[
+             0  1;
+             0 -1;
+             1  0;
+            -1  0
+        ],
+        h = [2.5, 2.5, 10, 0]
+    ),
+    ConvexPolytope(
+        H = Float64[
+             0  1;
+             0 -1;
+             1  0;
+            -1  0
+        ],
+        h = [2.5, 2.5, 100, -10]
+    ),
 ]
 
 μ = [0, 0]
