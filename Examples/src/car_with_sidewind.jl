@@ -5,10 +5,55 @@ using Distributions, PDMats
 # x[1] = longitudinal coordinate in meters
 # x[2] = lateral coordinate in meters
 
-A = Matrix{Float64}[]
-b = Vector{Float64}[]
+A = Matrix{Float64}[
+    [
+        1 0;
+        0 1;
+    ],
+    [
+        1 0;
+        0 1;
+    ],
+    [
+        1 0;
+        0 1;
+    ],
+    [
+        1 0;
+        0 1;
+    ]
+]
+b = Vector{Float64}[
+    [0, 0],
+    [0, 0],
+    [0, 0],
+    [0, 0]
+]
 
-Q = ConvexPolytope{Float64}[]
+Q = ConvexPolytope{Float64}[
+    ConvexPolytope(
+        H = Float64[
+            0 -1;
+            0  1
+        ],
+        h = [-2.5, 2.51]
+    ),
+    ConvexPolytope(
+        H = Float64[0 -1],
+        h = [-2.51]
+    ),
+    ConvexPolytope(
+        H = Float64[
+            0  1;
+            0 -1
+        ],
+        h = [-2.5, 2.51]
+    ),
+    ConvexPolytope(
+        H = Float64[0 1],
+        h = [-2.51]
+    )
+]
 
 μ = [0, 0]
 Σ = PDiagMat([0.1, 0.1])

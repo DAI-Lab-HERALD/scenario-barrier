@@ -3,6 +3,8 @@ import Base.@kwdef
 using MathOptInterface
 const MOI = MathOptInterface
 
+using MosekTools
+
 @kwdef struct ConvexPolytope{T<:Real}
     # Convex polytope defined by Hx ≤ h
     H::Matrix{T}
@@ -25,11 +27,14 @@ Base.size(p::ConvexPolytope, d) = size(p.H, d)
 Base.eltype(p::ConvexPolytope) = eltype(p.H)
 
 function Base.isempty(p::ConvexPolytope)
-    model = Model()
+    solver = optimizer_with_attributes(Mosek.Optimizer, 
+        "QUIET" => true
+    )
+    model = Model(solver)
 
     n = size(p.H, 2)
     @variable(model, x[1:n])
-    @constraint(model, p.H * x ≤ p.h)
+    @constraint(model, p.H * x .≤ p.h)
     # Default objective is FEASIBLE_SENSE
     
     optimize!(model)

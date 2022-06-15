@@ -1,5 +1,7 @@
 using JuMP, MosekTools
 
+using Distributions
+
 function verify(system::System; H::Int, ϵ::Number, num_samples::Int)
     @assert(H >= 1, "Horizon H must be greater than or equal to one (is $H)")
     @assert(0 < ϵ < 1, "Epsilon must be in range (0, 1) (is $ϵ)")
@@ -51,7 +53,7 @@ end
 
 function barrier_value(B)
     B = Dict{Int, Matrix{Real}}(
-           i => value(Bi) for (i, Bi) in B
+           i => value.(Bi) for (i, Bi) in B
        )
 
     return B
@@ -74,8 +76,8 @@ function partition_constraints!(model, system, B, c, γ, ϵ, q, ηs)
     expectation_constraint!(model, system, B, c, ϵ, q, ηs)
 end
 
-s_procedure(q::IndexedConvexPolytope) = s_procedure(q.polytope)
-function s_procedure(p)
+s_procedure(model, q::IndexedConvexPolytope) = s_procedure(model, q.polytope)
+function s_procedure(model, p)
     m, n = size(p)
     τ = @variable(model, [1:m], lower_bound = 0)
 
@@ -83,7 +85,7 @@ function s_procedure(p)
     hτ = -2 * p.h' * τ
 
     mat = vcat(
-        hcat(zeros(n), Hτ),
+        hcat(zeros(n, n), Hτ),
         hcat(Hτ', hτ)
     )
 
@@ -91,7 +93,7 @@ function s_procedure(p)
 end
 
 function non_negativity_constraint(model, B, q)
-    s_mat = s_procedure(q)
+    s_mat = s_procedure(model, q)
 
     @constraint(model, B[q.index] + s_mat >= 0, PSDCone())
 end
@@ -112,7 +114,7 @@ function unsafe_constraint!(model, system, B, q)
 
     # We may need to refine partitions if a partition cover too large part of the safe set
 
-    s_mat = s_procedure(q)
+    s_mat = s_procedure(model, q)
 
     one_mat = zero(s_mat)
     one_mat[end, end] = 1
@@ -121,13 +123,13 @@ function unsafe_constraint!(model, system, B, q)
 end
 
 function initial_constraint!(model, system, B, γ, q)
-    X_0 = initial_set(system)
+    X0 = initial_set(system)
 
-    if isempty(X_0 ∩ q)
+    if isempty(X0 ∩ q)
         return
     end
 
-    s_mat = s_procedure(X_0 ∩ q)
+    s_mat = s_procedure(model, X0 ∩ q)
 
     γ_mat = zero(s_mat)
     γ_mat[end, end] = γ
@@ -136,16 +138,22 @@ function initial_constraint!(model, system, B, γ, q)
 end
 
 function expectation_constraint!(model, system, B, c, ϵ, qi, ηs)
-    for q_j in partitions(system)
-        println("Next partition $q_j")
+    Xs = safe_set(system)
+    if isempty(Xs ∩ qi)
+        return
+    end
+
+    for qj in partitions(system)
+        println("Next partition $qj")
         expectation_partition_constraint!(model, system, B, c, ϵ, qi, qj, ηs)
     end
 end
 
-barrier_blocks(B, q) = B[q.index][:end - 1, :end - 1], B[q.index][:end - 1, end], B[q.index][end, end]
-function expectation_partition_constraint!(model, system, B, c, ϵ, qi, qj, ηs)
-    Pi, pi, vi = barrier_blocks(B, qi)
-    Pj, pj, vj = barrier_blocks(B, qj)
+barrier_blocks(B, q, n) = B[q.index][1:n, 1:n], B[q.index][1:n, n + 1], B[q.index][n + 1, n + 1]
+
+function expectation_partition_constraint!(model, system::System{N, I, T}, B, c, ϵ, qi, qj, ηs) where {N, I, T}
+    Pi, pi, vi = barrier_blocks(B, qi, N)
+    Pj, pj, vj = barrier_blocks(B, qj, N)
 
     Ai, bi = next_state(system, qi)
 
@@ -161,16 +169,16 @@ function expectation_partition_constraint!(model, system, B, c, ϵ, qi, qj, ηs)
         hcat(-pi' / 2, vj - vi - c + d)
     )
 
-    for η in ηs
-        s_mat = s_procedure(qi)
+    for η in eachcol(ηs)
+        s_mat = s_procedure(model, qi)
 
         biη = bi + η
 
-        Aibiη = A_i * biη
+        Aibiη = Ai * biη
 
         η_mat = vcat(
-            hcat(zeros(Pi), Aibiη),
-            hcat(Aibiη', biη' * Pj * biη + pj' * biη)
+            hcat(zero(Ai), Aibiη),
+            hcat(Aibiη', biη' * Pj * biη .+ pj' * biη)
         )
 
         @constraint(model, -shared_mat - η_mat + s_mat ≥ 0, PSDCone())
