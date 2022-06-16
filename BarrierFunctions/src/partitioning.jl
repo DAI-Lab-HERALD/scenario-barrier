@@ -26,13 +26,24 @@ Base.size(p::ConvexPolytope) = size(p.H)
 Base.size(p::ConvexPolytope, d) = size(p.H, d)
 Base.eltype(p::ConvexPolytope) = eltype(p.H)
 
-function Base.isempty(p::ConvexPolytope)
+function iszeromeasure(p::ConvexPolytope)
+    m, n = size(p.H)
+
+    # If two constraints are opposite inequalities
+    isapproxzero(x) = isapprox(x, 0.0)
+    for i in 1:m
+        for j in 1:i-1
+            if all(isapproxzero.(p.H[i] + p.H[j])) && isapproxzero(p.h[i] + p.h[j])
+                return true
+            end
+        end
+    end
+
+    # Otherwise check for infeasiblity
     solver = optimizer_with_attributes(Mosek.Optimizer, 
         "QUIET" => true
     )
     model = Model(solver)
-
-    n = size(p.H, 2)
     @variable(model, x[1:n])
     @constraint(model, p.H * x .≤ p.h)
     # Default objective is FEASIBLE_SENSE
@@ -54,6 +65,6 @@ Base.intersect(p1::IndexedConvexPolytope, p2::ConvexPolytope) = p1.polytope ∩ 
 Base.intersect(p1::ConvexPolytope, p2::IndexedConvexPolytope) = p2 ∩ p1
 Base.size(p::IndexedConvexPolytope) = size(p.polytope)
 Base.size(p::IndexedConvexPolytope, d) = size(p.polytope, d)
-Base.isempty(p::IndexedConvexPolytope) = isempty(p.polytope)
+iszeromeasure(p::IndexedConvexPolytope) = iszeromeasure(p.polytope)
 
 PolytopePartitioning{T, I} = Vector{IndexedConvexPolytope{T, I}}

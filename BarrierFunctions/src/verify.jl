@@ -102,7 +102,7 @@ function unsafe_constraint!(model, system, B, q)
     # Note unsafe set can consist of multiple disjoint components
     overlaps_unsafe = false
     for unsafe_subset in unsafe_set(system)
-        if !isempty(unsafe_subset ∩ q)
+        if iszeromeasure(unsafe_subset ∩ q)
             overlaps_unsafe = true
             break
         end
@@ -125,7 +125,7 @@ end
 function initial_constraint!(model, system, B, γ, q)
     X0 = initial_set(system)
 
-    if isempty(X0 ∩ q)
+    if iszeromeasure(X0 ∩ q)
         return
     end
 
@@ -139,7 +139,7 @@ end
 
 function expectation_constraint!(model, system, B, c, ϵ, qi, ηs)
     Xs = safe_set(system)
-    if isempty(Xs ∩ qi)
+    if iszeromeasure(Xs ∩ qi)
         return
     end
 

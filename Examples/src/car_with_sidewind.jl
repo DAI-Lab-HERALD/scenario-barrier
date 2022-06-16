@@ -29,19 +29,9 @@ A = Matrix{Float64}[
     [
         1 0;
         0 1;
-    ],
-    [
-        1 0;
-        0 1;
-    ],
-    [
-        1 0;
-        0 1;
     ]
 ]
 b = Vector{Float64}[
-    [0, 0],
-    [0, 0],
     [0, 0],
     [0, 0],
     [0, 0],
@@ -52,26 +42,12 @@ b = Vector{Float64}[
 
 Q = ConvexPolytope{Float64}[
     ConvexPolytope(
-        H = Float64[
-            0 -1;
-            0  1
-        ],
-        h = [-2.5, 2.51]
-    ),
-    ConvexPolytope(
         H = Float64[0 -1],
-        h = [-2.51]
-    ),
-    ConvexPolytope(
-        H = Float64[
-            0  1;
-            0 -1
-        ],
-        h = [-2.5, 2.51]
+        h = [-2.5]
     ),
     ConvexPolytope(
         H = Float64[0 1],
-        h = [-2.51]
+        h = [-2.5]
     ),
     ConvexPolytope(
         H = Float64[
