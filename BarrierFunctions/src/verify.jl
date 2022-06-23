@@ -43,8 +43,8 @@ end
 function barrier_variable!(model, system)
     n = state_space_size(system) + 1
 
-    B = Dict{Int, Matrix{VariableRef}}(
-           q.index => @variable(model, [1:n, 1:n], Symmetric, base_name = "B[$q]")
+    B = Dict(
+           q => @variable(model, [1:n, 1:n], Symmetric, base_name = "B[$q]")
            for q in partitions(system)
        )
 
@@ -52,9 +52,7 @@ function barrier_variable!(model, system)
 end
 
 function barrier_value(B)
-    B = Dict{Int, Matrix{Real}}(
-           i => value.(Bi) for (i, Bi) in B
-       )
+    B = Dict(i => value.(Bi) for (i, Bi) in B)
 
     return B
 end
@@ -76,7 +74,7 @@ function partition_constraints!(model, system, B, c, γ, ϵ, q, ηs)
     expectation_constraint!(model, system, B, c, ϵ, q, ηs)
 end
 
-s_procedure(model, q::IndexedConvexPolytope) = s_procedure(model, q.polytope)
+s_procedure(model, q::Partition) = s_procedure(model, region(q))
 function s_procedure(model, p)
     m, n = size(p)
     τ = @variable(model, [1:m], lower_bound = 0)
@@ -95,7 +93,7 @@ end
 function non_negativity_constraint(model, B, q)
     s_mat = s_procedure(model, q)
 
-    @constraint(model, -B[q.index] - s_mat ≤ 0, PSDCone())
+    @constraint(model, -B[q] - s_mat ≤ 0, PSDCone())
 end
 
 function unsafe_constraint!(model, system, B, q)
@@ -119,7 +117,7 @@ function unsafe_constraint!(model, system, B, q)
     one_mat = zero(s_mat)
     one_mat[end, end] = 1
 
-    @constraint(model, -B[q.index] + one_mat - s_mat ≤ 0, PSDCone())
+    @constraint(model, -B[q] + one_mat - s_mat ≤ 0, PSDCone())
 end
 
 function initial_constraint!(model, system, B, γ, q)
@@ -134,7 +132,7 @@ function initial_constraint!(model, system, B, γ, q)
     γ_mat = zero(s_mat)
     γ_mat[end, end] = γ
 
-    @constraint(model, B[q.index] - γ_mat - s_mat ≤ 0, PSDCone())
+    @constraint(model, B[q] - γ_mat - s_mat ≤ 0, PSDCone())
 end
 
 function expectation_constraint!(model, system, B, c, ϵ, qi, ηs)
@@ -145,17 +143,18 @@ function expectation_constraint!(model, system, B, c, ϵ, qi, ηs)
 
     for qj in partitions(system)
         println("Next partition $qj")
-        expectation_partition_constraint!(model, system, B, c, ϵ, qi, qj, ηs)
+        expectation_partition_constraint!(model, B, c, ϵ, qi, qj, ηs)
     end
 end
 
-barrier_blocks(B, q, n) = B[q.index][1:n, 1:n], B[q.index][1:n, n + 1], B[q.index][n + 1, n + 1]
+barrier_blocks(B, q, N) = B[q][1:N, 1:N], B[q][1:N, N + 1], B[q][N + 1, N + 1]
 
-function expectation_partition_constraint!(model, system::System{N, I, T}, B, c, ϵ, qi, qj, ηs) where {N, I, T}
+function expectation_partition_constraint!(model, B, c, ϵ, qi, qj, ηs)
+    N = size(qi, 2)
     Pi, pi, vi = barrier_blocks(B, qi, N)
     Pj, pj, vj = barrier_blocks(B, qj, N)
 
-    Ai, bi = next_state(system, qi)
+    Ai, bi = dynamics(qi)
 
     # We can let M = 1 [max B(x)] as B(x) can be modified aposterori to be capped at 1 without violating the theory
     M = 1  

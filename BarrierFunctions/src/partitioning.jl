@@ -54,17 +54,24 @@ function iszeromeasure(p::ConvexPolytope)
     return infeasible
 end
 
-@kwdef struct IndexedConvexPolytope{I<:Int, T<:Real}
+PartitionDynamics{T} = Tuple{Matrix{T}, Vector{T}}
+@kwdef struct Partition{I<:Int, T<:Real}
     index::I
     polytope::ConvexPolytope{T}
+    dynamics::PartitionDynamics{T}
 end
 
-Base.show(io::IO, p::IndexedConvexPolytope) = print(io, p.index)
-Base.intersect(p1::IndexedConvexPolytope, p2::IndexedConvexPolytope) = p1.polytope ∩ p2.polytope
-Base.intersect(p1::IndexedConvexPolytope, p2::ConvexPolytope) = p1.polytope ∩ p2
-Base.intersect(p1::ConvexPolytope, p2::IndexedConvexPolytope) = p2 ∩ p1
-Base.size(p::IndexedConvexPolytope) = size(p.polytope)
-Base.size(p::IndexedConvexPolytope, d) = size(p.polytope, d)
-iszeromeasure(p::IndexedConvexPolytope) = iszeromeasure(p.polytope)
+Base.hash(p::Partition, h::UInt) = hash(p.index, h)
+Base.:(==)(p1::Partition, p2::Partition) = p1.index == p2.index
 
-PolytopePartitioning{T, I} = Vector{IndexedConvexPolytope{T, I}}
+Base.show(io::IO, p::Partition) = print(io, p.index)
+Base.intersect(p1::Partition, p2::Partition) = p1.polytope ∩ p2.polytope
+Base.intersect(p1::Partition, p2::ConvexPolytope) = p1.polytope ∩ p2
+Base.intersect(p1::ConvexPolytope, p2::Partition) = p2 ∩ p1
+Base.size(p::Partition) = size(p.polytope)
+Base.size(p::Partition, d) = size(p.polytope, d)
+region(p::Partition) = p.polytope
+dynamics(p::Partition) = p.dynamics
+iszeromeasure(p::Partition) = iszeromeasure(region(p))
+
+PolytopePartitioning{T, I} = Vector{Partition{T, I}}
