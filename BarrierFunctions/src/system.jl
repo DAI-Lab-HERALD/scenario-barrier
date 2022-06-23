@@ -14,8 +14,7 @@ using Distributions
     function System{N, I, T}(Q, η, X0, Xs, Xu) where {N, I, T}
         n = size(Q, 1)
         @assert(n >= 1, "The number of partitions must be at least 1")
-
-        # TODO: Assert X0 is subset of Xs
+        @assert(X0 ⊆ Xs, "The initial set X0 must be a subset of the safe set Xs")
 
         return new{N, I, T}(Q, η, X0, Xs, Xu)
     end
@@ -26,7 +25,7 @@ function System{N}(Q, A, b, η, X0, Xs, Xu) where {N}
     @assert(n1 == n2 && n2 == n3, "Number of partitions and dynamics matrices must match")
     @assert(n1 >= 1, "The number of partitions must be at least 1")
 
-    Q = [Partition(i, pi, (Ai, bi)) for (i, (pi, Ai, bi)) in enumerate(zip(Q, A, b))]
+    Q = [Partition(i, qi, (Ai, bi)) for (i, (qi, Ai, bi)) in enumerate(zip(Q, A, b))]
 
     return System{N, typeof(Q[1].index), eltype(X0)}(Q, η, X0, Xs, Xu)
 end

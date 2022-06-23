@@ -49,9 +49,39 @@ function iszeromeasure(p::ConvexPolytope)
     # Default objective is FEASIBLE_SENSE
     
     optimize!(model)
-    infeasible = termination_status(model) ∈ [MOI.INFEASIBLE, MOI.DUAL_INFEASIBLE]
+    infeasible = termination_status(model) == MOI.INFEASIBLE
 
     return infeasible
+end
+
+function Base.issubset(l::ConvexPolytope, r::ConvexPolytope) 
+    m, n = size(l.H)
+
+    for i in 1:m
+        # Otherwise check for infeasiblity
+        solver = optimizer_with_attributes(Mosek.Optimizer, 
+            "QUIET" => true
+        )
+        model = Model(solver)
+        @variable(model, x[1:n])
+        @constraint(model, r.H * x .≤ r.h)
+        @objective(model, Min, sum(l.H[i] .* x) - l.h[i])
+        
+        optimize!(model)
+
+        # For an LP, the primal is unbounded iff the dual is infeasible
+        unbounded = termination_status(model) == MOI.DUAL_INFEASIBLE
+        if unbounded
+            return true
+        else
+            value = objective_value(model)
+            if value < 0.0
+                return false
+            end
+        end
+    end
+
+    return true
 end
 
 PartitionDynamics{T} = Tuple{Matrix{T}, Vector{T}}
