@@ -58,7 +58,6 @@ function Base.issubset(l::ConvexPolytope, r::ConvexPolytope)
     m, n = size(l.H)
 
     for i in 1:m
-        # Otherwise check for infeasiblity
         solver = optimizer_with_attributes(Mosek.Optimizer, 
             "QUIET" => true
         )
