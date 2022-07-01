@@ -41,14 +41,26 @@ function verify(system::System; H::Int, ϵ::Number, num_samples::Int)
 end
 
 function barrier_variable!(model, system)
-    n = state_space_size(system) + 1
-
     B = Dict(
-           q => @variable(model, [1:n, 1:n], Symmetric, base_name = "B[$q]")
+           q => partition_barrier_variable!(model, system, q)
            for q in partitions(system)
        )
 
     return B
+end
+
+function partition_barrier_variable!(model, system, q)
+    n = state_space_size(system) + 1
+
+    Xs = safe_set(system)
+    if iszeromeasure(Xs ∩ q)
+        unsafe_barrier = zeros(n, n)
+        unsafe_barrier[end, end] = 1
+
+        return unsafe_barrier
+    else
+        return @variable(model, [1:n, 1:n], Symmetric, base_name = "B[$q]")
+    end
 end
 
 function barrier_value(B)
