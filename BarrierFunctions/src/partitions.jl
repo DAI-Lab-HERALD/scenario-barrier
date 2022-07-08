@@ -51,6 +51,9 @@ function iszeromeasure(p::ConvexPolytope)
     optimize!(model)
     infeasible = termination_status(model) == MOI.INFEASIBLE
 
+    # For N > 1, it is possible the feasible set is a point without opposite inequalities. 
+    # TODO: Check L-inf ball around optimal point is not feasible
+
     return infeasible
 end
 
