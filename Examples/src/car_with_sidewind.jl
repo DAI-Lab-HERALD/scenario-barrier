@@ -1,53 +1,19 @@
 using BarrierFunctions
+using LazySets, Symbolics
 
 using Distributions, PDMats
 
 # x[1] = longitudinal coordinate in meters
 # x[2] = lateral coordinate in meters
+vars = @variables x[1:2]
 
-Q = ConvexPolytope{Float64}[
-    ConvexPolytope(  # x[2] ≥ 2.5
-        H = Float64[0 -1],
-        h = [-2.5]
-    ),
-    ConvexPolytope( # x[2] ≤ -2.5
-        H = Float64[0 1],
-        h = [-2.5]
-    ),
-    ConvexPolytope( # |x[2]| ≤ 2.5 && x[1] ≤ 0 
-        H = Float64[
-            0  1;
-            0 -1;
-            1  0
-        ],
-        h = [2.5, 2.5, 0.0]
-    ),
-    ConvexPolytope( # |x[2]| ≤ 2.5 && x[1] ≥ 100 
-        H = Float64[
-             0  1;
-             0 -1;
-            -1  0
-        ],
-        h = [2.5, 2.5, -100]
-    ),
-    ConvexPolytope( # |x[2]| ≤ 2.5 && x[1] ≥ 0 && x[1] ≤ 10
-        H = Float64[
-             0  1;
-             0 -1;
-             1  0;
-            -1  0
-        ],
-        h = [2.5, 2.5, 10, 0]
-    ),
-    ConvexPolytope( # |x[2]| ≤ 2.5 && x[1] ≥ 10 && x[1] ≤ 100
-        H = Float64[
-             0  1;
-             0 -1;
-             1  0;
-            -1  0
-        ],
-        h = [2.5, 2.5, 100, -10]
-    ),
+Q = [
+    HPolyhedron([x[2] ≥ 2.5], vars),
+    HPolyhedron([x[2] ≤ -2.5], vars),
+    HPolyhedron([x[2] ≤ 2.5, x[2] ≥ -2.5, x[1] ≤ 0], vars),
+    HPolyhedron([x[2] ≤ 2.5, x[2] ≥ -2.5, x[1] ≥ 100], vars),
+    HPolyhedron([x[2] ≤ 2.5, x[2] ≥ -2.5, x[1] ≥ 0, x[1] ≤ 10], vars),
+    HPolyhedron([x[2] ≤ 2.5, x[2] ≥ -2.5, x[1] ≥ 10, x[1] ≤ 100], vars)
 ]
 
 A = Matrix{Float64}[
@@ -90,35 +56,15 @@ b = Vector{Float64}[
 η = DiagNormal(μ, Σ)
 
 # Start in a box [0m, 10m] × [-0.5m, 0.5m]
-X0 = ConvexPolytope(
-    H = Float64[
-        1  0;
-        -1 0;
-        0  1;
-        0 -1
-    ],
-    h = [10, 0, 0.5, 0.5]
-)
+X0 = HPolyhedron([x[2] ≤ 2.5, x[2] ≥ -2.5, x[1] ≥ 0, x[1] ≤ 10], vars)
 
 # On the road is safe
-Xs = ConvexPolytope(
-    H = Float64[
-        0  1;
-        0 -1
-    ],
-    h = [2.5, 2.5]
-)
+Xs = HPolyhedron([x[2] ≤ 2.5, x[2] ≥ -2.5], vars)
 
 # Outside the road is dangerous
 Xu = [
-    ConvexPolytope(
-        H = Float64[0 -1],
-        h = [-2.5]
-    ),
-    ConvexPolytope(
-        H = Float64[0 1],
-        h = [-2.5]
-    )
+    HPolyhedron([x[2] ≥ 2.5], vars),
+    HPolyhedron([x[2] ≤ -2.5], vars)
 ]
 
-car_with_sidewind = System{2}(Q, A, b, η, X0, Xs, Xu)
+car_with_sidewind = System(Q, A, b, η, X0, Xs, Xu)

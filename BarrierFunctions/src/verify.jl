@@ -53,7 +53,7 @@ function partition_barrier_variable!(model, system, q)
     n = state_space_size(system) + 1
 
     Xs = safe_set(system)
-    if iszeromeasure(Xs ∩ q)
+    if (iszeromeasure ∘ intersection)(Xs, q)
         unsafe_barrier = zeros(n, n)
         unsafe_barrier[end, end] = 1
 
@@ -90,9 +90,10 @@ s_procedure(model, q::Partition) = s_procedure(model, region(q))
 function s_procedure(model, p)
     m, n = size(p)
     τ = @variable(model, [1:m], lower_bound = 0)
+    H, h = tosimplehrep(p)
 
-    Hτ = p.H' * τ
-    hτ = -2 * p.h' * τ
+    Hτ = H' * τ
+    hτ = -2 * h' * τ
 
     mat = vcat(
         hcat(zeros(n, n), Hτ),
@@ -112,7 +113,7 @@ function unsafe_constraint!(model, system, B, q)
     # Note unsafe set can consist of multiple disjoint components
     overlaps_unsafe = false
     for unsafe_subset in unsafe_set(system)
-        if iszeromeasure(unsafe_subset ∩ q)
+        if (iszeromeasure ∘ intersection)(unsafe_subset, q)
             overlaps_unsafe = true
             break
         end
@@ -135,11 +136,11 @@ end
 function initial_constraint!(model, system, B, γ, q)
     X0 = initial_set(system)
 
-    if iszeromeasure(X0 ∩ q)
+    if (iszeromeasure ∘ intersection)(X0, q)
         return
     end
 
-    s_mat = s_procedure(model, X0 ∩ q)
+    s_mat = s_procedure(model, intersection(X0, q))
 
     γ_mat = zero(s_mat)
     γ_mat[end, end] = γ
@@ -149,7 +150,7 @@ end
 
 function expectation_constraint!(model, system, B, c, ϵ, qi, ηs)
     Xs = safe_set(system)
-    if iszeromeasure(Xs ∩ qi)
+    if (iszeromeasure ∘ intersection)(Xs, qi)
         return
     end
 

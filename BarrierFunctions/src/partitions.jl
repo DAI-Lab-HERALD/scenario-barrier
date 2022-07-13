@@ -1,39 +1,35 @@
 import Base.@kwdef
 
+using LazySets
+
 using MathOptInterface
 const MOI = MathOptInterface
 
 using MosekTools
 
-@kwdef struct ConvexPolytope{T<:Real}
-    # Convex polytope defined by Hx ≤ h
-    H::Matrix{T}
-    h::Vector{T}
+const HPoly{N} = Union{HPolytope{N}, HPolyhedron{N}}
+
+Base.size(p::HPoly) = (length ∘ constraints_list)(p), LazySets.dim(p)
+function Base.size(p::HPoly, d) 
+    @assert(1 ≤ d ≤ 2)
+
+    if d == 1
+        return (length ∘ constraints_list)(p)
+    else
+        return LazySets.dim(p)
+    end
 end
+Base.eltype(p::HPoly) = (eltype ∘ constraints_list)(p)
 
-function Base.show(io::IO, p::ConvexPolytope)
-    m, n = size(p.H)
-
-    lines = [
-        join(["$(H[j, i])x_$i" for i in 1:n], " + ") * " ≤ $(h[j])"
-        for j in 1:m
-    ]
-    print(io, join(lines, "\n"))
-end
-
-Base.intersect(p1::ConvexPolytope, p2::ConvexPolytope) = ConvexPolytope(vcat(p1.H, p2.H), vcat(p1.h, p2.h))
-Base.size(p::ConvexPolytope) = size(p.H)
-Base.size(p::ConvexPolytope, d) = size(p.H, d)
-Base.eltype(p::ConvexPolytope) = eltype(p.H)
-
-function iszeromeasure(p::ConvexPolytope)
-    m, n = size(p.H)
+function iszeromeasure(p::HPoly)
+    m, n = size(p)
+    H, h = tosimplehrep(p)
 
     # If two constraints are opposite inequalities
     isapproxzero(x) = isapprox(x, 0.0)
     for i in 1:m
         for j in 1:i-1
-            if all(isapproxzero.(p.H[i] + p.H[j])) && isapproxzero(p.h[i] + p.h[j])
+            if all(isapproxzero.(H[i] + H[j])) && isapproxzero(h[i] + h[j])
                 return true
             end
         end
@@ -45,7 +41,7 @@ function iszeromeasure(p::ConvexPolytope)
     )
     model = Model(solver)
     @variable(model, x[1:n])
-    @constraint(model, p.H * x .≤ p.h)
+    @constraint(model, H * x .≤ h)
     # Default objective is FEASIBLE_SENSE
     
     optimize!(model)
@@ -56,40 +52,12 @@ function iszeromeasure(p::ConvexPolytope)
 
     return infeasible
 end
-
-function Base.issubset(l::ConvexPolytope, r::ConvexPolytope) 
-    m, n = size(l.H)
-
-    for i in 1:m
-        solver = optimizer_with_attributes(Mosek.Optimizer, 
-            "QUIET" => true
-        )
-        model = Model(solver)
-        @variable(model, x[1:n])
-        @constraint(model, r.H * x .≤ r.h)
-        @objective(model, Min, sum(l.H[i] .* x) - l.h[i])
-        
-        optimize!(model)
-
-        # For an LP, the primal is unbounded iff the dual is infeasible
-        unbounded = termination_status(model) == MOI.DUAL_INFEASIBLE
-        if unbounded
-            return true
-        else
-            value = objective_value(model)
-            if value < 0.0
-                return false
-            end
-        end
-    end
-
-    return true
-end
+iszeromeasure(::EmptySet) = true
 
 PartitionDynamics{T} = Tuple{Matrix{T}, Vector{T}}
 @kwdef struct Partition{I<:Int, T<:Real}
     index::I
-    polytope::ConvexPolytope{T}
+    polytope::HPolyhedron{T, Vector{T}}
     dynamics::PartitionDynamics{T}
 end
 
@@ -97,9 +65,9 @@ Base.hash(p::Partition, h::UInt) = hash(p.index, h)
 Base.:(==)(p1::Partition, p2::Partition) = p1.index == p2.index
 
 Base.show(io::IO, p::Partition) = print(io, p.index)
-Base.intersect(p1::Partition, p2::Partition) = p1.polytope ∩ p2.polytope
-Base.intersect(p1::Partition, p2::ConvexPolytope) = p1.polytope ∩ p2
-Base.intersect(p1::ConvexPolytope, p2::Partition) = p2 ∩ p1
+LazySets.intersection(p1::Partition, p2::Partition) = intersection(p1.polytope, p2.polytope)
+LazySets.intersection(p1::Partition, p2::AbstractPolyhedron) = intersection(p1.polytope, p2)
+LazySets.intersection(p1::AbstractPolyhedron, p2::Partition) = intersection(p2, p1)
 Base.size(p::Partition) = size(p.polytope)
 Base.size(p::Partition, d) = size(p.polytope, d)
 region(p::Partition) = p.polytope

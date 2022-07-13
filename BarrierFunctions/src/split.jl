@@ -9,6 +9,8 @@ function grid_split(system::System{N, I, T}, num_subpartitions) where {N, I, T}
 
     Pnew = Partition{I, T}[]
     for (q, spec) in zip(P, num_subpartitions)
+        @assert(region(q) )
+
         min = minimum()
         max = maximum()
 

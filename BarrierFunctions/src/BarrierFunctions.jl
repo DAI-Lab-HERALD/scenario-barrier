@@ -2,7 +2,7 @@ module BarrierFunctions
     using JuMP
 
     include("partitions.jl")
-    export ConvexPolytope, IndexedConvexPolytope, PolytopePartitioning
+    export Partition, PolytopePartitioning
 
     include("system.jl")
     export System, autonomous_system
