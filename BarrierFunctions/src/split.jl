@@ -1,19 +1,28 @@
-
+using LazySets
 
 function grid_split(system::System{N, I, T}, num_subpartitions) where {N, I, T}
-    P = partitions(system)
-    n, m = length(P), length(num_subpartitions)
+    Q = partitions(system)
+    n, m = length(Q), length(num_subpartitions)
     @assert(n == m, "Number of subpartition specifications do no match number of partitions")
 
-    next_partition_index = maximum(q.index for q in P)
+    next_partition_index = maximum(q.index for q in Q) + 1
 
-    Pnew = Partition{I, T}[]
-    for (q, spec) in zip(P, num_subpartitions)
-        @assert(region(q) )
-
-        min = minimum()
-        max = maximum()
-
-        LinRange()
+    Qnew = Partition{I, T}[]
+    for (q, split_spec) in zip(Q, num_subpartitions)
+        if (LazySets.isbounded ∘ region)(q)
+            rect = box_approximation(region(q))
+            new_rects = split(rect, split_spec)
+            
+            for rect in new_rects
+                push!(Qnew, Partition(next_partition_index, tohrep(rect), dynamics(q)))
+                next_partition_index += 1
+            end
+        else
+            push!(Qnew, q)
+        end
     end
+
+    return System{N, I, T}(Qnew, noise(system), initial_set(system), safe_set(system), unsafe_set(system))
 end
+
+LazySets.tohrep(rect::Hyperrectangle{T, U, V}) where {T, U, V} = HPolyhedron(tosimplehrep(constraints_list(rect))...)

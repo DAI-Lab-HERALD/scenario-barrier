@@ -68,3 +68,14 @@ Xu = [
 ]
 
 car_with_sidewind = System(Q, A, b, η, X0, Xs, Xu)
+
+split_spec = [
+    [1, 1],
+    [1, 1],
+    [1, 1],
+    [1, 1],
+    [4, 2],
+    [4, 5]
+]
+
+car_with_sidewind = grid_split(car_with_sidewind, split_spec)
