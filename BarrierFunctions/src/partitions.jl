@@ -19,7 +19,6 @@ function Base.size(p::HPoly, d)
         return LazySets.dim(p)
     end
 end
-Base.eltype(p::HPoly) = (eltype ∘ constraints_list)(p)
 
 function iszeromeasure(p::HPoly)
     m, n = size(p)

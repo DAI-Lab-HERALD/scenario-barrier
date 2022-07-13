@@ -13,4 +13,8 @@ module BarrierFunctions
 
     include("verify.jl")
     export verify
+
+    include("monte_carlo.jl")
+    include("plot.jl")
+    export monte_carlo, plot_monte_carlo
 end

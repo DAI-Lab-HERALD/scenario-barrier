@@ -56,7 +56,7 @@ b = Vector{Float64}[
 η = DiagNormal(μ, Σ)
 
 # Start in a box [0m, 10m] × [-0.5m, 0.5m]
-X0 = HPolyhedron([x[2] ≤ 2.5, x[2] ≥ -2.5, x[1] ≥ 0, x[1] ≤ 10], vars)
+X0 = HPolyhedron([x[2] ≤ 0.5, x[2] ≥ -0.5, x[1] ≥ 0, x[1] ≤ 10], vars)
 
 # On the road is safe
 Xs = HPolyhedron([x[2] ≤ 2.5, x[2] ≥ -2.5], vars)
@@ -74,8 +74,8 @@ split_spec = [
     [1, 1],
     [1, 1],
     [1, 1],
-    [4, 2],
-    [4, 5]
+    [2, 8],
+    [5, 8]
 ]
 
 car_with_sidewind = grid_split(car_with_sidewind, split_spec)
