@@ -1,4 +1,4 @@
-using JuMP, MosekTools
+using JuMP, MosekTools, Dualization
 
 using Distributions
 
@@ -10,6 +10,7 @@ function verify(system::System; H::Int, ϵ::Number, num_samples::Int)
     solver = optimizer_with_attributes(Mosek.Optimizer, 
         "QUIET" => false
     )
+    solver = dual_optimizer(solver)
     model = Model(solver)
 
     # Decision variables

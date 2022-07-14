@@ -295,6 +295,12 @@ git-tree-sha1 = "5837a837389fccf076445fce071c8ddaea35a566"
 uuid = "fa6b7ba4-c1ee-5f82-b5fc-ecf0adba8f74"
 version = "0.6.8"
 
+[[deps.Dualization]]
+deps = ["JuMP", "LinearAlgebra", "MathOptInterface"]
+git-tree-sha1 = "e6d07b335d1f44c3cc35713cda4745f087cfbc1c"
+uuid = "191a621a-6537-11e9-281d-650236a99e60"
+version = "0.5.4"
+
 [[deps.DynamicPolynomials]]
 deps = ["DataStructures", "Future", "LinearAlgebra", "MultivariatePolynomials", "MutableArithmetics", "Pkg", "Reexport", "Test"]
 git-tree-sha1 = "d0fa82f39c2a5cdb3ee385ad52bc05c42cb4b9f0"
