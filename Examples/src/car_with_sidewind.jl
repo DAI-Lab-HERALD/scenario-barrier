@@ -11,9 +11,9 @@ Q = [
     HPolyhedron([x[2] ≥ 2.5], vars),
     HPolyhedron([x[2] ≤ -2.5], vars),
     HPolyhedron([x[2] ≤ 2.5, x[2] ≥ -2.5, x[1] ≤ 0], vars),
-    HPolyhedron([x[2] ≤ 2.5, x[2] ≥ -2.5, x[1] ≥ 100], vars),
+    HPolyhedron([x[2] ≤ 2.5, x[2] ≥ -2.5, x[1] ≥ 150], vars),
     HPolyhedron([x[2] ≤ 2.5, x[2] ≥ -2.5, x[1] ≥ 0, x[1] ≤ 10], vars),
-    HPolyhedron([x[2] ≤ 2.5, x[2] ≥ -2.5, x[1] ≥ 10, x[1] ≤ 100], vars)
+    HPolyhedron([x[2] ≤ 2.5, x[2] ≥ -2.5, x[1] ≥ 10, x[1] ≤ 150], vars)
 ]
 
 A = Matrix{Float64}[
@@ -55,8 +55,8 @@ b = Vector{Float64}[
 Σ = PDiagMat([0.1, 0.1])
 η = DiagNormal(μ, Σ)
 
-# Start in a box [0m, 10m] × [-0.5m, 0.5m]
-X0 = HPolyhedron([x[2] ≤ 0.5, x[2] ≥ -0.5, x[1] ≥ 0, x[1] ≤ 10], vars)
+# Start in a box [5m, 10m] × [-0.5m, 0.5m]
+X0 = HPolyhedron([x[2] ≤ 0.5, x[2] ≥ -0.5, x[1] ≥ 5, x[1] ≤ 10], vars)
 
 # On the road is safe
 Xs = HPolyhedron([x[2] ≤ 2.5, x[2] ≥ -2.5], vars)
@@ -74,8 +74,8 @@ split_spec = [
     [1, 1],
     [1, 1],
     [1, 1],
-    [2, 8],
-    [5, 8]
+    [4, 10],
+    [56, 10]
 ]
 
 car_with_sidewind = grid_split(car_with_sidewind, split_spec)

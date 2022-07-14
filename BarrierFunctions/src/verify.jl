@@ -183,8 +183,8 @@ function expectation_partition_constraint!(model, B, c, ϵ, qi, qj, ηs)
         hcat(Aipjpi', vj - vi - c + d)
     )
 
+    # s_mat = s_procedure(model, qi)
     for η in eachcol(ηs)
-        s_mat = s_procedure(model, qi)
 
         biη = bi + η
 
@@ -194,7 +194,7 @@ function expectation_partition_constraint!(model, B, c, ϵ, qi, qj, ηs)
             hcat(zero(Ai), AiPjbiη),
             hcat(AiPjbiη', biη' * Pj * biη .+ pj' * biη)
         )
-
-        @constraint(model, shared_mat + η_mat - s_mat ≤ 0, PSDCone())
+        # - s_mat
+        @constraint(model, shared_mat + η_mat ≤ 0, PSDCone())
     end
 end
