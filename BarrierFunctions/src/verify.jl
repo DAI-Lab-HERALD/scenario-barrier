@@ -114,7 +114,7 @@ function unsafe_constraint!(model, system, B, q)
     # Note unsafe set can consist of multiple disjoint components
     overlaps_unsafe = false
     for unsafe_subset in unsafe_set(system)
-        if (iszeromeasure ∘ intersection)(unsafe_subset, q)
+        if !(iszeromeasure ∘ intersection)(unsafe_subset, q)
             overlaps_unsafe = true
             break
         end
