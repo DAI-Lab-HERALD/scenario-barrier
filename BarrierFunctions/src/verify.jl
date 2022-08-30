@@ -34,9 +34,9 @@ function verify(system::System; H::Int, ϵ::Number, num_samples::Int)
     println("γ $γ, c $c")
 
     # Alternatively use B(x_0) for γ if x_0 is a point
-    prob = γ + c * H
+    prob = 1 - (γ + c * H)
 
-    println("termination status $(JuMP.termination_status(model)), primal status $(JuMP.primal_status(model)), prob $prob")
+    println("termination status $(JuMP.termination_status(model)), primal status $(JuMP.primal_status(model)), safety prob $prob")
 
     return succ, B, prob
 end
