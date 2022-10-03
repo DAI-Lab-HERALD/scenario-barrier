@@ -1,4 +1,5 @@
 using JuMP, MosekTools, Dualization
+using LinearAlgebra
 
 using Distributions
 
@@ -10,7 +11,7 @@ function verify(system::System; H::Int, ϵ::Number, num_samples::Int)
     solver = optimizer_with_attributes(Mosek.Optimizer, 
         "QUIET" => false
     )
-    solver = dual_optimizer(solver)
+    # solver = dual_optimizer(solver)
     model = Model(solver)
 
     # Decision variables
@@ -26,7 +27,7 @@ function verify(system::System; H::Int, ϵ::Number, num_samples::Int)
 
     # Solve
     JuMP.optimize!(model)
-    # println(JuMP.solution_summary(model))
+    println(JuMP.solution_summary(model))
 
     succ = JuMP.primal_status(model) == FEASIBLE_POINT
 
@@ -55,12 +56,12 @@ function partition_barrier_variable!(model, system, q)
 
     Xs = safe_set(system)
     if (iszeromeasure ∘ intersection)(Xs, q)
-        unsafe_barrier = zeros(n, n)
-        unsafe_barrier[end, end] = 1
+        unsafe_barrier = zeros(n)
+        unsafe_barrier[end] = 1
 
         return unsafe_barrier
     else
-        return @variable(model, [1:n, 1:n], Symmetric, base_name = "B[$q]")
+        return @variable(model, [1:n], base_name = "B[$q]")
     end
 end
 
@@ -82,39 +83,50 @@ end
 
 function partition_constraints!(model, system, B, c, γ, ϵ, q, ηs)
     non_negativity_constraint(model, B, q)
-    unsafe_constraint!(model, system, B, q)
     initial_constraint!(model, system, B, γ, q)
+    unsafe_constraint!(model, system, B, q)
     expectation_constraint!(model, system, B, c, ϵ, q, ηs)
 end
 
-s_procedure(model, q::Partition) = s_procedure(model, region(q))
-function s_procedure(model, p)
-    m, n = size(p)
-    τ = @variable(model, [1:m], lower_bound = 0)
-    H, h = tosimplehrep(p)
-
-    Hτ = H' * τ
-    hτ = -2 * h' * τ
-
-    mat = vcat(
-        hcat(zeros(n, n), Hτ),
-        hcat(Hτ', hτ)
-    )
-
-    return mat
-end
+tosimplehrep(q::Partition) = tosimplehrep(region(q))
 
 function non_negativity_constraint(model, B, q)
-    s_mat = s_procedure(model, q)
+    Hi, hi = tosimplehrep(q)
+    m = size(Hi, 1)
 
-    @constraint(model, -B[q] - s_mat ≤ 0, PSDCone())
+    yi = @variable(model, [1:m], lower_bound = 0)
+
+    @constraint(model, yi ⋅ hi ≤ B[q][end])
+    @constraint(model, Hi' * yi .== -B[q][1:end - 1])
+end
+
+function initial_constraint!(model, system, B, γ, q)
+    X0 = initial_set(system)
+
+    if (iszeromeasure ∘ intersection)(X0, q)
+        return
+    end
+
+    H0, h0 = tosimplehrep(intersection(X0, q))
+    m = size(H0, 1)
+
+    yi = @variable(model, [1:m], lower_bound = 0)
+
+    @constraint(model, yi ⋅ h0 ≤ γ - B[q][end])
+    @constraint(model, H0' * yi .== B[q][1:end - 1])
 end
 
 function unsafe_constraint!(model, system, B, q)
+    Xs = safe_set(system)
+    if (iszeromeasure ∘ intersection)(Xs, q)
+        return
+    end
+
     # Note unsafe set can consist of multiple disjoint components
+    Xu = unsafe_set(system)
     overlaps_unsafe = false
-    for unsafe_subset in unsafe_set(system)
-        if !(iszeromeasure ∘ intersection)(unsafe_subset, q)
+    for Xu_subset in Xu
+        if !(iszeromeasure ∘ intersection)(Xu_subset, q)
             overlaps_unsafe = true
             break
         end
@@ -125,28 +137,13 @@ function unsafe_constraint!(model, system, B, q)
     end
 
     # We may need to refine partitions if a partition cover too large part of the safe set
+    Hi, hi = tosimplehrep(q)
+    m = size(Hi, 1)
 
-    s_mat = s_procedure(model, q)
+    yi = @variable(model, [1:m], lower_bound = 0)
 
-    one_mat = zero(s_mat)
-    one_mat[end, end] = 1
-
-    @constraint(model, -B[q] + one_mat - s_mat ≤ 0, PSDCone())
-end
-
-function initial_constraint!(model, system, B, γ, q)
-    X0 = initial_set(system)
-
-    if (iszeromeasure ∘ intersection)(X0, q)
-        return
-    end
-
-    s_mat = s_procedure(model, intersection(X0, q))
-
-    γ_mat = zero(s_mat)
-    γ_mat[end, end] = γ
-
-    @constraint(model, B[q] - γ_mat - s_mat ≤ 0, PSDCone())
+    @constraint(model, yi ⋅ hi ≤ B[q][end] - 1)
+    @constraint(model, Hi' * yi .== -B[q][1:end - 1])
 end
 
 function expectation_constraint!(model, system, B, c, ϵ, qi, ηs)
@@ -161,12 +158,9 @@ function expectation_constraint!(model, system, B, c, ϵ, qi, ηs)
     end
 end
 
-barrier_blocks(B, q, N) = B[q][1:N, 1:N], B[q][1:N, N + 1], B[q][N + 1, N + 1]
-
 function expectation_partition_constraint!(model, B, c, ϵ, qi, qj, ηs)
-    N = size(qi, 2)
-    Pi, pi, vi = barrier_blocks(B, qi, N)
-    Pj, pj, vj = barrier_blocks(B, qj, N)
+    pi, vi = B[qi][1:end - 1], B[qi][end]
+    pj, vj = B[qj][1:end - 1], B[qj][end]
 
     Ai, bi = dynamics(qi)
 
@@ -174,27 +168,25 @@ function expectation_partition_constraint!(model, B, c, ϵ, qi, qj, ηs)
     M = 1  
     d = ϵ * M
 
-    # Separate LMI into two matrices where one depends on η and one does not
-    # This way, we can share computations between constraints
+    Hi, hi = tosimplehrep(qi)
+    m = size(Hi, 1)
 
-    Aipjpi = (Ai' * pj - pi) / 2
-    shared_mat = vcat(
-        hcat(Ai' * Pj * Ai - Pi, Aipjpi),
-        hcat(Aipjpi', vj - vi - c + d)
-    )
+    yi = @variable(model, [1:m], lower_bound = 0)
 
-    # s_mat = s_procedure(model, qi)
-    for η in eachcol(ηs)
+    @constraint(model, yi ⋅ hi ≤ vi + c - pj ⋅ bi - vj)
+    @constraint(model, Hi' * yi .== Ai' * pj .- pi)
 
-        biη = bi + η
+    # for η in eachcol(ηs)
 
-        AiPjbiη = Ai' * Pj * biη
+    #     biη = bi + η
 
-        η_mat = vcat(
-            hcat(zero(Ai), AiPjbiη),
-            hcat(AiPjbiη', biη' * Pj * biη .+ pj' * biη)
-        )
-        # - s_mat
-        @constraint(model, shared_mat + η_mat ≤ 0, PSDCone())
-    end
+    #     AiPjbiη = Ai' * Pj * biη
+
+    #     η_mat = vcat(
+    #         hcat(zero(Ai), AiPjbiη),
+    #         hcat(AiPjbiη', biη' * Pj * biη .+ pj' * biη)
+    #     )
+    #     # - s_mat
+    #     @constraint(model, shared_mat + η_mat ≤ 0, PSDCone())
+    # end
 end

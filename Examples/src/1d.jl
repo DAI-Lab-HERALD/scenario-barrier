@@ -3,20 +3,26 @@ using LazySets, Symbolics
 
 using Distributions, PDMats
 
-vars = @variables x
+vars = Symbolics.@variables x
 
 Q = [
     HPolyhedron([x ≥ 2.5], vars),
     HPolyhedron([x ≤ -2.5], vars),
-    HPolyhedron([x ≤ 2.5, x ≥ -2.5], vars)
+    HPolyhedron([x ≤ 2.5, x ≥ 0.5], vars),
+    HPolyhedron([x ≤ 0.5, x ≥ -0.5], vars),
+    HPolyhedron([x ≤ -0.5, x ≥ -2.5], vars)
 ]
 
 A = Matrix{Float64}[
     [1][:,:],
     [1][:,:],
+    [1][:,:],
+    [1][:,:],
     [1][:,:]
 ]
 b = Vector{Float64}[
+    [0],
+    [0],
     [0],
     [0],
     [0]
@@ -39,3 +45,12 @@ Xu = [
 ]
 
 linear1d = System(Q, A, b, η, X0, Xs, Xu)
+# split_spec = [
+#     [1],
+#     [1],
+#     [50],
+#     [100],
+#     [50]
+# ]
+
+# linear1d = grid_split(linear1d, split_spec)
