@@ -9,4 +9,4 @@ traj = monte_carlo(linear1d, H, 1000)
 
 ϵ = 0.05 / H
 succ, B, prob = verify(linear1d, H=H, ϵ=ϵ, num_samples=1)
-print("$succ, $B, $prob")
+print("$succ, $(sort(collect(B), by = x->x[1].index)), $prob")
