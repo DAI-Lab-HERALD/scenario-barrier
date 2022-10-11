@@ -20,6 +20,16 @@ function Base.size(p::HPoly, d)
     end
 end
 
+PartitionDynamics{T} = Tuple{Matrix{T}, Vector{T}}
+@kwdef struct Partition{I<:Int, T<:Real}
+    index::I
+    polytope::HPolyhedron{T, Vector{T}}
+    dynamics::PartitionDynamics{T}
+end
+
+Base.hash(p::Partition, h::UInt) = hash(p.index, h)
+Base.:(==)(p1::Partition, p2::Partition) = p1.index == p2.index
+
 is_intersection_zeromeasure(p::Partition, q::LazySet) = is_intersection_zeromeasure(region(p), q)
 is_intersection_zeromeasure(p::LazySet, q::Partition) = is_intersection_zeromeasure(q, p)
 
@@ -43,16 +53,6 @@ function ispointset(p::HPoly)
     # TODO: Check L-inf ball around optimal point is not feasible
     return false
 end
-
-PartitionDynamics{T} = Tuple{Matrix{T}, Vector{T}}
-@kwdef struct Partition{I<:Int, T<:Real}
-    index::I
-    polytope::HPolyhedron{T, Vector{T}}
-    dynamics::PartitionDynamics{T}
-end
-
-Base.hash(p::Partition, h::UInt) = hash(p.index, h)
-Base.:(==)(p1::Partition, p2::Partition) = p1.index == p2.index
 
 Base.show(io::IO, p::Partition) = print(io, p.index)
 LazySets.intersection(p1::Partition, p2::Partition) = intersection(p1.polytope, p2.polytope)
