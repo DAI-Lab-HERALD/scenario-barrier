@@ -33,9 +33,9 @@ Base.:(==)(p1::Partition, p2::Partition) = p1.index == p2.index
 is_intersection_zeromeasure(p::Partition, q::LazySet) = is_intersection_zeromeasure(region(p), q)
 is_intersection_zeromeasure(p::LazySet, q::Partition) = is_intersection_zeromeasure(q, p)
 
-is_intersection_zeromeasure(p::LazySet, q::LazySet) = isempty(Intersection(p, q)) || ispointset(p, q)
-ispointset(p, q) = ispointset(HPolyhedron([constraints_list(p); constraints_list(q)]))
-function ispointset(p::HPoly)
+is_intersection_zeromeasure(p::LazySet, q::LazySet) = isempty(Intersection(p, q)) || ishyperplane(p, q)
+ishyperplane(p, q) = ishyperplane(HPolyhedron([constraints_list(p); constraints_list(q)]))
+function ishyperplane(p::HPoly)
     m, n = size(p)
     H, h = tosimplehrep(p)
 
