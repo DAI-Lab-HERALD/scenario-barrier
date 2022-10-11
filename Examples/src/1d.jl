@@ -45,12 +45,12 @@ Xu = [
 ]
 
 linear1d = System(Q, A, b, η, X0, Xs, Xu)
-# split_spec = [
-#     [1],
-#     [1],
-#     [50],
-#     [100],
-#     [50]
-# ]
+split_spec = [
+    [1],
+    [1],
+    [50],
+    [100],
+    [50]
+]
 
-# linear1d = grid_split(linear1d, split_spec)
+linear1d = grid_split(linear1d, split_spec)
