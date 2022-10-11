@@ -88,8 +88,6 @@ function partition_constraints!(model, system, B, c, γ, ϵ, q, ηs)
     expectation_constraint!(model, system, B, c, ϵ, q, ηs)
 end
 
-# tosimplehrep(q::Partition) = tosimplehrep(region(q))
-
 function non_negativity_constraint(model, B, q)
     Hi, hi = tosimplehrep(q)
     m = size(Hi, 1)
@@ -171,22 +169,17 @@ function expectation_partition_constraint!(model, B, c, ϵ, qi, qj, ηs)
     Hi, hi = tosimplehrep(qi)
     m = size(Hi, 1)
 
-    yi = @variable(model, [1:m], lower_bound = 0)
+    qi_next = Ai * region(qi) + bi
 
-    @constraint(model, yi ⋅ hi ≤ vi + c - pj ⋅ bi - vj)
-    @constraint(model, Hi' * yi .== Ai' * pj .- pi)
+    for η in eachcol(ηs)
+        # println("$qi -> $(qi_next + η), cap $qj")
+        if is_intersection_zeromeasure(qj, qi_next + η)
+            continue
+        end
 
-    # for η in eachcol(ηs)
-
-    #     biη = bi + η
-
-    #     AiPjbiη = Ai' * Pj * biη
-
-    #     η_mat = vcat(
-    #         hcat(zero(Ai), AiPjbiη),
-    #         hcat(AiPjbiη', biη' * Pj * biη .+ pj' * biη)
-    #     )
-    #     # - s_mat
-    #     @constraint(model, shared_mat + η_mat ≤ 0, PSDCone())
-    # end
+        yi = @variable(model, [1:m], lower_bound = 0)
+    
+        @constraint(model, yi ⋅ hi ≤ vi + c - d - pj ⋅ bi - vj)
+        @constraint(model, Hi' * yi .== Ai' * pj .- pi)
+    end
 end
