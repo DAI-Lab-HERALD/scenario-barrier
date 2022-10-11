@@ -44,29 +44,31 @@ end
 
 function barrier_variable!(model, system)
     B = Dict(
-           q => partition_barrier_variable!(model, system, q)
-           for q in partitions(system)
+           qᵢ => partition_barrier_variable!(model, system, qᵢ)
+           for qᵢ in partitions(system)
        )
 
     return B
 end
 
-function partition_barrier_variable!(model, system, q)
+function partition_barrier_variable!(model, system, qᵢ)
     n = state_space_size(system) + 1
 
-    Xs = safe_set(system)
-    if is_intersection_zeromeasure(Xs, q)
+    Xₛ = safe_set(system)
+    if is_intersection_zeromeasure(Xₛ, qᵢ)
         unsafe_barrier = zeros(n)
         unsafe_barrier[end] = 1
 
         return unsafe_barrier
     else
-        return @variable(model, [1:n], base_name = "B[$q]")
+        return @variable(model, [1:n], base_name = "B[$qᵢ]")
     end
 end
 
+barrier_blocks(B, qᵢ) = B[qᵢ][1:end - 1], B[qᵢ][end]
+
 function barrier_value(B)
-    B = Dict(i => value.(Bi) for (i, Bi) in B)
+    B = Dict(i => value.(Bᵢ) for (i, Bᵢ) in B)
 
     return B
 end
@@ -75,111 +77,119 @@ function constraints!(model, system, B, c, γ, ϵ, num_samples)
     distribution = noise(system)
     ηs = rand(distribution, num_samples)
 
-    for q in partitions(system)
-        println("Partition $q")
-        partition_constraints!(model, system, B, c, γ, ϵ, q, ηs)
+
+
+    for qᵢ in partitions(system)
+        println("Partition $qᵢ")
+        partition_constraints!(model, system, B, c, γ, ϵ, qᵢ, ηs)
     end
 end
 
-function partition_constraints!(model, system, B, c, γ, ϵ, q, ηs)
-    non_negativity_constraint(model, B, q)
-    initial_constraint!(model, system, B, γ, q)
-    unsafe_constraint!(model, system, B, q)
-    expectation_constraint!(model, system, B, c, ϵ, q, ηs)
+
+
+function partition_constraints!(model, system, B, c, γ, ϵ, qᵢ, ηs)
+    non_negativity_constraint(model, B, qᵢ)
+    initial_constraint!(model, system, B, γ, qᵢ)
+    unsafe_constraint!(model, system, B, qᵢ)
+    expectation_constraint!(model, system, B, c, ϵ, qᵢ, ηs)
 end
 
-function non_negativity_constraint(model, B, q)
-    Hi, hi = tosimplehrep(q)
-    m = size(Hi, 1)
+function non_negativity_constraint(model, B, qᵢ)
+    Hᵢ, hᵢ = tosimplehrep(qᵢ)
+    m = size(Hᵢ, 1)
 
-    yi = @variable(model, [1:m], lower_bound = 0)
+    pᵢ, vᵢ = barrier_blocks(B, qᵢ)
+    yᵢ = @variable(model, [1:m], lower_bound = 0)
 
-    @constraint(model, yi ⋅ hi ≤ B[q][end])
-    @constraint(model, Hi' * yi .== -B[q][1:end - 1])
+    @constraint(model, yᵢ ⋅ hᵢ ≤ vᵢ)
+    @constraint(model, Hᵢ' * yᵢ .== -pᵢ)
 end
 
-function initial_constraint!(model, system, B, γ, q)
-    X0 = initial_set(system)
+function initial_constraint!(model, system, B, γ, qᵢ)
+    X₀ = initial_set(system)
 
-    if is_intersection_zeromeasure(X0, q)
+    if is_intersection_zeromeasure(X₀, qᵢ)
         return
     end
 
-    H0, h0 = tosimplehrep(intersection(X0, q))
-    m = size(H0, 1)
+    H₀, h₀ = tosimplehrep(intersection(X₀, qᵢ))
+    m = size(H₀, 1)
 
-    yi = @variable(model, [1:m], lower_bound = 0)
+    pᵢ, vᵢ = barrier_blocks(B, qᵢ)
+    yᵢ = @variable(model, [1:m], lower_bound = 0)
 
-    @constraint(model, yi ⋅ h0 ≤ γ - B[q][end])
-    @constraint(model, H0' * yi .== B[q][1:end - 1])
+    @constraint(model, yᵢ ⋅ h₀ ≤ γ - vᵢ)
+    @constraint(model, H₀' * yᵢ .== pᵢ)
 end
 
-function unsafe_constraint!(model, system, B, q)
-    Xs = safe_set(system)
-    if is_intersection_zeromeasure(Xs, q)
+function unsafe_constraint!(model, system, B, qᵢ)
+    Xₛ = safe_set(system)
+    if is_intersection_zeromeasure(Xₛ, qᵢ)
         return
     end
 
-    # Note unsafe set can consist of multiple disjoint components
-    Xu = unsafe_set(system)
-    overlaps_unsafe = false
-    for Xu_subset in Xu
-        if !is_intersection_zeromeasure(Xu_subset, q)
-            overlaps_unsafe = true
-            break
+    if !overlaps_unsafe(system, qᵢ)
+        return
+    end
+
+    Hᵢ, hᵢ = tosimplehrep(qᵢ)
+    m = size(Hᵢ, 1)
+
+    pᵢ, vᵢ = barrier_blocks(B, qᵢ)
+    yᵢ = @variable(model, [1:m], lower_bound = 0)
+
+    @constraint(model, yᵢ ⋅ hᵢ ≤ vᵢ - 1)
+    @constraint(model, Hᵢ' * yᵢ .== -pᵢ)
+end
+
+function overlaps_unsafe(system, qᵢ)
+    Xᵤ = unsafe_set(system)
+    # Note the unsafe set can consist of multiple disjoint components
+    for Xᵤ_subset in Xᵤ
+        if !is_intersection_zeromeasure(Xᵤ_subset, qᵢ)
+            return true
         end
     end
 
-    if !overlaps_unsafe
+    return false
+end
+
+function expectation_constraint!(model, system, B, c, ϵ, qᵢ, ηs)
+    Xₛ = safe_set(system)
+    if is_intersection_zeromeasure(Xₛ, qᵢ)
         return
     end
 
-    # We may need to refine partitions if a partition cover too large part of the safe set
-    Hi, hi = tosimplehrep(q)
-    m = size(Hi, 1)
-
-    yi = @variable(model, [1:m], lower_bound = 0)
-
-    @constraint(model, yi ⋅ hi ≤ B[q][end] - 1)
-    @constraint(model, Hi' * yi .== -B[q][1:end - 1])
-end
-
-function expectation_constraint!(model, system, B, c, ϵ, qi, ηs)
-    Xs = safe_set(system)
-    if is_intersection_zeromeasure(Xs, qi)
-        return
-    end
-
-    for qj in partitions(system)
-        println("Next partition $qj")
-        expectation_partition_constraint!(model, B, c, ϵ, qi, qj, ηs)
+    for qⱼ in partitions(system)
+        # println("Next partition $qj")
+        expectation_partition_constraint!(model, B, c, ϵ, qᵢ, qⱼ, ηs)
     end
 end
 
-function expectation_partition_constraint!(model, B, c, ϵ, qi, qj, ηs)
-    pi, vi = B[qi][1:end - 1], B[qi][end]
-    pj, vj = B[qj][1:end - 1], B[qj][end]
-
-    Ai, bi = dynamics(qi)
+function expectation_partition_constraint!(model, B, c, ϵ, qᵢ, qⱼ, ηs)
+    Aᵢ, bᵢ = dynamics(qᵢ)
 
     # We can let M = 1 [max B(x)] as B(x) can be modified aposterori to be capped at 1 without violating the theory
     M = 1  
     d = ϵ * M
 
-    Hi, hi = tosimplehrep(qi)
-    m = size(Hi, 1)
+    Hᵢ, hᵢ = tosimplehrep(qᵢ)
+    m = size(Hᵢ, 1)
 
-    qi_next = Ai * region(qi) + bi
+    qᵢ_next = Aᵢ * region(qᵢ) + bᵢ
+
+    pᵢ, vᵢ = barrier_blocks(B, qᵢ)
+    pⱼ, vⱼ = barrier_blocks(B, qⱼ)
 
     for η in eachcol(ηs)
         # println("$qi -> $(qi_next + η), cap $qj")
-        if is_intersection_zeromeasure(qj, qi_next + η)
+        if is_intersection_zeromeasure(qⱼ, qᵢ_next + η)
             continue
         end
 
-        yi = @variable(model, [1:m], lower_bound = 0)
-    
-        @constraint(model, yi ⋅ hi ≤ vi + c - d - pj ⋅ bi - vj)
-        @constraint(model, Hi' * yi .== Ai' * pj .- pi)
+        yᵢ = @variable(model, [1:m], lower_bound = 0)
+
+        @constraint(model, yᵢ ⋅ hᵢ ≤ vᵢ + c - d - pⱼ ⋅ bᵢ - vⱼ)
+        @constraint(model, Hᵢ' * yᵢ .== Aᵢ' * pⱼ .- pᵢ)
     end
 end

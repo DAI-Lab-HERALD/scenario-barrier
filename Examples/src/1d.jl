@@ -23,13 +23,13 @@ A = Matrix{Float64}[
 b = Vector{Float64}[
     [0],
     [0],
+    [-0.1],
     [0],
-    [0],
-    [0]
+    [0.1]
 ]
 
 μ = [0]
-Σ = PDiagMat([0.2])
+Σ = PDiagMat([0.1])
 η = DiagNormal(μ, Σ)
 
 # Start in a box [-0.5, 0.5]
@@ -48,9 +48,9 @@ linear1d = System(Q, A, b, η, X0, Xs, Xu)
 split_spec = [
     [1],
     [1],
-    [20],
+    [10],
     [50],
-    [20]
+    [10]
 ]
 
 linear1d = grid_split(linear1d, split_spec)
