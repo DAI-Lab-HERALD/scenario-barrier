@@ -55,7 +55,7 @@ function partition_barrier_variable!(model, system, q)
     n = state_space_size(system) + 1
 
     Xs = safe_set(system)
-    if (iszeromeasure ∘ intersection)(Xs, q)
+    if is_intersection_zeromeasure(Xs, q)
         unsafe_barrier = zeros(n)
         unsafe_barrier[end] = 1
 
@@ -88,7 +88,7 @@ function partition_constraints!(model, system, B, c, γ, ϵ, q, ηs)
     expectation_constraint!(model, system, B, c, ϵ, q, ηs)
 end
 
-tosimplehrep(q::Partition) = tosimplehrep(region(q))
+# tosimplehrep(q::Partition) = tosimplehrep(region(q))
 
 function non_negativity_constraint(model, B, q)
     Hi, hi = tosimplehrep(q)
@@ -103,7 +103,7 @@ end
 function initial_constraint!(model, system, B, γ, q)
     X0 = initial_set(system)
 
-    if (iszeromeasure ∘ intersection)(X0, q)
+    if is_intersection_zeromeasure(X0, q)
         return
     end
 
@@ -118,7 +118,7 @@ end
 
 function unsafe_constraint!(model, system, B, q)
     Xs = safe_set(system)
-    if (iszeromeasure ∘ intersection)(Xs, q)
+    if is_intersection_zeromeasure(Xs, q)
         return
     end
 
@@ -126,7 +126,7 @@ function unsafe_constraint!(model, system, B, q)
     Xu = unsafe_set(system)
     overlaps_unsafe = false
     for Xu_subset in Xu
-        if !(iszeromeasure ∘ intersection)(Xu_subset, q)
+        if !is_intersection_zeromeasure(Xu_subset, q)
             overlaps_unsafe = true
             break
         end
@@ -148,7 +148,7 @@ end
 
 function expectation_constraint!(model, system, B, c, ϵ, qi, ηs)
     Xs = safe_set(system)
-    if (iszeromeasure ∘ intersection)(Xs, qi)
+    if is_intersection_zeromeasure(Xs, qi)
         return
     end
 

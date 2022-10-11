@@ -20,7 +20,12 @@ function Base.size(p::HPoly, d)
     end
 end
 
-function iszeromeasure(p::HPoly)
+is_intersection_zeromeasure(p::Partition, q::LazySet) = is_intersection_zeromeasure(region(p), q)
+is_intersection_zeromeasure(p::LazySet, q::Partition) = is_intersection_zeromeasure(q, p)
+
+is_intersection_zeromeasure(p::LazySet, q::LazySet) = isempty(Intersection(p, q)) || ispointset(p, q)
+ispointset(p, q) = ispointset(HPolyhedron([constraints_list(p); constraints_list(q)]))
+function ispointset(p::HPoly)
     m, n = size(p)
     H, h = tosimplehrep(p)
 
@@ -34,24 +39,10 @@ function iszeromeasure(p::HPoly)
         end
     end
 
-    # Otherwise check for infeasiblity
-    solver = optimizer_with_attributes(Mosek.Optimizer, 
-        "QUIET" => true
-    )
-    model = Model(solver)
-    @variable(model, x[1:n])
-    @constraint(model, H * x .≤ h)
-    # Default objective is FEASIBLE_SENSE
-    
-    optimize!(model)
-    infeasible = termination_status(model) == MOI.INFEASIBLE
-
     # For N > 1, it is possible the feasible set is a point without opposite inequalities. 
     # TODO: Check L-inf ball around optimal point is not feasible
-
-    return infeasible
+    return false
 end
-iszeromeasure(::EmptySet) = true
 
 PartitionDynamics{T} = Tuple{Matrix{T}, Vector{T}}
 @kwdef struct Partition{I<:Int, T<:Real}
@@ -67,6 +58,7 @@ Base.show(io::IO, p::Partition) = print(io, p.index)
 LazySets.intersection(p1::Partition, p2::Partition) = intersection(p1.polytope, p2.polytope)
 LazySets.intersection(p1::Partition, p2::AbstractPolyhedron) = intersection(p1.polytope, p2)
 LazySets.intersection(p1::AbstractPolyhedron, p2::Partition) = intersection(p2, p1)
+LazySets.tosimplehrep(p::Partition) = tosimplehrep(region(p))
 Base.size(p::Partition) = size(p.polytope)
 Base.size(p::Partition, d) = size(p.polytope, d)
 region(p::Partition) = p.polytope
