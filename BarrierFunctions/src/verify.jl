@@ -189,7 +189,7 @@ function expectation_partition_constraint!(model, B, c, ϵ, qᵢ, qⱼ, ηs)
 
         yᵢ = @variable(model, [1:m], lower_bound = 0)
 
-        @constraint(model, yᵢ ⋅ hᵢ ≤ vᵢ + c - d - pⱼ ⋅ bᵢ - vⱼ)
+        @constraint(model, yᵢ ⋅ hᵢ ≤ vᵢ + c - d - pⱼ ⋅ (bᵢ + η) - vⱼ)
         @constraint(model, Hᵢ' * yᵢ .== Aᵢ' * pⱼ .- pᵢ)
     end
 end
