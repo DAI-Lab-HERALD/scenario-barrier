@@ -29,7 +29,7 @@ b = Vector{Float64}[
 ]
 
 μ = [0]
-Σ = PDiagMat([0.5])
+Σ = PDiagMat([0.2])
 η = DiagNormal(μ, Σ)
 
 # Start in a box [-0.5, 0.5]

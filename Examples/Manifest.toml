@@ -824,16 +824,16 @@ version = "1.0.2"
 uuid = "a63ad114-7e13-5084-954f-fe012c677804"
 
 [[deps.Mosek]]
-deps = ["Libdl", "Pkg", "Printf", "SparseArrays"]
-git-tree-sha1 = "ccd071e9f09ded8bdf8d0153489499cc575cb20b"
+deps = ["Libdl", "Pkg", "Printf", "SparseArrays", "WinReg"]
+git-tree-sha1 = "fd5095fff9938c5b23bdf7ffb91a976932d5bc61"
 uuid = "6405355b-0ac2-5fba-af84-adbd65488c0e"
-version = "10.0.1"
+version = "1.2.2"
 
 [[deps.MosekTools]]
 deps = ["MathOptInterface", "Mosek", "Printf"]
-git-tree-sha1 = "2173cb340aac78a90bb4325e773d11c5793a9e34"
+git-tree-sha1 = "f3e83f5ecd75bbb5d82d146c4393a16101e98fd5"
 uuid = "1ec41992-ff65-5c91-ac43-2df89e9693a4"
-version = "0.13.0"
+version = "0.12.1"
 
 [[deps.MozillaCACerts_jll]]
 uuid = "14a3606d-f60d-562e-9121-12d972cd8159"
@@ -1096,9 +1096,9 @@ uuid = "ea8e919c-243c-51af-8825-aaa63cd721ce"
 
 [[deps.SciMLBase]]
 deps = ["ArrayInterfaceCore", "CommonSolve", "ConstructionBase", "Distributed", "DocStringExtensions", "FunctionWrappersWrappers", "IteratorInterfaceExtensions", "LinearAlgebra", "Logging", "Markdown", "Preferences", "RecipesBase", "RecursiveArrayTools", "StaticArraysCore", "Statistics", "Tables"]
-git-tree-sha1 = "997b740bee8758b2d0cf6f987c09275168aac911"
+git-tree-sha1 = "7aecbf63c1c194923eea5bfbd14415f4c8ab53b9"
 uuid = "0bca4576-84f4-4d90-8ffe-ffa030f20462"
-version = "1.61.0"
+version = "1.61.1"
 
 [[deps.Scratch]]
 deps = ["Dates"]
@@ -1330,6 +1330,12 @@ deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
 git-tree-sha1 = "4528479aa01ee1b3b4cd0e6faef0e04cf16466da"
 uuid = "2381bf8a-dfd0-557d-9999-79630e7b1b91"
 version = "1.25.0+0"
+
+[[deps.WinReg]]
+deps = ["Test"]
+git-tree-sha1 = "808380e0a0483e134081cc54150be4177959b5f4"
+uuid = "1b915085-20d7-51cf-bf83-8f477d6f5128"
+version = "0.3.1"
 
 [[deps.XML2_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Libiconv_jll", "Pkg", "Zlib_jll"]
