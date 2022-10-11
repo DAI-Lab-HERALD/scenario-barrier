@@ -48,9 +48,9 @@ linear1d = System(Q, A, b, η, X0, Xs, Xu)
 split_spec = [
     [1],
     [1],
+    [20],
     [50],
-    [100],
-    [50]
+    [20]
 ]
 
 linear1d = grid_split(linear1d, split_spec)
