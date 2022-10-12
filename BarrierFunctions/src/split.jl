@@ -1,6 +1,6 @@
 using LazySets
 
-function grid_split(system::System{N, I, T}, num_subpartitions) where {N, I, T}
+function grid_split(system::System{N, I, T, Poly, VPoly}, num_subpartitions) where {N, I, T, Poly, VPoly}
     Q = partitions(system)
     n, m = length(Q), length(num_subpartitions)
     @assert(n == m, "Number of subpartition specifications do no match number of partitions")
@@ -14,7 +14,7 @@ function grid_split(system::System{N, I, T}, num_subpartitions) where {N, I, T}
             new_rects = split(rect, split_spec)
             
             for rect in new_rects
-                push!(Qnew, Partition(next_partition_index, tohrep(rect), dynamics(q)))
+                push!(Qnew, Partition(next_partition_index, convert(HPolyhedron, rect), dynamics(q)))
                 next_partition_index += 1
             end
         else
@@ -22,7 +22,5 @@ function grid_split(system::System{N, I, T}, num_subpartitions) where {N, I, T}
         end
     end
 
-    return System{N, I, T}(Qnew, noise(system), initial_set(system), safe_set(system), unsafe_set(system))
+    return System{N, I, T, Poly, VPoly}(Qnew, noise(system), initial_set(system), safe_set(system), unsafe_set(system))
 end
-
-LazySets.tohrep(rect::Hyperrectangle{T, U, V}) where {T, U, V} = HPolyhedron(tosimplehrep(constraints_list(rect))...)

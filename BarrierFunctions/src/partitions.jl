@@ -7,10 +7,8 @@ const MOI = MathOptInterface
 
 using MosekTools
 
-const HPoly{N} = Union{HPolytope{N}, HPolyhedron{N}}
-
-Base.size(p::HPoly) = (length ∘ constraints_list)(p), LazySets.dim(p)
-function Base.size(p::HPoly, d) 
+Base.size(p::AbstractPolyhedron) = (length ∘ constraints_list)(p), LazySets.dim(p)
+function Base.size(p::AbstractPolyhedron, d) 
     @assert(1 ≤ d ≤ 2)
 
     if d == 1
@@ -21,9 +19,9 @@ function Base.size(p::HPoly, d)
 end
 
 PartitionDynamics{T} = Tuple{Matrix{T}, Vector{T}}
-@kwdef struct Partition{I<:Int, T<:Real}
+@kwdef struct Partition{I<:Int, T<:Real, H<:AbstractPolyhedron{T}}
     index::I
-    polytope::HPolyhedron{T, Vector{T}}
+    polytope::H
     dynamics::PartitionDynamics{T}
 end
 
@@ -35,7 +33,7 @@ is_intersection_zeromeasure(p::LazySet, q::Partition) = is_intersection_zeromeas
 
 is_intersection_zeromeasure(p::LazySet, q::LazySet) = isempty(Intersection(p, q)) || ishyperplane(p, q)
 ishyperplane(p, q) = ishyperplane(HPolyhedron([constraints_list(p); constraints_list(q)]))
-function ishyperplane(p::HPoly)
+function ishyperplane(p::AbstractPolyhedron)
     m, n = size(p)
     H, h = tosimplehrep(p)
 
