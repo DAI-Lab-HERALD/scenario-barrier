@@ -175,6 +175,8 @@ function expectation_partition_constraint!(model, B, c, ϵ, qᵢ, qⱼ, ηs)
 
     Hᵢ, hᵢ = tosimplehrep(qᵢ)
     m = size(Hᵢ, 1)
+    Hⱼ, hⱼ = tosimplehrep(qᵢ)
+    n = size(Hⱼ, 1)
 
     qᵢ_next = Aᵢ * region(qᵢ) + bᵢ
 
@@ -187,9 +189,9 @@ function expectation_partition_constraint!(model, B, c, ϵ, qᵢ, qⱼ, ηs)
             continue
         end
 
-        yᵢ = @variable(model, [1:m], lower_bound = 0)
+        yᵢ = @variable(model, [1:m + n], lower_bound = 0)
 
-        @constraint(model, yᵢ ⋅ hᵢ ≤ vᵢ + c - d - pⱼ ⋅ (bᵢ + η) - vⱼ)
-        @constraint(model, Hᵢ' * yᵢ .== Aᵢ' * pⱼ .- pᵢ)
+        @constraint(model, yᵢ ⋅ vcat(hᵢ, hⱼ - Hⱼ * (bᵢ + η)) ≤ vᵢ - vⱼ + c - d - pⱼ ⋅ (bᵢ + η))
+        @constraint(model, vcat(Hᵢ, Hⱼ * Aᵢ)' * yᵢ .== Aᵢ' * pⱼ .- pᵢ)
     end
 end
