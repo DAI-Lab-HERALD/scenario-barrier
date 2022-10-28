@@ -1,8 +1,8 @@
 module BarrierFunctions
     using JuMP
 
-    include("partitions.jl")
-    export Partition, PolytopePartitioning
+    include("partition.jl")
+    export Region, Partition
 
     include("system.jl")
     export System, autonomous_system
