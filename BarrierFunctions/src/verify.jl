@@ -51,6 +51,7 @@ function barrier_variable!(model, system)
     return B
 end
 
+# Optimization variables
 function partition_barrier_variable!(model, system, qᵢ)
     n = state_space_size(system) + 1
 
@@ -73,19 +74,16 @@ function barrier_value(B)
     return B
 end
 
+# Constraints
 function constraints!(model, system, B, c, γ, ϵ, num_samples)
     distribution = noise(system)
     ηs = rand(distribution, num_samples)
-
-
 
     for qᵢ in partitions(system)
         println("Partition $qᵢ")
         partition_constraints!(model, system, B, c, γ, ϵ, qᵢ, ηs)
     end
 end
-
-
 
 function partition_constraints!(model, system, B, c, γ, ϵ, qᵢ, ηs)
     non_negativity_constraint(model, B, qᵢ)
@@ -96,13 +94,8 @@ end
 
 function non_negativity_constraint(model, B, qᵢ)
     Hᵢ, hᵢ = tosimplehrep(qᵢ)
-    m = size(Hᵢ, 1)
-
     pᵢ, vᵢ = barrier_blocks(B, qᵢ)
-    yᵢ = @variable(model, [1:m], lower_bound = 0)
-
-    @constraint(model, yᵢ ⋅ hᵢ ≤ vᵢ)
-    @constraint(model, Hᵢ' * yᵢ .== -pᵢ)
+    dual_constraint!(model, -pᵢ, vᵢ, Hᵢ, hᵢ)
 end
 
 function initial_constraint!(model, system, B, γ, qᵢ)
@@ -113,34 +106,21 @@ function initial_constraint!(model, system, B, γ, qᵢ)
     end
 
     H₀, h₀ = tosimplehrep(intersection(X₀, qᵢ))
-    m = size(H₀, 1)
-
     pᵢ, vᵢ = barrier_blocks(B, qᵢ)
-    yᵢ = @variable(model, [1:m], lower_bound = 0)
-
-    @constraint(model, yᵢ ⋅ h₀ ≤ γ - vᵢ)
-    @constraint(model, H₀' * yᵢ .== pᵢ)
+    dual_constraint!(model, pᵢ, γ - vᵢ, H₀, h₀)
 end
 
 function unsafe_constraint!(model, system, B, qᵢ)
-    Xₛ = safe_set(system)
-    if is_intersection_zeromeasure(Xₛ, qᵢ)
-        return
-    end
-
-    if !overlaps_unsafe(system, qᵢ)
+    if isconstant(B[qᵢ]) || !overlaps_unsafe(system, qᵢ)
         return
     end
 
     Hᵢ, hᵢ = tosimplehrep(qᵢ)
-    m = size(Hᵢ, 1)
-
     pᵢ, vᵢ = barrier_blocks(B, qᵢ)
-    yᵢ = @variable(model, [1:m], lower_bound = 0)
-
-    @constraint(model, yᵢ ⋅ hᵢ ≤ vᵢ - 1)
-    @constraint(model, Hᵢ' * yᵢ .== -pᵢ)
+    dual_constraint!(model, pᵢ, vᵢ - 1, Hᵢ, hᵢ)
 end
+isconstant(::T) where {T<:AbstractVector{<:Number}} = true
+isconstant(_) = false
 
 function overlaps_unsafe(system, qᵢ)
     Xᵤ = unsafe_set(system)
@@ -174,9 +154,7 @@ function expectation_partition_constraint!(model, B, c, ϵ, qᵢ, qⱼ, ηs)
     d = ϵ * M
 
     Hᵢ, hᵢ = tosimplehrep(qᵢ)
-    m = size(Hᵢ, 1)
     Hⱼ, hⱼ = tosimplehrep(qᵢ)
-    n = size(Hⱼ, 1)
 
     qᵢ_next = Aᵢ * region(qᵢ) + bᵢ
 
@@ -189,9 +167,21 @@ function expectation_partition_constraint!(model, B, c, ϵ, qᵢ, qⱼ, ηs)
             continue
         end
 
-        yᵢ = @variable(model, [1:m + n], lower_bound = 0)
-
-        @constraint(model, yᵢ ⋅ vcat(hᵢ, hⱼ - Hⱼ * (bᵢ + η)) ≤ vᵢ - vⱼ + c - d - pⱼ ⋅ (bᵢ + η))
-        @constraint(model, vcat(Hᵢ, Hⱼ * Aᵢ)' * yᵢ .== Aᵢ' * pⱼ .- pᵢ)
+        dual_constraint!(model, Aᵢ' * pⱼ .- pᵢ, vᵢ - vⱼ + c - d - pⱼ ⋅ (bᵢ + η), vcat(Hᵢ, Hⱼ * Aᵢ), vcat(hᵢ, hⱼ - Hⱼ * (bᵢ + η)))
     end
+end
+
+function dual_constraint!(model, c, rhs, H, h)
+    # Constraints of the form              [max_x  cᵀx, s.t. Hx ≤ h] ≤ rhs
+    # reformulated to the asymmetric dual  [min_{y ≥ 0} yᵀh, s.t. Hᵀx = c] ≤ rhs
+    # and lifted to the outer minimization.
+    # s.t. y ≥ 0
+    #      yᵀh ≤ rhs
+    #      Hᵀx = c
+
+    m = size(H, 1)
+    y = @variable(model, [1:m], lower_bound = 0)
+
+    @constraint(model, y ⋅ h ≤ rhs)
+    @constraint(model, H' * y .== c)
 end
