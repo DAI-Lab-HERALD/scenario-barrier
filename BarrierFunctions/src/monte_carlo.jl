@@ -1,6 +1,7 @@
 using LazySets
 
-
+# TODO: Distinguish between initial conditions and particles,
+# and take the max over initials of the average over particles.
 function monte_carlo(system, steps, particles)
     X0 = initial_set(system)
     η = noise(system)
