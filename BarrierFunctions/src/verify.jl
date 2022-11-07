@@ -3,6 +3,11 @@ using LinearAlgebra
 
 using Distributions
 
+
+export verify, barrier_variable!, partition_barrier_variable!, isconstant
+export constraints!, dual_constraint!, unsafe_constraint!, initial_constraint!
+export partition_constraints!, expectation_constraint!, non_negativity_constraint!, expectation_partition_constraint!
+
 function verify(system::System; H::Int, ϵ::Number, num_samples::Int)
     @assert(H >= 1, "Horizon H must be greater than or equal to one (is $H)")
     @assert(0 < ϵ < 1, "Epsilon must be in range (0, 1) (is $ϵ)")
@@ -86,13 +91,13 @@ function constraints!(model, system, B, c, γ, ϵ, num_samples)
 end
 
 function partition_constraints!(model, system, B, c, γ, ϵ, qᵢ, ηs)
-    non_negativity_constraint(model, B, qᵢ)
+    non_negativity_constraint!(model, B, qᵢ)
     initial_constraint!(model, system, B, γ, qᵢ)
     unsafe_constraint!(model, system, B, qᵢ)
     expectation_constraint!(model, system, B, c, ϵ, qᵢ, ηs)
 end
 
-function non_negativity_constraint(model, B, qᵢ)
+function non_negativity_constraint!(model, B, qᵢ)
     Hᵢ, hᵢ = tosimplehrep(qᵢ)
     pᵢ, vᵢ = barrier_blocks(B, qᵢ)
     dual_constraint!(model, -pᵢ, vᵢ, Hᵢ, hᵢ)

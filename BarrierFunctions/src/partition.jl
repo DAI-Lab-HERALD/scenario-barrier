@@ -7,6 +7,8 @@ const MOI = MathOptInterface
 
 using MosekTools
 
+export Region, Partition
+
 # TYPE PIRACY! - the better approach is probably to use dim and let Region derive from LazySet
 Base.size(p::AbstractPolyhedron) = (length ∘ constraints_list)(p), LazySets.dim(p)
 function Base.size(p::AbstractPolyhedron, d) 

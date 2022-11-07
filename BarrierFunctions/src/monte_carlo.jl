@@ -1,5 +1,7 @@
 using LazySets
 
+export monte_carlo, step
+
 # TODO: Distinguish between initial conditions and particles,
 # and take the max over initials of the average over particles.
 function monte_carlo(system, steps, particles)

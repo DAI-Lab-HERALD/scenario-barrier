@@ -4,6 +4,9 @@ using LazySets
 
 using Distributions
 
+export System, autonomous_system
+export state_space_size, safe_set, unsafe_set, initial_set, partitions, noise, next_state
+
 # TODO: We could do it more generically with <:LazySet{T} for each region field
 @kwdef struct System{N, I<:Int, T<:Real, P<:AbstractPolyhedron{T}, VP<:AbstractVector{P}}
     Q::Partition{I, T, P}
