@@ -1,5 +1,3 @@
-using LazySets
-
 export monte_carlo, step
 
 # TODO: Distinguish between initial conditions and particles,

@@ -1,12 +1,3 @@
-import Base.@kwdef
-
-using LazySets
-
-using MathOptInterface
-const MOI = MathOptInterface
-
-using MosekTools
-
 export Region, Partition
 
 # TYPE PIRACY! - the better approach is probably to use dim and let Region derive from LazySet
@@ -63,6 +54,7 @@ LazySets.intersection(p1::AbstractPolyhedron, p2::Region) = intersection(p2, p1)
 LazySets.tosimplehrep(p::Region) = tosimplehrep(region(p))
 Base.size(p::Region) = size(p.polytope)
 Base.size(p::Region, d) = size(p.polytope, d)
+index(p::Region) = p.index
 region(p::Region) = p.polytope
 dynamics(p::Region) = p.dynamics
 iszeromeasure(p::Region) = iszeromeasure(region(p))

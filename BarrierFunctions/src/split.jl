@@ -1,5 +1,3 @@
-using LazySets
-
 export grid_split
 
 function grid_split(system::System{N, I, T, P, VP}, num_subpartitions) where {N, I, T, P, VP}

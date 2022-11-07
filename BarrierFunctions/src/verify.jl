@@ -1,7 +1,7 @@
-using JuMP, MosekTools, Dualization
 using LinearAlgebra
 
 using Distributions
+using MosekTools
 
 
 export verify, barrier_variable!, partition_barrier_variable!, isconstant
@@ -48,7 +48,7 @@ function verify(system::System; H::Int, ϵ::Number, num_samples::Int)
 end
 
 function barrier_variable!(model, system)
-    B = Dict(
+    B = Barrier(
            qᵢ => partition_barrier_variable!(model, system, qᵢ)
            for qᵢ in partitions(system)
        )
@@ -65,16 +65,18 @@ function partition_barrier_variable!(model, system, qᵢ)
         unsafe_barrier = zeros(n)
         unsafe_barrier[end] = 1
 
-        return unsafe_barrier
+        Bᵢ = unsafe_barrier
     else
-        return @variable(model, [1:n], base_name = "B[$qᵢ]")
+        Bᵢ = @variable(model, [1:n], base_name = "B[$qᵢ]")
     end
+
+    return BarrierRegion(index(qᵢ), region(qᵢ), Bᵢ)
 end
 
-barrier_blocks(B, qᵢ) = B[qᵢ][1:end - 1], B[qᵢ][end]
+barrier_blocks(B, qᵢ) = B[qᵢ].fun[1:end - 1], B[qᵢ].fun[end]
 
 function barrier_value(B)
-    B = Dict(i => value.(Bᵢ) for (i, Bᵢ) in B)
+    B = Barrier(i => BarrierRegion(index(Bᵢ), region(Bᵢ), value.(Bᵢ.fun)) for (i, Bᵢ) in B)
 
     return B
 end

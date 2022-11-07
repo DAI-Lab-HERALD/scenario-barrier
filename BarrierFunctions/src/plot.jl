@@ -35,6 +35,7 @@ function plot_barrier_1d(x, barrier, system, plot_safe=true)
 end
 
 function plot_barrier_2d(x, y, barrier, system, plot_safe=true)
+    # TODO: Plot surface (and figure out how to plot regions on top)
     f(z) = barrier(z)
     y = f.(x)
     xlim = [minimum(x), maximum(x)]
