@@ -12,8 +12,8 @@ traj = monte_carlo(system, H, 1000)
 ϵ = 0.005 / H
 succ, B, prob = verify(system, H=H, ϵ=ϵ, num_samples=100)
 println("Success: $succ")
-println("Barrier $B")
+# println("Barrier $B")
 println("Safety prob: $prob")
 
-x = LinRange(-3.0, 3.0, 100)
+x = LinRange(-3.0, 3.0, 1000)
 plot_barrier_1d(x, B, system)

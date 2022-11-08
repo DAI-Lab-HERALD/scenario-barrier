@@ -23,9 +23,9 @@ A = Matrix{Float64}[
 b = Vector{Float64}[
     [0],
     [0],
-    [-0.1],
     [0],
-    [0.1]
+    [0],
+    [0]
 ]
 
 μ = [0]
@@ -48,9 +48,9 @@ linear1d = System(Q, A, b, η, X0, Xs, Xu)
 split_spec = [
     [1],
     [1],
+    [30],
     [10],
-    [50],
-    [10]
+    [30]
 ]
 
 linear1d = grid_split(linear1d, split_spec)
