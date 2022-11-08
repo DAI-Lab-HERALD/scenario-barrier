@@ -1,4 +1,35 @@
-@kwdef struct BarrierRegion{I<:Int, P<:AbstractPolyhedron{<:Real}, B}
+export BarrierFunction, ConstantBarrier, LinearBarrier, QuadraticBarrier, BarrierRegion, PiecewiseBarrier
+
+
+abstract type BarrierFunction end
+
+# Simple barriers
+@kwdef struct ConstantBarrier{T} <: BarrierFunction
+    v::T
+end
+function (B::ConstantBarrier)(x)
+    return B.v
+end
+
+@kwdef struct LinearBarrier{T, VT<:AbstractVector{T}} <: BarrierFunction
+    p::VT
+    v::T
+end
+function (B::LinearBarrier)(x)
+    return B.p' * x + B.v
+end
+
+@kwdef struct QuadraticBarrier{T, VT<:AbstractVector{T}, VVT<:AbstractMatrix{T}} <: BarrierFunction
+    P::VVT
+    p::VT
+    v::T
+end
+function (B::QuadraticBarrier)(x)
+    return x' * B.P * x + B.p' * x + B.v
+end
+
+# Piece-wise barrier
+@kwdef struct BarrierRegion{I<:Int, P<:AbstractPolyhedron{<:Real}, B<:BarrierFunction}
     index::I
     polytope::P
     fun::B
@@ -6,24 +37,40 @@ end
 index(b::BarrierRegion) = b.index
 region(b::BarrierRegion) = b.polytope
 
-struct Barrier
+function (B::BarrierRegion)(x)
+    @assert x ∈ region(B)
+
+    return B.fun(x)
+end
+
+struct PiecewiseBarrier <: BarrierFunction
     regions
 
-    function Barrier(kv)
+    function PiecewiseBarrier(kv)
         new(Dict(kv))
     end
 end
 
-function (B::Barrier)(x)
+function (B::PiecewiseBarrier)(x::T) where {T<:Real}
+    for (_, Bᵢ) in B.regions
+        if [x] ∈ region(Bᵢ)
+            return Bᵢ.fun([x])
+        end
+    end
+
+    error("x not in supp(B)")
+end
+
+function (B::PiecewiseBarrier)(x::VT) where {VT<:AbstractVector{<:Real}}
     for (_, Bᵢ) in B.regions
         if x ∈ region(Bᵢ)
             return Bᵢ.fun(x)
         end
     end
 
-    throw("x not in supp(B)")
+    error("x not in supp(B)")
 end
 
-Base.getindex(B::Barrier, key...) = getindex(B.regions, key...)
-Base.iterate(B::Barrier) = iterate(B.regions)
-Base.iterate(B::Barrier, state) = iterate(B.regions, state)
+Base.getindex(B::PiecewiseBarrier, key...) = getindex(B.regions, key...)
+Base.iterate(B::PiecewiseBarrier) = iterate(B.regions)
+Base.iterate(B::PiecewiseBarrier, state) = iterate(B.regions, state)

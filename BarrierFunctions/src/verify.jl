@@ -4,7 +4,7 @@ using Distributions
 using MosekTools
 
 
-export verify, barrier_variable!, partition_barrier_variable!, isconstant
+export verify, barrier_variable!, partition_barrier_variable!, barrier_value, overlaps_unsafe
 export constraints!, dual_constraint!, unsafe_constraint!, initial_constraint!
 export partition_constraints!, expectation_constraint!, non_negativity_constraint!, expectation_partition_constraint!
 
@@ -48,7 +48,7 @@ function verify(system::System; H::Int, ϵ::Number, num_samples::Int)
 end
 
 function barrier_variable!(model, system)
-    B = Barrier(
+    B = PiecewiseBarrier(
            qᵢ => partition_barrier_variable!(model, system, qᵢ)
            for qᵢ in partitions(system)
        )
@@ -58,28 +58,26 @@ end
 
 # Optimization variables
 function partition_barrier_variable!(model, system, qᵢ)
-    n = state_space_size(system) + 1
+    n = state_space_size(system)
 
     Xₛ = safe_set(system)
     if is_intersection_zeromeasure(Xₛ, qᵢ)
-        unsafe_barrier = zeros(n)
-        unsafe_barrier[end] = 1
-
-        Bᵢ = unsafe_barrier
+        p = zeros(n)
+        v = 1.0
     else
-        Bᵢ = @variable(model, [1:n], base_name = "B[$qᵢ]")
+        Bᵢ = @variable(model, [1:n + 1], base_name = "B[$qᵢ]")
+        p, v = Bᵢ[1:end - 1], Bᵢ[end]
     end
 
-    return BarrierRegion(index(qᵢ), region(qᵢ), Bᵢ)
+    return BarrierRegion(index(qᵢ), region(qᵢ), LinearBarrier(p, v))
 end
 
-barrier_blocks(B, qᵢ) = B[qᵢ].fun[1:end - 1], B[qᵢ].fun[end]
+barrier_blocks(B, qᵢ) = B[qᵢ].fun.p, B[qᵢ].fun.v
 
-function barrier_value(B)
-    B = Barrier(i => BarrierRegion(index(Bᵢ), region(Bᵢ), value.(Bᵢ.fun)) for (i, Bᵢ) in B)
-
-    return B
-end
+barrier_value(B::PiecewiseBarrier) = PiecewiseBarrier(i => barrier_value(Bᵢ) for (i, Bᵢ) in B)
+barrier_value(B::BarrierRegion) = BarrierRegion(index(B), region(B), barrier_value(B.fun))
+barrier_value(B::LinearBarrier) = LinearBarrier(value.(B.p), value(B.v))
+barrier_value(B::ConstantBarrier) = ConstantBarrier(value(B.v))
 
 # Constraints
 function constraints!(model, system, B, c, γ, ϵ, num_samples)
@@ -93,52 +91,51 @@ function constraints!(model, system, B, c, γ, ϵ, num_samples)
 end
 
 function partition_constraints!(model, system, B, c, γ, ϵ, qᵢ, ηs)
-    non_negativity_constraint!(model, B, qᵢ)
-    initial_constraint!(model, system, B, γ, qᵢ)
-    unsafe_constraint!(model, system, B, qᵢ)
+    Bᵢ = B[qᵢ]
+
+    non_negativity_constraint!(model, Bᵢ)
+    initial_constraint!(model, system, Bᵢ, γ)
+    unsafe_constraint!(model, system, Bᵢ)
     expectation_constraint!(model, system, B, c, ϵ, qᵢ, ηs)
 end
 
-function non_negativity_constraint!(model, B, qᵢ)
-    Hᵢ, hᵢ = tosimplehrep(qᵢ)
-    pᵢ, vᵢ = barrier_blocks(B, qᵢ)
-    dual_constraint!(model, -pᵢ, vᵢ, Hᵢ, hᵢ)
-end
-
-function initial_constraint!(model, system, B, γ, qᵢ)
-    X₀ = initial_set(system)
-
-    if is_intersection_zeromeasure(X₀, qᵢ)
-        return
-    end
-
-    H₀, h₀ = tosimplehrep(intersection(X₀, qᵢ))
-    pᵢ, vᵢ = barrier_blocks(B, qᵢ)
-    dual_constraint!(model, pᵢ, γ - vᵢ, H₀, h₀)
-end
-
-function unsafe_constraint!(model, system, B, qᵢ)
-    if isconstant(B[qᵢ]) || !overlaps_unsafe(system, qᵢ)
-        return
-    end
-
-    Hᵢ, hᵢ = tosimplehrep(qᵢ)
-    pᵢ, vᵢ = barrier_blocks(B, qᵢ)
-    dual_constraint!(model, pᵢ, vᵢ - 1, Hᵢ, hᵢ)
-end
-isconstant(::T) where {T<:AbstractVector{<:Number}} = true
-isconstant(_) = false
-
-function overlaps_unsafe(system, qᵢ)
+function overlaps_unsafe(system, q)
     Xᵤ = unsafe_set(system)
     # Note the unsafe set can consist of multiple disjoint components
     for Xᵤ_subset in Xᵤ
-        if !is_intersection_zeromeasure(Xᵤ_subset, qᵢ)
+        if !is_intersection_zeromeasure(Xᵤ_subset, q)
             return true
         end
     end
 
     return false
+end
+
+# Piece-wise linear barrier
+function non_negativity_constraint!(model, B::BarrierRegion{I, P, LinearBarrier{T, VT}}) where {I, P, T, VT}
+    H, h = tosimplehrep(region(B))
+    p, v = B.fun.p, B.fun.v
+    dual_constraint!(model, -p, v, H, h)
+end
+
+function initial_constraint!(model, system, B::BarrierRegion{I, P, LinearBarrier{T, VT}}, γ) where {I, P, T, VT}
+    X₀ = initial_set(system)
+
+    if is_intersection_zeromeasure(X₀, region(B))
+        return
+    end
+
+    H₀, h₀ = tosimplehrep(intersection(X₀, region(B)))
+    p, v = B.fun.p, B.fun.v
+    dual_constraint!(model, p, γ - v, H₀, h₀)
+end
+
+function unsafe_constraint!(model, system, B::BarrierRegion{I, P, LinearBarrier{T, VT}}) where {I, P, T, VT}
+    if overlaps_unsafe(system, region(B))
+        H, h = tosimplehrep(region(B))
+        p, v = B.fun.p, B.fun.v
+        dual_constraint!(model, p, v - 1.0, H, h)
+    end
 end
 
 function expectation_constraint!(model, system, B, c, ϵ, qᵢ, ηs)
@@ -165,8 +162,8 @@ function expectation_partition_constraint!(model, B, c, ϵ, qᵢ, qⱼ, ηs)
 
     qᵢ_next = Aᵢ * region(qᵢ) + bᵢ
 
-    pᵢ, vᵢ = barrier_blocks(B, qᵢ)
-    pⱼ, vⱼ = barrier_blocks(B, qⱼ)
+    pᵢ, vᵢ = B[qᵢ].fun.p, B[qᵢ].fun.v
+    pⱼ, vⱼ = B[qⱼ].fun.p, B[qⱼ].fun.v
 
     for η in eachcol(ηs)
         # println("$qi -> $(qi_next + η), cap $qj")
@@ -191,4 +188,25 @@ function dual_constraint!(model, c, rhs, H, h)
 
     @constraint(model, y ⋅ h ≤ rhs)
     @constraint(model, H' * y .== c)
+end
+
+# Piece-wise constant barrier
+function non_negativity_constraint!(model, B::BarrierRegion{I, P, ConstantBarrier{T}}) where {I, P, T}
+    @constraint(model, B.fun.v ≥ 0.0)
+end
+
+function initial_constraint!(model, system, B::BarrierRegion{I, P, ConstantBarrier{T}}, γ) where {I, P, T}
+    X₀ = initial_set(system)
+
+    if is_intersection_zeromeasure(X₀, region(B))
+        return
+    end
+
+    @constraint(model, γ ≥ B.fun.v)
+end
+
+function unsafe_constraint!(model, system, B::BarrierRegion{I, P, ConstantBarrier{T}}) where {I, P, T}
+    if overlaps_unsafe(system, region(B))
+        @constraint(model, B.fun.v ≥ 1.0)
+    end
 end
