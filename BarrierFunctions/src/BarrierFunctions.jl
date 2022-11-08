@@ -3,6 +3,7 @@ module BarrierFunctions
     using LazySets
     import Base.@kwdef
 
+    include("index.jl")
     include("partition.jl")
     include("system.jl")
     include("barrier.jl")

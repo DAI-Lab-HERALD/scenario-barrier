@@ -1067,6 +1067,14 @@ version = "1.0.1"
 deps = ["LinearAlgebra", "Random"]
 uuid = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
 
+[[deps.Spatial]]
+deps = ["LazySets"]
+git-tree-sha1 = "a55e2e526a5a7a9926030641b24933e85e342bce"
+repo-rev = "main"
+repo-url = "https://github.com/Zinoex/Spatial.jl"
+uuid = "5a2acdf3-0caf-4501-bcc8-47e0871aab01"
+version = "0.1.0"
+
 [[deps.SpecialFunctions]]
 deps = ["ChainRulesCore", "IrrationalConstants", "LogExpFunctions", "OpenLibm_jll", "OpenSpecFun_jll"]
 git-tree-sha1 = "d75bda01f8c31ebb72df80a46c88b25d1c79c56d"
