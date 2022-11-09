@@ -4,14 +4,14 @@ using Distributions
 using MosekTools
 
 
-export verify, barrier_variable!, partition_barrier_variable!, barrier_value, overlaps_unsafe
+export verify, barrier_variable!, partition_barrier_variable!, barrier_value, count_variables, required_samples, overlaps_unsafe
 export constraints!, assymetric_dual_constraint!, unsafe_constraint!, initial_constraint!
 export region_constraints!, expectation_constraint!, non_negativity_constraint!, expectation_partition_constraint!
 
-function verify(system::System; H::Int, ϵ::Number, num_samples::Int)
+function verify(system::System; H::Int, ϵ::Number, β::Number)
     @assert(H >= 1, "Horizon H must be greater than or equal to one (is $H)")
     @assert(0 < ϵ < 1, "Epsilon must be in range (0, 1) (is $ϵ)")
-    @assert(num_samples >= 1, "Number of samples must be greater than or equal to one (is $num_samples)")
+    @assert(0 < β < 1, "Beta must be in range (0, 1) (is $β)")
 
     solver = optimizer_with_attributes(Mosek.Optimizer, 
         "QUIET" => false
@@ -30,9 +30,11 @@ function verify(system::System; H::Int, ϵ::Number, num_samples::Int)
     @constraint(model, d ≤ c)
 
     n_variables = count_variables(B) + 3
+    n_samples = required_samples(n_variables, ϵ, β)
+    println("num variables $n_variables, num samples $n_samples")
 
     # Constraints
-    constraints!(model, system, B, c, γ, d, num_samples)
+    constraints!(model, system, B, c, γ, d, n_samples)
 
     # Objective
     @objective(model, Min, γ + c * H)
@@ -79,8 +81,6 @@ function region_barrier_variable!(model, system, qᵢ)
     return BarrierRegion(index(qᵢ), region(qᵢ), LinearBarrier(p, v))
 end
 
-barrier_blocks(B, qᵢ) = B[qᵢ].fun.p, B[qᵢ].fun.v
-
 barrier_value(B::PiecewiseBarrier) = PiecewiseBarrier(i => barrier_value(Bᵢ) for (i, Bᵢ) in B)
 barrier_value(B::BarrierRegion) = BarrierRegion(index(B), region(B), barrier_value(B.fun))
 barrier_value(B::LinearBarrier) = LinearBarrier(value.(B.p), value(B.v))
@@ -92,6 +92,26 @@ count_variables(B::LinearBarrier{T, VT}) where {T<:AbstractVariableRef, VT} = le
 count_variables(B::LinearBarrier{T, VT}) where {T<:Number, VT} = 0
 count_variables(B::ConstantBarrier{T}) where {T<:AbstractVariableRef} = 1
 count_variables(B::ConstantBarrier{T}) where {T<:Number} = 0
+
+function required_samples(d, ϵ, β)
+    lower_bound = 1 #floor(Int, (ℯ / (ℯ - 1)) * (1 / ϵ) * (d + log(1 / β)))  # The funny ℯ is Euler's constant
+    upper_bound = ceil(Int, (2 / ϵ) * log(1 / β) + 2 * d + (2 * d / ϵ) * log(2 / ϵ))
+
+    beta(N) = sum(i -> binomial(big(N), i) * ϵ^i * (1 - ϵ)^(N - i), 0:d)
+
+    while lower_bound + 1 < upper_bound
+        mid = floor(Int, (lower_bound + upper_bound) / 2)
+        b = beta(mid)
+
+        if b > β
+            lower_bound = mid
+        else
+            upper_bound = mid
+        end
+    end
+
+    return upper_bound
+end
 
 # Constraints
 function constraints!(model, system, B, c, γ, d, num_samples)
