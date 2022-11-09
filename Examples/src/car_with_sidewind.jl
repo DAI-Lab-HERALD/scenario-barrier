@@ -67,8 +67,6 @@ Xu = [
     HPolyhedron([x[2] ≤ -2.5], vars)
 ]
 
-car_with_sidewind = System(Q, A, b, η, X0, Xs, Xu)
-
 split_spec = [
     [1, 1],
     [1, 1],
@@ -77,5 +75,6 @@ split_spec = [
     [4, 10],
     [56, 10]
 ]
+Q, A, b = grid_split(Q, A, b, split_spec)
 
-car_with_sidewind = grid_split(car_with_sidewind, split_spec)
+car_with_sidewind = System(Q, A, b, η, X0, Xs, Xu)

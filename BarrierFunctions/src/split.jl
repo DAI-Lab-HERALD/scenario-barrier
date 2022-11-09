@@ -1,29 +1,29 @@
 export grid_split
 
-function grid_split(system::System{N, T, P}, num_subregions) where {N, T, P}
-    Q = regions(system)
-    n, m = length(Q), length(num_subregions)
-    @assert(n == m, "Number of subpartition specifications do no match number of partitions")
+function grid_split(Q, A, b, num_subregions)
+    n = length(Q)
+    @assert n == length(A) && n == length(b) && n == length(num_subregions) "Number of subpartition specifications do no match number of partitions"
 
-    next_partition_index = maximum(q.index for q in Q) + 1
+    Qnew, Anew, bnew = [], [], []
 
-    elems = DynamicsRegion{T}[]
-    for (q, split_spec) in zip(Q, num_subregions)
-        if (LazySets.isbounded ∘ region)(q)
-            rect = box_approximation(region(q))
+    for (qᵢ, Aᵢ, bᵢ, split_spec) in zip(Q, A, b, num_subregions)
+        if LazySets.isbounded(qᵢ)
+            rect = box_approximation(qᵢ)
             new_rects = split(rect, split_spec)
             
             for rect in new_rects
-                push!(elems, DynamicsRegion(next_partition_index, convert(P, rect), dynamics(q)))
-                next_partition_index += 1
+                push!(Qnew, rect)
+                push!(Anew, Aᵢ)
+                push!(bnew, bᵢ)
             end
         else
-            push!(elems, q)
+            @assert all(split_spec .== 1) "Cannot split an unbounded region into a grid"
+
+            push!(Qnew, qᵢ)
+            push!(Anew, Aᵢ)
+            push!(bnew, bᵢ)
         end
     end
 
-    Qnew = UnboundedIndex{T, N, DynamicsRegion{T}}()
-    bulk_load!(Qnew, elems)
-
-    return System{N, T, P}(Qnew, noise(system), initial_set(system), safe_set(system), unsafe_set(system))
+    return Qnew, Anew, bnew
 end

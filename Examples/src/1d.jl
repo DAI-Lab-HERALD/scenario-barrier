@@ -44,7 +44,6 @@ Xu = [
     HPolyhedron([x ≤ -2.5], vars)
 ]
 
-linear1d = System(Q, A, b, η, X0, Xs, Xu)
 split_spec = [
     [1],
     [1],
@@ -52,5 +51,6 @@ split_spec = [
     [10],
     [30]
 ]
+Q, A, b = grid_split(Q, A, b, split_spec)
 
-linear1d = grid_split(linear1d, split_spec)
+linear1d = System(Q, A, b, η, X0, Xs, Xu)
