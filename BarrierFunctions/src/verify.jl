@@ -94,7 +94,7 @@ count_variables(B::ConstantBarrier{T}) where {T<:AbstractVariableRef} = 1
 count_variables(B::ConstantBarrier{T}) where {T<:Number} = 0
 
 function required_samples(d, ϵ, β)
-    lower_bound = 1
+    lower_bound = d + 1
     upper_bound = floor(Int, (ℯ / (ℯ - 1)) * (1 / ϵ) * (d + log(1 / β)))  # The funny ℯ is Euler's constant
 
     beta(N) = sum(i -> binomial(big(N), i) * ϵ^i * (1 - ϵ)^(N - i), 0:d)
