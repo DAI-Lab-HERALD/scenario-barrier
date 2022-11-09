@@ -145,6 +145,27 @@ function overlaps_unsafe(system, q)
     return false
 end
 
+function expectation_constraint!(model, system, B, c, d, qᵢ, ηs)
+    Xₛ = safe_set(system)
+    if is_intersection_zeromeasure(Xₛ, qᵢ)
+        return
+    end
+
+    Bᵢ = B[qᵢ]
+    Aᵢ, bᵢ = dynamics(qᵢ)
+    qᵢ_next = Aᵢ * region(Bᵢ) + bᵢ
+
+    for η in eachcol(ηs)
+        query = RegionIntersectsQuery(qᵢ_next + η)
+        next_regions = Spatial.findall(query, regions(system))
+
+        for qⱼ in next_regions
+            # println("Next partition $qj")
+            expectation_partition_constraint!(model, Aᵢ, bᵢ, Bᵢ, B[qⱼ], c, d, η)
+        end
+    end
+end
+
 # Piece-wise linear barrier
 function non_negativity_constraint!(model, B::BarrierRegion{T, LinearBarrier{T1, VT1}}) where {T, T1, VT1}
     H, h = tosimplehrep(region(B))
@@ -169,27 +190,6 @@ function unsafe_constraint!(model, system, B::BarrierRegion{T, LinearBarrier{T1,
         H, h = tosimplehrep(region(B))
         p, v = B.fun.p, B.fun.v
         assymetric_dual_constraint!(model, p, v - 1.0, H, h)
-    end
-end
-
-function expectation_constraint!(model, system, B, c, d, qᵢ, ηs)
-    Xₛ = safe_set(system)
-    if is_intersection_zeromeasure(Xₛ, qᵢ)
-        return
-    end
-
-    Bᵢ = B[qᵢ]
-    Aᵢ, bᵢ = dynamics(qᵢ)
-    qᵢ_next = Aᵢ * region(Bᵢ) + bᵢ
-
-    for η in eachcol(ηs)
-        query = RegionIntersectsQuery(qᵢ_next + η)
-        next_regions = Spatial.findall(query, regions(system))
-
-        for qⱼ in next_regions
-            # println("Next partition $qj")
-            expectation_partition_constraint!(model, Aᵢ, bᵢ, Bᵢ, B[qⱼ], c, d, η)
-        end
     end
 end
 
@@ -253,4 +253,73 @@ function expectation_partition_constraint!(model, Aᵢ, bᵢ, Bᵢ::BarrierRegio
 
         @constraint(model, vⱼ - vᵢ - c + d ≤ 0.0)
     end
+end
+
+# Piece-wise quadratic barrier
+function non_negativity_constraint!(model, B::BarrierRegion{T, QuadraticBarrier{T1, VT1, VVT1}}) where {T, T1, VT1, VVT1}
+    s_mat = s_procedure(model, q)
+
+    @constraint(model, -B[q] - s_mat ≤ 0, PSDCone())
+end
+
+function initial_constraint!(model, system, B::BarrierRegion{T, QuadraticBarrier{T1, VT1, VVT1}}, γ) where {T, T1, VT1, VVT1}
+    X₀ = initial_set(system)
+
+    if is_intersection_zeromeasure(X₀, region(B))
+        return
+    end
+
+    s_mat = s_procedure(model, intersection(X₀, q))
+
+    γ_mat = zero(s_mat)
+    γ_mat[end, end] = γ
+
+    @constraint(model, B[q] - γ_mat - s_mat ≤ 0, PSDCone())
+end
+
+function unsafe_constraint!(model, system, B::BarrierRegion{T, QuadraticBarrier{T1, VT1, VVT1}}) where {T, T1, VT1, VVT1}
+    if overlaps_unsafe(system, region(B))
+        # We may need to refine partitions if a partition cover too large part of the safe set
+
+        s_mat = s_procedure(model, q)
+
+        one_mat = zero(s_mat)
+        one_mat[end, end] = 1
+
+        @constraint(model, -B[q] + one_mat - s_mat ≤ 0, PSDCone())
+    end
+end
+
+function expectation_partition_constraint!(model, Aᵢ, bᵢ, Bᵢ::BarrierRegion{T, QuadraticBarrier{T1, VT1, VVT1}}, Bⱼ::BarrierRegion{T, QuadraticBarrier{T2, VT2, VVT2}}, c, d, η) where {T, T1, VT1, VVT1, T2, VT2, VVT2}
+    Pᵢ, pᵢ, vᵢ = Bᵢ.fun.P, Bᵢ.fun.p, Bᵢ.fun.v
+    Pⱼ, pⱼ, vⱼ = Bⱼ.fun.P, Bⱼ.fun.p, Bⱼ.fun.v
+
+    bᵢη = bᵢ + η
+    quadratic = Aᵢ' * Pⱼ * Aᵢ - Pᵢ
+    linear = Aᵢ' * Pⱼ * bᵢη + 0.5 * Aᵢ' * pⱼ - 0.5 * pᵢ 
+    constant = bᵢη' * Pⱼ * bᵢη + bᵢη' * pⱼ + vⱼ - vᵢ - c + d
+
+    mat = vcat(
+        hcat(quadratic, linear),
+        hcat(linear', constant)
+    )
+
+    s_mat = s_procedure(model, qi)
+    @constraint(model, mat - s_mat ≤ 0, PSDCone())
+end
+
+function s_procedure(model, p)
+    m, n = size(p)
+    τ = @variable(model, [1:m], lower_bound = 0)
+    H, h = tosimplehrep(p)
+
+    Hτ = H' * τ
+    hτ = -2 * h' * τ
+
+    mat = vcat(
+        hcat(zeros(n, n), Hτ),
+        hcat(Hτ', hτ)
+    )
+
+    return mat
 end
