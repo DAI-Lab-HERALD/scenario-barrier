@@ -38,7 +38,7 @@ function step(system, x, η)
         end
     end
 
-    for q in partitions(system)
+    for q in regions(system)
         if x ∈ region(q)
             A, b = dynamics(q)
             return A * x .+ b .+ η, false

@@ -13,18 +13,17 @@ function Base.size(p::AbstractPolyhedron, d)
 end
 
 # Dynamics
-RegionDynamics{T} = Tuple{Matrix{T}, Vector{T}}
-@kwdef struct Region{I<:Int, T<:Real, P<:AbstractPolyhedron{T}}
+@kwdef struct DynamicsRegion{I<:Int, T<:Real, P<:AbstractPolyhedron{T}}
     index::I
     polytope::P
-    dynamics::RegionDynamics{T}
+    dynamics::Tuple{Matrix{T}, Vector{T}}
 end
 
-Base.hash(p::Region, h::UInt) = hash(p.index, h)
-Base.:(==)(p1::Region, p2::Region) = p1.index == p2.index
+Base.hash(p::DynamicsRegion, h::UInt) = hash(p.index, h)
+Base.:(==)(p1::DynamicsRegion, p2::DynamicsRegion) = p1.index == p2.index
 
-is_intersection_zeromeasure(p::Region, q::LazySet) = is_intersection_zeromeasure(region(p), q)
-is_intersection_zeromeasure(p::LazySet, q::Region) = is_intersection_zeromeasure(q, p)
+is_intersection_zeromeasure(p::DynamicsRegion, q::LazySet) = is_intersection_zeromeasure(region(p), q)
+is_intersection_zeromeasure(p::LazySet, q::DynamicsRegion) = is_intersection_zeromeasure(q, p)
 
 is_intersection_zeromeasure(p::LazySet, q::LazySet) = isempty(Intersection(p, q)) || ishyperplane(p, q)
 ishyperplane(p, q) = ishyperplane(HPolyhedron([constraints_list(p); constraints_list(q)]))
@@ -47,16 +46,10 @@ function ishyperplane(p::AbstractPolyhedron)
     return false
 end
 
-Base.show(io::IO, p::Region) = print(io, p.index)
-LazySets.intersection(p1::Region, p2::Region) = intersection(p1.polytope, p2.polytope)
-LazySets.intersection(p1::Region, p2::AbstractPolyhedron) = intersection(p1.polytope, p2)
-LazySets.intersection(p1::AbstractPolyhedron, p2::Region) = intersection(p2, p1)
-LazySets.tosimplehrep(p::Region) = tosimplehrep(region(p))
-Base.size(p::Region) = size(p.polytope)
-Base.size(p::Region, d) = size(p.polytope, d)
-index(p::Region) = p.index
-region(p::Region) = p.polytope
-dynamics(p::Region) = p.dynamics
-iszeromeasure(p::Region) = iszeromeasure(region(p))
+Base.show(io::IO, p::DynamicsRegion) = print(io, p.index)
+LazySets.tosimplehrep(p::DynamicsRegion) = tosimplehrep(region(p))
+index(p::DynamicsRegion) = p.index
+region(p::DynamicsRegion) = p.polytope
+dynamics(p::DynamicsRegion) = p.dynamics
 
-Partition{I, T, P} = Vector{Region{I, T, P}}
+Partition{I, T, P} = Vector{DynamicsRegion{I, T, P}}

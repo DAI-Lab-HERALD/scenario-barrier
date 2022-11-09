@@ -5,8 +5,8 @@ using MosekTools
 
 
 export verify, barrier_variable!, partition_barrier_variable!, barrier_value, overlaps_unsafe
-export constraints!, dual_constraint!, unsafe_constraint!, initial_constraint!
-export partition_constraints!, expectation_constraint!, non_negativity_constraint!, expectation_partition_constraint!
+export constraints!, assymetric_dual_constraint!, unsafe_constraint!, initial_constraint!
+export region_constraints!, expectation_constraint!, non_negativity_constraint!, expectation_partition_constraint!
 
 function verify(system::System; H::Int, ϵ::Number, num_samples::Int)
     @assert(H >= 1, "Horizon H must be greater than or equal to one (is $H)")
@@ -56,15 +56,15 @@ end
 
 function barrier_variable!(model, system)
     B = PiecewiseBarrier(
-           qᵢ => partition_barrier_variable!(model, system, qᵢ)
-           for qᵢ in partitions(system)
+           qᵢ => region_barrier_variable!(model, system, qᵢ)
+           for qᵢ in regions(system)
        )
 
     return B
 end
 
 # Optimization variables
-function partition_barrier_variable!(model, system, qᵢ)
+function region_barrier_variable!(model, system, qᵢ)
     n = state_space_size(system)
 
     Xₛ = safe_set(system)
@@ -98,13 +98,13 @@ function constraints!(model, system, B, c, γ, d, num_samples)
     distribution = noise(system)
     ηs = rand(distribution, num_samples)
 
-    for qᵢ in partitions(system)
+    for qᵢ in regions(system)
         println("Partition $qᵢ")
-        partition_constraints!(model, system, B, c, γ, d, qᵢ, ηs)
+        region_constraints!(model, system, B, c, γ, d, qᵢ, ηs)
     end
 end
 
-function partition_constraints!(model, system, B, c, γ, d, qᵢ, ηs)
+function region_constraints!(model, system, B, c, γ, d, qᵢ, ηs)
     Bᵢ = B[qᵢ]
 
     non_negativity_constraint!(model, Bᵢ)
@@ -129,7 +129,7 @@ end
 function non_negativity_constraint!(model, B::BarrierRegion{I, P, LinearBarrier{T, VT}}) where {I, P, T, VT}
     H, h = tosimplehrep(region(B))
     p, v = B.fun.p, B.fun.v
-    dual_constraint!(model, -p, v, H, h)
+    assymetric_dual_constraint!(model, -p, v, H, h)
 end
 
 function initial_constraint!(model, system, B::BarrierRegion{I, P, LinearBarrier{T, VT}}, γ) where {I, P, T, VT}
@@ -141,14 +141,14 @@ function initial_constraint!(model, system, B::BarrierRegion{I, P, LinearBarrier
 
     H₀, h₀ = tosimplehrep(intersection(X₀, region(B)))
     p, v = B.fun.p, B.fun.v
-    dual_constraint!(model, p, γ - v, H₀, h₀)
+    assymetric_dual_constraint!(model, p, γ - v, H₀, h₀)
 end
 
 function unsafe_constraint!(model, system, B::BarrierRegion{I, P, LinearBarrier{T, VT}}) where {I, P, T, VT}
     if overlaps_unsafe(system, region(B))
         H, h = tosimplehrep(region(B))
         p, v = B.fun.p, B.fun.v
-        dual_constraint!(model, p, v - 1.0, H, h)
+        assymetric_dual_constraint!(model, p, v - 1.0, H, h)
     end
 end
 
@@ -157,35 +157,35 @@ function expectation_constraint!(model, system, B, c, d, qᵢ, ηs)
     if is_intersection_zeromeasure(Xₛ, qᵢ)
         return
     end
+    
+    Aᵢ, bᵢ = dynamics(qᵢ)
 
-    for qⱼ in partitions(system)
+    for qⱼ in regions(system)
         # println("Next partition $qj")
-        expectation_partition_constraint!(model, B, c, d, qᵢ, qⱼ, ηs)
+        expectation_partition_constraint!(model, Aᵢ, bᵢ, B[qᵢ], B[qⱼ], c, d, ηs)
     end
 end
 
-function expectation_partition_constraint!(model, B, c, d, qᵢ, qⱼ, ηs)
-    Aᵢ, bᵢ = dynamics(qᵢ)
+function expectation_partition_constraint!(model, Aᵢ, bᵢ, Bᵢ::BarrierRegion{I, P, LinearBarrier{T1, VT1}}, Bⱼ::BarrierRegion{I, P, LinearBarrier{T2, VT2}}, c, d, ηs) where {I, P, T1, VT1, T2, VT2}
+    Hᵢ, hᵢ = tosimplehrep(region(Bᵢ))
+    Hⱼ, hⱼ = tosimplehrep(region(Bᵢ))
 
-    Hᵢ, hᵢ = tosimplehrep(qᵢ)
-    Hⱼ, hⱼ = tosimplehrep(qᵢ)
+    qᵢ_next = Aᵢ * region(Bᵢ) + bᵢ
 
-    qᵢ_next = Aᵢ * region(qᵢ) + bᵢ
-
-    pᵢ, vᵢ = B[qᵢ].fun.p, B[qᵢ].fun.v
-    pⱼ, vⱼ = B[qⱼ].fun.p, B[qⱼ].fun.v
+    pᵢ, vᵢ = Bᵢ.fun.p, Bᵢ.fun.v
+    pⱼ, vⱼ = Bⱼ.fun.p, Bⱼ.fun.v
 
     for η in eachcol(ηs)
         # println("$qi -> $(qi_next + η), cap $qj")
-        if is_intersection_zeromeasure(qⱼ, qᵢ_next + η)
+        if is_intersection_zeromeasure(region(Bⱼ), qᵢ_next + η)
             continue
         end
 
-        dual_constraint!(model, Aᵢ' * pⱼ .- pᵢ, vᵢ - vⱼ + c - d - pⱼ ⋅ (bᵢ + η), vcat(Hᵢ, Hⱼ * Aᵢ), vcat(hᵢ, hⱼ - Hⱼ * (bᵢ + η)))
+        assymetric_dual_constraint!(model, Aᵢ' * pⱼ .- pᵢ, vᵢ - vⱼ + c - d - pⱼ ⋅ (bᵢ + η), vcat(Hᵢ, Hⱼ * Aᵢ), vcat(hᵢ, hⱼ - Hⱼ * (bᵢ + η)))
     end
 end
 
-function dual_constraint!(model, c, rhs, H, h)
+function assymetric_dual_constraint!(model, c, rhs, H, h)
     # Constraints of the form              [max_x  cᵀx, s.t. Hx ≤ h] ≤ rhs
     # reformulated to the asymmetric dual  [min_{y ≥ 0} yᵀh, s.t. Hᵀx = c] ≤ rhs
     # and lifted to the outer minimization.
@@ -218,5 +218,24 @@ end
 function unsafe_constraint!(model, system, B::BarrierRegion{I, P, ConstantBarrier{T}}) where {I, P, T}
     if overlaps_unsafe(system, region(B))
         @constraint(model, B.fun.v ≥ 1.0)
+    end
+end
+
+function expectation_partition_constraint!(model, Aᵢ, bᵢ, Bᵢ::BarrierRegion{I, P, ConstantBarrier{T1}}, Bⱼ::BarrierRegion{I, P, ConstantBarrier{T2}}, c, d, ηs) where {I, P, T1, T2}
+    Hᵢ, hᵢ = tosimplehrep(region(Bᵢ))
+    Hⱼ, hⱼ = tosimplehrep(region(Bᵢ))
+
+    qᵢ_next = Aᵢ * region(Bᵢ) + bᵢ
+
+    vᵢ = Bᵢ.fun.v
+    vⱼ = Bⱼ.fun.v
+
+    for η in eachcol(ηs)
+        # println("$qi -> $(qi_next + η), cap $qj")
+        if is_intersection_zeromeasure(region(Bⱼ), qᵢ_next + η)
+            continue
+        end
+
+        @constraint(model, vⱼ - vᵢ - c + d ≤ 0.0)
     end
 end
