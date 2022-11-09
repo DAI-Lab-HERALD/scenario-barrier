@@ -24,8 +24,15 @@ function verify(system::System; H::Int, ϵ::Number, num_samples::Int)
     @variable(model, c, lower_bound = 0)
     B = barrier_variable!(model, system)
 
+    # We can let M = 1 [max B(x)] as B(x) can be modified aposterori to be capped at 1 without violating the theory
+    M = 1
+    @variable(model, d, lower_bound = M * ϵ)
+    @constraint(model, d ≤ c)
+
+    n_variables = count_variables(B) + 3
+
     # Constraints
-    constraints!(model, system, B, c, γ, ϵ, num_samples)
+    constraints!(model, system, B, c, γ, d, num_samples)
 
     # Objective
     @objective(model, Min, γ + c * H)
@@ -44,7 +51,7 @@ function verify(system::System; H::Int, ϵ::Number, num_samples::Int)
 
     println("termination status $(JuMP.termination_status(model)), primal status $(JuMP.primal_status(model)), safety prob $prob")
 
-    return succ, B, prob
+    return succ, B, prob, n_variables
 end
 
 function barrier_variable!(model, system)
@@ -79,24 +86,31 @@ barrier_value(B::BarrierRegion) = BarrierRegion(index(B), region(B), barrier_val
 barrier_value(B::LinearBarrier) = LinearBarrier(value.(B.p), value(B.v))
 barrier_value(B::ConstantBarrier) = ConstantBarrier(value(B.v))
 
+count_variables(B::PiecewiseBarrier) = sum(((i, Bᵢ),) -> count_variables(Bᵢ), B)
+count_variables(B::BarrierRegion) = count_variables(B.fun)
+count_variables(B::LinearBarrier{T, VT}) where {T<:AbstractVariableRef, VT} = length(B.p) + 1
+count_variables(B::LinearBarrier{T, VT}) where {T<:Number, VT} = 0
+count_variables(B::ConstantBarrier{T}) where {T<:AbstractVariableRef} = 1
+count_variables(B::ConstantBarrier{T}) where {T<:Number} = 0
+
 # Constraints
-function constraints!(model, system, B, c, γ, ϵ, num_samples)
+function constraints!(model, system, B, c, γ, d, num_samples)
     distribution = noise(system)
     ηs = rand(distribution, num_samples)
 
     for qᵢ in partitions(system)
         println("Partition $qᵢ")
-        partition_constraints!(model, system, B, c, γ, ϵ, qᵢ, ηs)
+        partition_constraints!(model, system, B, c, γ, d, qᵢ, ηs)
     end
 end
 
-function partition_constraints!(model, system, B, c, γ, ϵ, qᵢ, ηs)
+function partition_constraints!(model, system, B, c, γ, d, qᵢ, ηs)
     Bᵢ = B[qᵢ]
 
     non_negativity_constraint!(model, Bᵢ)
     initial_constraint!(model, system, Bᵢ, γ)
     unsafe_constraint!(model, system, Bᵢ)
-    expectation_constraint!(model, system, B, c, ϵ, qᵢ, ηs)
+    expectation_constraint!(model, system, B, c, d, qᵢ, ηs)
 end
 
 function overlaps_unsafe(system, q)
@@ -138,7 +152,7 @@ function unsafe_constraint!(model, system, B::BarrierRegion{I, P, LinearBarrier{
     end
 end
 
-function expectation_constraint!(model, system, B, c, ϵ, qᵢ, ηs)
+function expectation_constraint!(model, system, B, c, d, qᵢ, ηs)
     Xₛ = safe_set(system)
     if is_intersection_zeromeasure(Xₛ, qᵢ)
         return
@@ -146,16 +160,12 @@ function expectation_constraint!(model, system, B, c, ϵ, qᵢ, ηs)
 
     for qⱼ in partitions(system)
         # println("Next partition $qj")
-        expectation_partition_constraint!(model, B, c, ϵ, qᵢ, qⱼ, ηs)
+        expectation_partition_constraint!(model, B, c, d, qᵢ, qⱼ, ηs)
     end
 end
 
-function expectation_partition_constraint!(model, B, c, ϵ, qᵢ, qⱼ, ηs)
+function expectation_partition_constraint!(model, B, c, d, qᵢ, qⱼ, ηs)
     Aᵢ, bᵢ = dynamics(qᵢ)
-
-    # We can let M = 1 [max B(x)] as B(x) can be modified aposterori to be capped at 1 without violating the theory
-    M = 1  
-    d = ϵ * M
 
     Hᵢ, hᵢ = tosimplehrep(qᵢ)
     Hⱼ, hⱼ = tosimplehrep(qᵢ)
