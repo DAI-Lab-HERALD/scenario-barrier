@@ -7,22 +7,23 @@ function grid_split(system::System{N, T, P}, num_subregions) where {N, T, P}
 
     next_partition_index = maximum(q.index for q in Q) + 1
 
-    Qnew = DynamicsRegion{T}[]
+    elems = DynamicsRegion{T}[]
     for (q, split_spec) in zip(Q, num_subregions)
         if (LazySets.isbounded ∘ region)(q)
             rect = box_approximation(region(q))
             new_rects = split(rect, split_spec)
             
             for rect in new_rects
-                push!(Qnew, DynamicsRegion(next_partition_index, convert(P, rect), dynamics(q)))
+                push!(elems, DynamicsRegion(next_partition_index, convert(P, rect), dynamics(q)))
                 next_partition_index += 1
             end
         else
-            push!(Qnew, q)
+            push!(elems, q)
         end
     end
 
-    Qnew = LinearIndex{T}(Qnew)
+    Qnew = UnboundedIndex{T, N, DynamicsRegion{T}}()
+    bulk_load!(Qnew, elems)
 
     return System{N, T, P}(Qnew, noise(system), initial_set(system), safe_set(system), unsafe_set(system))
 end

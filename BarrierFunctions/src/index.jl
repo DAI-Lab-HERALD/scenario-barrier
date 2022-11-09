@@ -5,7 +5,7 @@ struct UnboundedIndex{T, D, E} <: AbstractSpatialIndex{T, E}
     unbounded_index  # Should accomodate unbounded regions (possibly inefficient)
 
     function UnboundedIndex{T, D, E}() where {T, D, E}
-        return new(RTreeIndex{T, D, E}(), LinearIndex{T, E}())
+        return new(RTreeIndex{T, D, E}(OrdinaryRTreeUpdateStrategy(branch_capacity=10, leaf_capacity=10)), LinearIndex{T, E}())
     end
 end
 
@@ -66,7 +66,7 @@ end
 
 function Spatial.findall(query, index::UnboundedIndex)
     bounded_res = Spatial.findall(query, index.bounded_index)
-    unbounded_res = Spatial.findfirst(query, index.unbounded_index)
+    unbounded_res = Spatial.findall(query, index.unbounded_index)
 
     append!(bounded_res, unbounded_res)
 
@@ -88,9 +88,15 @@ end
     
 function Spatial.bulk_load!(index::UnboundedIndex, data)
     mask = has_mbr.(data)
+
     bounded = data[mask]
     unbounded = data[.!mask]  # Elementwise negation of mask
 
-    bulk_load!(index.bounded_index, bounded)
-    bulk_load!(index.unbounded_index, unbounded)
+    if !isempty(bounded)
+        bulk_load!(index.bounded_index, bounded)
+    end
+
+    if !isempty(unbounded)
+        bulk_load!(index.unbounded_index, unbounded)
+    end
 end

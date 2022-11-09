@@ -27,9 +27,13 @@ function System(Q, A, b, η, X0::P, Xs::P, Xu::AbstractVector{P}) where {T<:Real
     @assert(n1 == n2 && n2 == n3, "Number of regions and dynamics matrices must match")
     @assert(n1 >= 1, "The number of regions must be at least 1")
 
-    Q = LinearIndex{T}([DynamicsRegion(i, qi, (Ai, bi)) for (i, (qi, Ai, bi)) in enumerate(zip(Q, A, b))])
+    elems = [DynamicsRegion(i, qi, (Ai, bi)) for (i, (qi, Ai, bi)) in enumerate(zip(Q, A, b))]
 
-    return System{LazySets.dim(X0), T, P}(Q, η, X0, Xs, Xu)
+    N = LazySets.dim(X0)
+    Q = UnboundedIndex{T, N, DynamicsRegion{T}}()
+    bulk_load!(Q, elems)
+
+    return System{N, T, P}(Q, η, X0, Xs, Xu)
 end
 
 

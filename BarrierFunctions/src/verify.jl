@@ -99,7 +99,7 @@ function constraints!(model, system, B, c, γ, d, num_samples)
     ηs = rand(distribution, num_samples)
 
     for qᵢ in regions(system)
-        println("Partition $qᵢ")
+        println("Partition $qᵢ, $(region(qᵢ))")
         region_constraints!(model, system, B, c, γ, d, qᵢ, ηs)
     end
 end

@@ -1155,7 +1155,7 @@ uuid = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
 
 [[deps.Spatial]]
 deps = ["LazySets"]
-git-tree-sha1 = "a55e2e526a5a7a9926030641b24933e85e342bce"
+git-tree-sha1 = "189da2cc5cb5e3495f50d391ceeca424ecaacc3f"
 repo-rev = "main"
 repo-url = "https://github.com/Zinoex/Spatial.jl"
 uuid = "5a2acdf3-0caf-4501-bcc8-47e0871aab01"
