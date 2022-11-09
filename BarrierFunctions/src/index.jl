@@ -5,7 +5,7 @@ struct UnboundedIndex{T, D, E} <: AbstractSpatialIndex{T, E}
     unbounded_index  # Should accomodate unbounded regions (possibly inefficient)
 
     function UnboundedIndex{T, D, E}() where {T, D, E}
-        return new(RTreeIndex{T, D, E}(OrdinaryRTreeUpdateStrategy(branch_capacity=10, leaf_capacity=10)), LinearIndex{T, E}())
+        return new(RTreeIndex{T, D, E}(OrdinaryRTreeUpdateStrategy(branch_capacity=5, leaf_capacity=1)), LinearIndex{T, E}())
     end
 end
 
