@@ -29,9 +29,9 @@ function (B::QuadraticBarrier)(x)
 end
 
 # Piece-wise barrier
-@kwdef struct BarrierRegion{I<:Int, P<:AbstractPolyhedron{<:Real}, B<:BarrierFunction}
-    index::I
-    polytope::P
+@kwdef struct BarrierRegion{T<:Real, B<:BarrierFunction}
+    index::Int
+    polytope::AbstractPolyhedron{T}
     fun::B
 end
 index(b::BarrierRegion) = b.index

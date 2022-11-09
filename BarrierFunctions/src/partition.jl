@@ -1,6 +1,6 @@
-export Region, Partition
+export DynamicsRegion, Partition
 
-# TYPE PIRACY! - the better approach is probably to use dim and let Region derive from LazySet
+# TYPE PIRACY! - the better approach is probably to use dim and let DynamicsRegion derive from LazySet
 Base.size(p::AbstractPolyhedron) = (length ∘ constraints_list)(p), LazySets.dim(p)
 function Base.size(p::AbstractPolyhedron, d) 
     @assert(1 ≤ d ≤ 2)
@@ -13,11 +13,17 @@ function Base.size(p::AbstractPolyhedron, d)
 end
 
 # Dynamics
-@kwdef struct DynamicsRegion{I<:Int, T<:Real, P<:AbstractPolyhedron{T}}
-    index::I
-    polytope::P
+@kwdef struct DynamicsRegion{T<:Real}
+    index::Int
+    polytope::AbstractPolyhedron{T}
     dynamics::Tuple{Matrix{T}, Vector{T}}
+
+    mbr::Union{AbstractHyperrectangle{T}, Nothing}
 end
+DynamicsRegion(index, polytope, dynamics) = DynamicsRegion(index, polytope, dynamics, LazySets.isbounded(polytope) ? box_approximation(polytope) : nothing)
+Spatial.has_mbr(region::DynamicsRegion) = !isnothing(region.mbr)
+Spatial.mbr(region::DynamicsRegion) = region.mbr
+Spatial.region(region::DynamicsRegion) = region.polytope
 
 Base.hash(p::DynamicsRegion, h::UInt) = hash(p.index, h)
 Base.:(==)(p1::DynamicsRegion, p2::DynamicsRegion) = p1.index == p2.index
@@ -52,4 +58,4 @@ index(p::DynamicsRegion) = p.index
 region(p::DynamicsRegion) = p.polytope
 dynamics(p::DynamicsRegion) = p.dynamics
 
-Partition{I, T, P} = Vector{DynamicsRegion{I, T, P}}
+Partition{T} = Vector{DynamicsRegion{T}}

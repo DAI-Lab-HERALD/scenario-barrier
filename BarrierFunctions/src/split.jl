@@ -1,13 +1,13 @@
 export grid_split
 
-function grid_split(system::System{N, I, T, P, VP}, num_subregions) where {N, I, T, P, VP}
+function grid_split(system::System{N, T, P}, num_subregions) where {N, T, P}
     Q = regions(system)
     n, m = length(Q), length(num_subregions)
     @assert(n == m, "Number of subpartition specifications do no match number of partitions")
 
     next_partition_index = maximum(q.index for q in Q) + 1
 
-    Qnew = Partition{I, T, P}()
+    Qnew = DynamicsRegion{T}[]
     for (q, split_spec) in zip(Q, num_subregions)
         if (LazySets.isbounded ∘ region)(q)
             rect = box_approximation(region(q))
@@ -22,5 +22,7 @@ function grid_split(system::System{N, I, T, P, VP}, num_subregions) where {N, I,
         end
     end
 
-    return System{N, I, T, P, VP}(Qnew, noise(system), initial_set(system), safe_set(system), unsafe_set(system))
+    Qnew = LinearIndex{T}(Qnew)
+
+    return System{N, T, P}(Qnew, noise(system), initial_set(system), safe_set(system), unsafe_set(system))
 end

@@ -38,11 +38,12 @@ function step(system, x, η)
         end
     end
 
-    for q in regions(system)
-        if x ∈ region(q)
-            A, b = dynamics(q)
-            return A * x .+ b .+ η, false
-        end
-    end
-    @assert(false, "x should always belong to one partition")
+    query = PointQuery(x)
+    q = Spatial.findall(query, regions(system))
+
+    @assert length(q) == 1 "x should always belong to exactly one region"
+
+    q = q[1]
+    A, b = dynamics(q)
+    return A * x .+ b .+ η, false
 end
