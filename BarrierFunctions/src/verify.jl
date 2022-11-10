@@ -8,7 +8,7 @@ export verify, barrier_variable!, partition_barrier_variable!, barrier_value, co
 export constraints!, assymetric_dual_constraint!, unsafe_constraint!, initial_constraint!
 export region_constraints!, expectation_constraint!, non_negativity_constraint!, expectation_partition_constraint!
 
-function verify(system::System; H::Int, ϵ::Number, β::Number)
+function verify(system::System; H::Int, ϵ::Number, β::Number, num_samples::Union{Int, Nothing}=nothing)
     @assert(H >= 1, "Horizon H must be greater than or equal to one (is $H)")
     @assert(0 < ϵ < 1, "Epsilon must be in range (0, 1) (is $ϵ)")
     @assert(0 < β < 1, "Beta must be in range (0, 1) (is $β)")
@@ -30,8 +30,16 @@ function verify(system::System; H::Int, ϵ::Number, β::Number)
     @constraint(model, d ≤ c)
 
     n_variables = count_variables(B) + 3
-    n_samples = required_samples(n_variables, ϵ, β)
-    println("num variables $n_variables, num samples $n_samples")
+    r_samples = required_samples(n_variables, ϵ, β)
+    println("Required number of samples given $n_variables variables and the desired confidence of $β is $r_samples.")
+    if !isnothing(num_samples)
+        if num_samples < r_samples
+            println("Warning, the requested number of samples $num_samples is less than the required number of samples $r_samples")
+        end
+        n_samples = num_samples
+    else
+        n_samples = r_samples
+    end
 
     # Constraints
     constraints!(model, system, B, c, γ, d, n_samples)
