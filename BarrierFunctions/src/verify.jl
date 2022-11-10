@@ -24,12 +24,7 @@ function verify(system::System; H::Int, ϵ::Number, β::Number, num_samples::Uni
     @variable(model, c, lower_bound = 0)
     B = barrier_variable!(model, system)
 
-    # We can let M = 1 [max B(x)] as B(x) can be modified aposterori to be capped at 1 without violating the theory
-    M = 1
-    @variable(model, d, lower_bound = M * ϵ)
-    @constraint(model, d ≤ c)
-
-    n_variables = count_variables(B) + 3
+    n_variables = count_variables(B) + 2
     r_samples = required_samples(n_variables, ϵ, β)
     println("Required number of samples given $n_variables variables and the desired confidence of $β is $r_samples.")
     if !isnothing(num_samples)
@@ -42,7 +37,7 @@ function verify(system::System; H::Int, ϵ::Number, β::Number, num_samples::Uni
     end
 
     # Constraints
-    constraints!(model, system, B, c, γ, d, n_samples)
+    constraints!(model, system, B, c, γ, ϵ, n_samples)
 
     # Objective
     @objective(model, Min, γ + c * H)
@@ -122,23 +117,23 @@ function required_samples(d, ϵ, β)
 end
 
 # Constraints
-function constraints!(model, system, B, c, γ, d, num_samples)
+function constraints!(model, system, B, c, γ, ϵ, num_samples)
     distribution = noise(system)
     ηs = rand(distribution, num_samples)
 
     for qᵢ in regions(system)
         println("Partition $qᵢ, $(region(qᵢ))")
-        region_constraints!(model, system, B, c, γ, d, qᵢ, ηs)
+        region_constraints!(model, system, B, c, γ, ϵ, qᵢ, ηs)
     end
 end
 
-function region_constraints!(model, system, B, c, γ, d, qᵢ, ηs)
+function region_constraints!(model, system, B, c, γ, ϵ, qᵢ, ηs)
     Bᵢ = B[qᵢ]
 
     non_negativity_constraint!(model, Bᵢ)
     initial_constraint!(model, system, Bᵢ, γ)
     unsafe_constraint!(model, system, Bᵢ)
-    expectation_constraint!(model, system, B, c, d, qᵢ, ηs)
+    expectation_constraint!(model, system, B, c, ϵ, qᵢ, ηs)
 end
 
 function overlaps_unsafe(system, q)
@@ -201,12 +196,16 @@ function unsafe_constraint!(model, system, B::BarrierRegion{T, LinearBarrier{T1,
     end
 end
 
-function expectation_partition_constraint!(model, Aᵢ, bᵢ, Bᵢ::BarrierRegion{T, LinearBarrier{T1, VT1}}, Bⱼ::BarrierRegion{T, LinearBarrier{T2, VT2}}, c, d, η) where {T, T1, VT1, T2, VT2}
+function expectation_partition_constraint!(model, Aᵢ, bᵢ, Bᵢ::BarrierRegion{T, LinearBarrier{T1, VT1}}, Bⱼ::BarrierRegion{T, LinearBarrier{T2, VT2}}, c, ϵ, η) where {T, T1, VT1, T2, VT2}
     Hᵢ, hᵢ = tosimplehrep(region(Bᵢ))
     Hⱼ, hⱼ = tosimplehrep(region(Bᵢ))
 
     pᵢ, vᵢ = Bᵢ.fun.p, Bᵢ.fun.v
     pⱼ, vⱼ = Bⱼ.fun.p, Bⱼ.fun.v
+
+    # We can let M = 1 [max B(x)] as B(x) can be modified aposterori to be capped at 1 without violating the theory
+    M = 1
+    d = M * ϵ / (1 - ϵ)
 
     assymetric_dual_constraint!(model, Aᵢ' * pⱼ .- pᵢ, vᵢ - vⱼ + c - d - pⱼ ⋅ (bᵢ + η), vcat(Hᵢ, Hⱼ * Aᵢ), vcat(hᵢ, hⱼ - Hⱼ * (bᵢ + η)))
 end
@@ -247,11 +246,15 @@ function unsafe_constraint!(model, system, B::BarrierRegion{T, ConstantBarrier{T
     end
 end
 
-function expectation_partition_constraint!(model, Aᵢ, bᵢ, Bᵢ::BarrierRegion{T, ConstantBarrier{T1}}, Bⱼ::BarrierRegion{T, ConstantBarrier{T2}}, c, d, η) where {T, T1, T2}
+function expectation_partition_constraint!(model, Aᵢ, bᵢ, Bᵢ::BarrierRegion{T, ConstantBarrier{T1}}, Bⱼ::BarrierRegion{T, ConstantBarrier{T2}}, c, ϵ, η) where {T, T1, T2}
     qᵢ_next = Aᵢ * region(Bᵢ) + bᵢ
 
     vᵢ = Bᵢ.fun.v
     vⱼ = Bⱼ.fun.v
+
+    # We can let M = 1 [max B(x)] as B(x) can be modified aposterori to be capped at 1 without violating the theory
+    M = 1
+    d = M * ϵ / (1 - ϵ)
 
     for η in eachcol(ηs)
         # println("$qi -> $(qi_next + η), cap $qj")
@@ -298,9 +301,13 @@ function unsafe_constraint!(model, system, B::BarrierRegion{T, QuadraticBarrier{
     end
 end
 
-function expectation_partition_constraint!(model, Aᵢ, bᵢ, Bᵢ::BarrierRegion{T, QuadraticBarrier{T1, VT1, VVT1}}, Bⱼ::BarrierRegion{T, QuadraticBarrier{T2, VT2, VVT2}}, c, d, η) where {T, T1, VT1, VVT1, T2, VT2, VVT2}
+function expectation_partition_constraint!(model, Aᵢ, bᵢ, Bᵢ::BarrierRegion{T, QuadraticBarrier{T1, VT1, VVT1}}, Bⱼ::BarrierRegion{T, QuadraticBarrier{T2, VT2, VVT2}}, c, ϵ, η) where {T, T1, VT1, VVT1, T2, VT2, VVT2}
     Pᵢ, pᵢ, vᵢ = Bᵢ.fun.P, Bᵢ.fun.p, Bᵢ.fun.v
     Pⱼ, pⱼ, vⱼ = Bⱼ.fun.P, Bⱼ.fun.p, Bⱼ.fun.v
+
+    # We can let M = 1 [max B(x)] as B(x) can be modified aposterori to be capped at 1 without violating the theory
+    M = 1
+    d = M * ϵ / (1 - ϵ)
 
     bᵢη = bᵢ + η
     quadratic = Aᵢ' * Pⱼ * Aᵢ - Pᵢ
