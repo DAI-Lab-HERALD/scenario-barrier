@@ -31,7 +31,7 @@ function plot_barrier_1d(x, barrier, system, plot_safe=true)
         plot!(unsafe_set(system), label="Xu", fillcolor=:red)
     end
 
-    plot!(x, f, label="B")
+    plot!(x, f, label="B", ylims=(0,Inf))
 end
 
 function plot_barrier_2d(x, y, barrier, system, plot_safe=true)

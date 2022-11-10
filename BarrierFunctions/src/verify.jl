@@ -2,7 +2,8 @@ using LinearAlgebra
 
 using Distributions
 using MosekTools
-
+using Polyhedra
+using CDDLib
 
 export verify, barrier_variable!, partition_barrier_variable!, barrier_value, count_variables, required_samples, overlaps_unsafe
 export constraints!, assymetric_dual_constraint!, unsafe_constraint!, initial_constraint!
@@ -120,20 +121,22 @@ end
 function constraints!(model, system, B, c, γ, ϵ, num_samples)
     distribution = noise(system)
     ηs = rand(distribution, num_samples)
+    conv_hull_η = VPolytope(convex_hull([copy(η) for η in eachcol(ηs)]))
+    conv_hull_η = tohrep(conv_hull_η)
 
     for qᵢ in regions(system)
         println("Partition $qᵢ, $(region(qᵢ))")
-        region_constraints!(model, system, B, c, γ, ϵ, qᵢ, ηs)
+        region_constraints!(model, system, B, c, γ, ϵ, qᵢ, conv_hull_η)
     end
 end
 
-function region_constraints!(model, system, B, c, γ, ϵ, qᵢ, ηs)
+function region_constraints!(model, system, B, c, γ, ϵ, qᵢ, conv_hull_η)
     Bᵢ = B[qᵢ]
 
     non_negativity_constraint!(model, Bᵢ)
     initial_constraint!(model, system, Bᵢ, γ)
     unsafe_constraint!(model, system, Bᵢ)
-    expectation_constraint!(model, system, B, c, ϵ, qᵢ, ηs)
+    expectation_constraint!(model, system, B, c, ϵ, qᵢ, conv_hull_η)
 end
 
 function overlaps_unsafe(system, q)
@@ -148,7 +151,7 @@ function overlaps_unsafe(system, q)
     return false
 end
 
-function expectation_constraint!(model, system, B, c, d, qᵢ, ηs)
+function expectation_constraint!(model, system, B, c, ϵ, qᵢ, conv_hull_η)
     Xₛ = safe_set(system)
     if is_intersection_zeromeasure(Xₛ, qᵢ)
         return
@@ -156,16 +159,14 @@ function expectation_constraint!(model, system, B, c, d, qᵢ, ηs)
 
     Bᵢ = B[qᵢ]
     Aᵢ, bᵢ = dynamics(qᵢ)
-    qᵢ_next = Aᵢ * region(Bᵢ) + bᵢ
+    qᵢ_next = concretize(MinkowskiSum(Aᵢ * region(Bᵢ) + bᵢ, conv_hull_η))
 
-    for η in eachcol(ηs)
-        query = RegionIntersectsQuery(qᵢ_next + η)
-        next_regions = Spatial.findall(query, regions(system))
+    query = RegionIntersectsQuery(qᵢ_next)
+    next_regions = Spatial.findall(query, regions(system))
 
-        for qⱼ in next_regions
-            # println("Next partition $qj")
-            expectation_partition_constraint!(model, Aᵢ, bᵢ, Bᵢ, B[qⱼ], c, d, η)
-        end
+    for qⱼ in next_regions
+        # println("Next partition $qj")
+        expectation_partition_constraint!(model, Aᵢ, bᵢ, Bᵢ, B[qⱼ], c, ϵ, conv_hull_η)
     end
 end
 
@@ -196,9 +197,10 @@ function unsafe_constraint!(model, system, B::BarrierRegion{T, LinearBarrier{T1,
     end
 end
 
-function expectation_partition_constraint!(model, Aᵢ, bᵢ, Bᵢ::BarrierRegion{T, LinearBarrier{T1, VT1}}, Bⱼ::BarrierRegion{T, LinearBarrier{T2, VT2}}, c, ϵ, η) where {T, T1, VT1, T2, VT2}
+function expectation_partition_constraint!(model, Aᵢ, bᵢ, Bᵢ::BarrierRegion{T, LinearBarrier{T1, VT1}}, Bⱼ::BarrierRegion{T, LinearBarrier{T2, VT2}}, c, ϵ, conv_hull_η) where {T, T1, VT1, T2, VT2}
     Hᵢ, hᵢ = tosimplehrep(region(Bᵢ))
     Hⱼ, hⱼ = tosimplehrep(region(Bᵢ))
+    Hη, hη = tosimplehrep(conv_hull_η)
 
     pᵢ, vᵢ = Bᵢ.fun.p, Bᵢ.fun.v
     pⱼ, vⱼ = Bⱼ.fun.p, Bⱼ.fun.v
@@ -207,7 +209,12 @@ function expectation_partition_constraint!(model, Aᵢ, bᵢ, Bᵢ::BarrierRegio
     M = 1
     d = M * ϵ / (1 - ϵ)
 
-    assymetric_dual_constraint!(model, Aᵢ' * pⱼ .- pᵢ, vᵢ - vⱼ + c - d - pⱼ ⋅ (bᵢ + η), vcat(Hᵢ, Hⱼ * Aᵢ), vcat(hᵢ, hⱼ - Hⱼ * (bᵢ + η)))
+    a = vcat(Aᵢ' * pⱼ .- pᵢ, pⱼ)
+    rhs = vᵢ - vⱼ + c - d - pⱼ' * bᵢ
+    H = vcat(hcat(Hᵢ, zero(Hᵢ)), hcat(zero(Hη), Hη), hcat(Hⱼ * Aᵢ, Hⱼ))
+    h = vcat(hᵢ, hη, hⱼ)
+
+    assymetric_dual_constraint!(model, a, rhs, H, h)
 end
 
 function assymetric_dual_constraint!(model, c, rhs, H, h)
@@ -253,7 +260,7 @@ function expectation_partition_constraint!(model, Aᵢ, bᵢ, Bᵢ::BarrierRegio
     vⱼ = Bⱼ.fun.v
 
     # We can let M = 1 [max B(x)] as B(x) can be modified aposterori to be capped at 1 without violating the theory
-    M = 1
+    M = 5
     d = M * ϵ / (1 - ϵ)
 
     for η in eachcol(ηs)
