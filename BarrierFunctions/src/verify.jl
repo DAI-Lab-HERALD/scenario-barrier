@@ -198,7 +198,7 @@ end
 
 function expectation_partition_constraint!(model, Aᵢ, bᵢ, Bᵢ::BarrierRegion{T, LinearBarrier{T1, VT1}}, Bⱼ::BarrierRegion{T, LinearBarrier{T2, VT2}}, c, ϵ, η) where {T, T1, VT1, T2, VT2}
     Hᵢ, hᵢ = tosimplehrep(region(Bᵢ))
-    Hⱼ, hⱼ = tosimplehrep(region(Bᵢ))
+    Hⱼ, hⱼ = tosimplehrep(region(Bⱼ))
 
     pᵢ, vᵢ = Bᵢ.fun.p, Bᵢ.fun.v
     pⱼ, vⱼ = Bⱼ.fun.p, Bⱼ.fun.v
