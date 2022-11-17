@@ -99,9 +99,9 @@ count_variables(B::ConstantBarrier{T}) where {T<:Number} = 0
 
 function required_samples(d, ϵ, β)
     lower_bound = d + 1
-    upper_bound = floor(Int, (ℯ / (ℯ - 1)) * (1 / ϵ) * (d + log(1 / β)))  # The funny ℯ is Euler's constant
+    upper_bound = ceil(Int, (ℯ / (ℯ - 1)) * (1 / ϵ) * (d + log(1 / β)))  # The funny ℯ is Euler's constant
 
-    beta(N) = sum(i -> binomial(big(N), i) * ϵ^i * (1 - ϵ)^(N - i), 0:d)
+    beta(N) = sum(i -> binomial(big(N), i) * ϵ^i * (1 - ϵ)^(N - i), 0:(d - 1))
 
     while lower_bound + 1 < upper_bound
         mid = floor(Int, (lower_bound + upper_bound) / 2)
@@ -199,7 +199,7 @@ end
 
 function expectation_partition_constraint!(model, Aᵢ, bᵢ, Bᵢ::BarrierRegion{T, LinearBarrier{T1, VT1}}, Bⱼ::BarrierRegion{T, LinearBarrier{T2, VT2}}, c, ϵ, conv_hull_η) where {T, T1, VT1, T2, VT2}
     Hᵢ, hᵢ = tosimplehrep(region(Bᵢ))
-    Hⱼ, hⱼ = tosimplehrep(region(Bᵢ))
+    Hⱼ, hⱼ = tosimplehrep(region(Bⱼ))
     Hη, hη = tosimplehrep(conv_hull_η)
 
     pᵢ, vᵢ = Bᵢ.fun.p, Bᵢ.fun.v

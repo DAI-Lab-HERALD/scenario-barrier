@@ -29,7 +29,7 @@ b = Vector{Float64}[
 ]
 
 μ = [0]
-Σ = PDiagMat([0.1])
+Σ = PDiagMat([0.001])
 η = DiagNormal(μ, Σ)
 
 # Start in a box [-0.5, 0.5]
@@ -44,13 +44,13 @@ Xu = [
     HPolyhedron([x ≤ -2.5], vars)
 ]
 
-split_spec = [
-    [1],
-    [1],
-    [30],
-    [10],
-    [30]
-]
-Q, A, b = grid_split(Q, A, b, split_spec)
+# split_spec = [
+#     [1],
+#     [1],
+#     [30],
+#     [10],
+#     [30]
+# ]
+# Q, A, b = grid_split(Q, A, b, split_spec)
 
 linear1d = System(Q, A, b, η, X0, Xs, Xu)
