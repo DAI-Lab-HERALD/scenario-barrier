@@ -29,7 +29,7 @@ b = Vector{Float64}[
 ]
 
 μ = [0]
-Σ = PDiagMat([0.001])
+Σ = PDiagMat([0.01^2])  # Square to make std.dev. to variance.
 η = DiagNormal(μ, Σ)
 
 # Start in a box [-0.5, 0.5]
