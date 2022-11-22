@@ -159,7 +159,7 @@ function expectation_constraint!(model, system, B, c, ϵ, qᵢ, conv_hull_η)
 
     Bᵢ = B[qᵢ]
     Aᵢ, bᵢ = dynamics(qᵢ)
-    qᵢ_next = concretize(MinkowskiSum(Aᵢ * region(Bᵢ) + bᵢ, conv_hull_η))
+    qᵢ_next = minkowski_sum(Aᵢ * region(Bᵢ) + bᵢ, conv_hull_η, prune=false)
 
     query = RegionIntersectsQuery(qᵢ_next)
     next_regions = Spatial.findall(query, regions(system))
