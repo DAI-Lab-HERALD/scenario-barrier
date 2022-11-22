@@ -13,10 +13,20 @@ Q = [
     HPolyhedron([x[2] ≤ 2.5, x[2] ≥ -2.5, x[1] ≤ 0], vars),
     HPolyhedron([x[2] ≤ 2.5, x[2] ≥ -2.5, x[1] ≥ 150], vars),
     HPolyhedron([x[2] ≤ 2.5, x[2] ≥ -2.5, x[1] ≥ 0, x[1] ≤ 10], vars),
-    HPolyhedron([x[2] ≤ 2.5, x[2] ≥ -2.5, x[1] ≥ 10, x[1] ≤ 150], vars)
+    HPolyhedron([x[2] ≤ 2.5, x[2] ≥ -2.5, x[1] ≥ 10, x[1] ≤ 50], vars),
+    HPolyhedron([x[2] ≤ 2.5, x[2] ≥ -2.5, x[1] ≥ 50, x[1] ≤ 70], vars),
+    HPolyhedron([x[2] ≤ 2.5, x[2] ≥ -2.5, x[1] ≥ 70, x[1] ≤ 150], vars)
 ]
 
 A = Matrix{Float64}[
+    [
+        1 0;
+        0 1;
+    ],
+    [
+        1 0;
+        0 1;
+    ],
     [
         1 0;
         0 1;
@@ -48,6 +58,8 @@ b = Vector{Float64}[
     [0, 0],
     [0, 0],
     [50 * (1000 / 3600), 0], # 50 km/h in m/s (assuming 1s time steps)
+    [50 * (1000 / 3600), 0],
+    [50 * (1000 / 3600), 0.5], # A gust of wind from the side
     [50 * (1000 / 3600), 0]
 ]
 
@@ -72,8 +84,10 @@ split_spec = [
     [1, 1],
     [1, 1],
     [1, 1],
-    [4, 10],
-    [56, 10]
+    [20, 10],
+    [30, 10],
+    [15, 10],
+    [55, 10]
 ]
 Q, A, b = grid_split(Q, A, b, split_spec)
 
