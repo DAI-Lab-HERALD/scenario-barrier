@@ -3,6 +3,7 @@ using LinearAlgebra
 using Distributions
 using Dualization
 using MosekTools
+using Gurobi
 using Polyhedra
 using CDDLib
 
@@ -15,9 +16,10 @@ function verify(system::System; H::Int, ϵ::Number, β::Number, num_samples::Uni
     @assert(0 < ϵ < 1, "Epsilon must be in range (0, 1) (is $ϵ)")
     @assert(0 < β < 1, "Beta must be in range (0, 1) (is $β)")
 
-    solver = optimizer_with_attributes(Mosek.Optimizer, 
-        "QUIET" => false
-    )
+    # solver = optimizer_with_attributes(Mosek.Optimizer, 
+    #     "QUIET" => false
+    # )
+    solver = Gurobi.Optimizer
     # solver = dual_optimizer(solver)
     model = Model(solver)
 
@@ -176,6 +178,8 @@ function non_negativity_constraint!(model, B::BarrierRegion{T, LinearBarrier{T1,
     H, h = tosimplehrep(region(B))
     p, v = B.fun.p, B.fun.v
     assymetric_dual_constraint!(model, -p, v, H, h)
+    
+    # assymetric_dual_constraint!(model, p, 1 - v, H, h)
 end
 
 function initial_constraint!(model, system, B::BarrierRegion{T, LinearBarrier{T1, VT1}}, γ) where {T, T1, VT1}

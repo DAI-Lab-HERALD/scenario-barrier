@@ -52,11 +52,13 @@ end
 
 function plot_forward_reachable_set_2d(system, num_samples; plot_safe=true, xlims=nothing, ylims=nothing)
     distribution = noise(system)
-    η = rand(distribution)
+    ηs = rand(distribution, num_samples)
+    conv_hull_η = VPolytope(convex_hull([copy(η) for η in eachcol(ηs)]))
+    conv_hull_η = tohrep(conv_hull_η)
 
     for q in regions(system)
         Aᵢ, bᵢ = dynamics(q)
-        q_next = concretize(Aᵢ * region(q) + bᵢ + η)
+        q_next = minkowski_sum(Aᵢ * region(q) + bᵢ, conv_hull_η, prune=false)
 
         query = RegionIntersectsQuery(q_next)
         next_regions = Spatial.findall(query, regions(system))
@@ -69,13 +71,14 @@ function plot_forward_reachable_set_2d(system, num_samples; plot_safe=true, xlim
             #     plot!(p, unsafe_set(system), label="Xu", fillcolor=:red)
             # end
             plot!(p, region(q), label="q", fillcolor=:goldenrod)
-            plot!(p, q_next, label="x(k+1) for q", fillcolor=:red)
+            plot!(p, q_next, label="noisy x(k+1) for q", fillcolor=:red)
+            plot!(p, concretize(Aᵢ * region(q) + bᵢ), label="nominal x(k+1) for q", fillcolor=:orange)
             plot!(p, region(qⱼ), label="overlapping", fillcolor=:yellow)
 
-            Hⱼ, hⱼ = tosimplehrep(region(qⱼ))
-            input_set = HPolyhedron(Hⱼ * Aᵢ, hⱼ - Hⱼ * (bᵢ + η))
-            input_set = intersection(input_set, region(q))
-            plot!(p, input_set, label="input_set", fillcolor=:green)
+            # Hⱼ, hⱼ = tosimplehrep(region(qⱼ))
+            # input_set = HPolyhedron(Hⱼ * Aᵢ, hⱼ - Hⱼ * (bᵢ + η))
+            # input_set = intersection(input_set, region(q))
+            # plot!(p, input_set, label="input_set", fillcolor=:green)
 
             display(p)
         end
