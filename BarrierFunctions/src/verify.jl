@@ -193,7 +193,7 @@ function unsafe_constraint!(model, system, B::BarrierRegion{T, LinearBarrier{T1,
     if overlaps_unsafe(system, region(B))
         H, h = tosimplehrep(region(B))
         p, v = B.fun.p, B.fun.v
-        assymetric_dual_constraint!(model, p, v - 1.0, H, h)
+        assymetric_dual_constraint!(model, -p, v - 1.0, H, h)
     end
 end
 
