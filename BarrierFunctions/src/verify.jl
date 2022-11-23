@@ -1,6 +1,7 @@
 using LinearAlgebra
 
 using Distributions
+using Dualization
 using MosekTools
 using Polyhedra
 using CDDLib
@@ -210,9 +211,9 @@ function expectation_partition_constraint!(model, Aᵢ, bᵢ, Bᵢ::BarrierRegio
     d = M * ϵ / (1 - ϵ)
 
     a = vcat(Aᵢ' * pⱼ .- pᵢ, pⱼ)
-    rhs = vᵢ - vⱼ + c - d - pⱼ' * bᵢ
+    rhs = vᵢ - vⱼ + c - d - pⱼ ⋅ bᵢ
     H = vcat(hcat(Hᵢ, zero(Hᵢ)), hcat(zero(Hη), Hη), hcat(Hⱼ * Aᵢ, Hⱼ))
-    h = vcat(hᵢ, hη, hⱼ)
+    h = vcat(hᵢ, hη, hⱼ - Hⱼ * bᵢ)
 
     assymetric_dual_constraint!(model, a, rhs, H, h)
 end
