@@ -163,7 +163,7 @@ function expectation_constraint!(model, system, B, c, d, qᵢ, ηs)
         next_regions = Spatial.findall(query, regions(system))
 
         for qⱼ in next_regions
-            # println("Next partition $qj")
+            # println("Next partition $qⱼ")
             expectation_partition_constraint!(model, Aᵢ, bᵢ, Bᵢ, B[qⱼ], c, d, η)
         end
     end

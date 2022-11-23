@@ -71,12 +71,14 @@ b = Vector{Float64}[
 X0 = HPolyhedron([x[2] ≤ 0.5, x[2] ≥ -0.5, x[1] ≥ 5, x[1] ≤ 10], vars)
 
 # On the road is safe
-Xs = HPolyhedron([x[2] ≤ 2.5, x[2] ≥ -2.5], vars)
+Xs = HPolyhedron([x[2] ≤ 2.5, x[2] ≥ -2.5, x[1] ≥ 0, x[1] ≤ 150], vars)
 
 # Outside the road is dangerous
 Xu = [
     HPolyhedron([x[2] ≥ 2.5], vars),
-    HPolyhedron([x[2] ≤ -2.5], vars)
+    HPolyhedron([x[2] ≤ -2.5], vars),
+    HPolyhedron([x[1] ≥ 150], vars),
+    HPolyhedron([x[1] ≤ 0], vars)
 ]
 
 split_spec = [
@@ -84,10 +86,10 @@ split_spec = [
     [1, 1],
     [1, 1],
     [1, 1],
-    [20, 10],
-    [30, 10],
-    [15, 10],
-    [55, 10]
+    [1, 5],
+    [3, 1],
+    [1, 1],
+    [1, 1]
 ]
 Q, A, b = grid_split(Q, A, b, split_spec)
 
