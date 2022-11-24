@@ -148,7 +148,7 @@ function overlaps_unsafe(system, q)
     return false
 end
 
-function expectation_constraint!(model, system, B, c, d, qᵢ, ηs)
+function expectation_constraint!(model, system, B, c, ϵ, qᵢ, ηs)
     Xₛ = safe_set(system)
     if is_intersection_zeromeasure(Xₛ, qᵢ)
         return
@@ -164,7 +164,7 @@ function expectation_constraint!(model, system, B, c, d, qᵢ, ηs)
 
         for qⱼ in next_regions
             # println("Next partition $qⱼ")
-            expectation_partition_constraint!(model, Aᵢ, bᵢ, Bᵢ, B[qⱼ], c, d, η)
+            expectation_partition_constraint!(model, Aᵢ, bᵢ, Bᵢ, B[qⱼ], c, ϵ, η)
         end
     end
 end
