@@ -1,4 +1,7 @@
-export DynamicsRegion, Partition
+using Polyhedra
+import GLPK, JuMP
+
+export DynamicsRegion, Partition, is_intersection_zeromeasure, index, region, dynamics
 
 # TYPE PIRACY! - the better approach is probably to use dim and let DynamicsRegion derive from LazySet
 Base.size(p::AbstractPolyhedron) = (length ∘ constraints_list)(p), LazySets.dim(p)
@@ -28,28 +31,43 @@ Spatial.region(region::DynamicsRegion) = region.polytope
 Base.hash(p::DynamicsRegion, h::UInt) = hash(p.index, h)
 Base.:(==)(p1::DynamicsRegion, p2::DynamicsRegion) = p1.index == p2.index
 
-is_intersection_zeromeasure(p::DynamicsRegion, q::LazySet) = is_intersection_zeromeasure(region(p), q)
-is_intersection_zeromeasure(p::LazySet, q::DynamicsRegion) = is_intersection_zeromeasure(q, p)
+is_intersection_zeromeasure(p::DynamicsRegion, q::LazySet; kwargs...) = is_intersection_zeromeasure(region(p), q; kwargs...)
+is_intersection_zeromeasure(p::LazySet, q::DynamicsRegion; kwargs...) = is_intersection_zeromeasure(q, p; kwargs...)
 
-is_intersection_zeromeasure(p::LazySet, q::LazySet) = isempty(Intersection(p, q)) || ishyperplane(p, q)
-ishyperplane(p, q) = ishyperplane(HPolyhedron([constraints_list(p); constraints_list(q)]))
-function ishyperplane(p::AbstractPolyhedron)
-    m, n = size(p)
-    H, h = tosimplehrep(p)
+function is_intersection_zeromeasure(p::LazySet{N}, q::LazySet{N}, solver=nothing) where {N}
+    z = HPolyhedron([constraints_list(p); constraints_list(q)])
 
-    # If two constraints are opposite inequalities
-    isapproxzero(x) = isapprox(x, 0.0)
-    for i in 1:m
-        for j in 1:i-1
-            if all(isapproxzero.(H[i] + H[j])) && isapproxzero(h[i] + h[j])
-                return true
-            end
-        end
+    A, b = tosimplehrep(z)
+    n = size(A, 2)
+
+    if isnothing(solver)
+        solver = default_lp_solver(N)
     end
 
-    # For N > 1, it is possible the feasible set is a point without opposite inequalities. 
-    # TODO: Check L-inf ball around optimal point is not feasible
-    return false
+    model = Model(solver)
+    @variable(model, x[i=1:n])
+    @variable(model, x₀, upper_bound=1.0)
+
+    @objective(model, Max, x₀)
+
+    # Intuitively, if x₀ > 0 then the intersection is full-dimensional.
+    @constraint(model, A * x .+ x₀ .≤ b)
+
+    optimize!(model)
+
+    iszeromeasure = objective_value(model) ≤ 0
+
+    return iszeromeasure
+end
+
+# default LP solver for floating-point numbers
+function default_lp_solver(N::Type{<:AbstractFloat})
+    JuMP.optimizer_with_attributes(() -> GLPK.Optimizer(method=GLPK.SIMPLEX))
+end
+
+# default LP solver for rational numbers
+function default_lp_solver(N::Type{<:Rational})
+    JuMP.optimizer_with_attributes(() -> GLPK.Optimizer(method=GLPK.EXACT))
 end
 
 Base.show(io::IO, p::DynamicsRegion) = print(io, p.index)
