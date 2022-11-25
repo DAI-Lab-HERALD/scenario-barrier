@@ -67,7 +67,7 @@ uuid = "198e06fe-97b7-11e9-32a5-e1d131e6ad66"
 version = "0.3.37"
 
 [[deps.BarrierFunctions]]
-deps = ["CDDLib", "Distributions", "Dualization", "Gurobi", "IterTools", "JuMP", "LazySets", "LinearAlgebra", "MathOptInterface", "MosekTools", "Plots", "Polyhedra", "Spatial", "Symbolics"]
+deps = ["CDDLib", "Distributions", "Dualization", "Gurobi", "GLPK", "IterTools", "JuMP", "LazySets", "LinearAlgebra", "MathOptInterface", "MosekTools", "Plots", "Polyhedra", "Spatial", "Symbolics"]
 path = "../BarrierFunctions"
 uuid = "5dedeccf-5cb2-488c-aeb7-5be8ae7c4d1f"
 version = "0.1.0"

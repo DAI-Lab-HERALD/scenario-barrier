@@ -404,9 +404,9 @@ version = "3.3.6+0"
 
 [[deps.GLPK]]
 deps = ["GLPK_jll", "MathOptInterface"]
-git-tree-sha1 = "c3cc0a7a4e021620f1c0e67679acdbf1be311eb0"
+git-tree-sha1 = "e357b935632e89a02cf7f8f13b4f3f59cef479c8"
 uuid = "60bf3e95-4087-53dc-ae20-288a0d20c6a6"
-version = "1.0.1"
+version = "1.1.0"
 
 [[deps.GLPK_jll]]
 deps = ["Artifacts", "GMP_jll", "JLLWrappers", "Libdl", "Pkg"]

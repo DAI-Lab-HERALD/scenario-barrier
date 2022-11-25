@@ -128,7 +128,7 @@ function constraints!(model, system, B, c, γ, ϵ, num_samples)
     conv_hull_η = tohrep(conv_hull_η)
 
     for qᵢ in regions(system)
-        println("Partition $qᵢ, $(region(qᵢ))")
+        println("Region $qᵢ, $(region(qᵢ))")
         region_constraints!(model, system, B, c, γ, ϵ, qᵢ, conv_hull_η)
     end
 end
