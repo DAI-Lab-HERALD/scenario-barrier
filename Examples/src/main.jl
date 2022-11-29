@@ -3,6 +3,7 @@ using BarrierFunctions
 
 include("1d.jl")
 include("car_with_sidewind.jl")
+include("drone.jl")
 
 system = car_with_sidewind
 H = 10
