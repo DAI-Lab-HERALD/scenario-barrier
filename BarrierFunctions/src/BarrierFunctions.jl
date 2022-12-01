@@ -9,6 +9,7 @@ module BarrierFunctions
     include("barrier.jl")
     include("split.jl")
     include("verify.jl")
+    include("random.jl")
     include("monte_carlo.jl")
     include("plot.jl")
 end

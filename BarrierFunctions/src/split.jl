@@ -1,29 +1,27 @@
 export grid_split
 
-function grid_split(Q, A, b, num_subregions)
+function grid_split(Q, dyn, num_subregions)
     n = length(Q)
-    @assert n == length(A) && n == length(b) && n == length(num_subregions) "Number of subpartition specifications do no match number of partitions"
+    @assert n == length(dyn) && n == length(num_subregions) "Number of subpartition specifications do no match number of partitions"
 
-    Qnew, Anew, bnew = [], [], []
+    Qnew, dyn_new = [], []
 
-    for (qᵢ, Aᵢ, bᵢ, split_spec) in zip(Q, A, b, num_subregions)
+    for (qᵢ, dynᵢ, split_spec) in zip(Q, dyn, num_subregions)
         if LazySets.isbounded(qᵢ)
             rect = box_approximation(qᵢ)
             new_rects = split(rect, split_spec)
             
             for rect in new_rects
                 push!(Qnew, rect)
-                push!(Anew, Aᵢ)
-                push!(bnew, bᵢ)
+                push!(dyn_new, dynᵢ)
             end
         else
             @assert all(split_spec .== 1) "Cannot split an unbounded region into a grid"
 
             push!(Qnew, qᵢ)
-            push!(Anew, Aᵢ)
-            push!(bnew, bᵢ)
+            push!(dyn_new, dynᵢ)
         end
     end
 
-    return Qnew, Anew, bnew
+    return Qnew, dyn_new
 end

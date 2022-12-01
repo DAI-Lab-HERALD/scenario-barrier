@@ -18,49 +18,39 @@ Q = [
     HPolyhedron([x[2] ≤ 2.5, x[2] ≥ -2.5, x[1] ≥ 70, x[1] ≤ 150], vars)
 ]
 
-A = Matrix{Float64}[
-    [
+dyn = ConvexHullDynamics{Float64}[
+    singleton_dynamics(([
         1 0;
         0 1;
-    ],
-    [
+    ], [0, 0])),
+    singleton_dynamics(([
         1 0;
         0 1;
-    ],
-    [
+    ], [0, 0])),
+    singleton_dynamics(([
         1 0;
         0 1;
-    ],
-    [
+    ], [0, 0])),
+    singleton_dynamics(([
         1 0;
         0 1;
-    ],
-    [
+    ], [0, 0])),
+    singleton_dynamics(([
         1 0;
         0 1;
-    ],
-    [
+    ], [50 * (1000 / 3600), 0])), # 50 km/h in m/s (assuming 1s time steps
+    singleton_dynamics(([
         1 0;
         0 1;
-    ],
-    [
+    ], [50 * (1000 / 3600), 0])),
+    singleton_dynamics(([
         1 0;
         0 1;
-    ],
-    [
+    ], [50 * (1000 / 3600), 1.0])), # A gust of wind from the side
+    singleton_dynamics(([
         1 0;
         0 1;
-    ]
-]
-b = Vector{Float64}[
-    [0, 0],
-    [0, 0],
-    [0, 0],
-    [0, 0],
-    [50 * (1000 / 3600), 0], # 50 km/h in m/s (assuming 1s time steps)
-    [50 * (1000 / 3600), 0],
-    [50 * (1000 / 3600), 1.0], # A gust of wind from the side
-    [50 * (1000 / 3600), 0]
+    ], [50 * (1000 / 3600), 0])),
 ]
 
 μ = [0, 0]
@@ -91,6 +81,6 @@ split_spec = [
     [1, 1],
     [1, 1]
 ]
-Q, A, b = grid_split(Q, A, b, split_spec)
+Q, dyn = grid_split(Q, dyn, split_spec)
 
-car_with_sidewind = System(Q, A, b, η, X0, Xs, Xu)
+car_with_sidewind = System(Q, dyn, η, X0, Xs, Xu)

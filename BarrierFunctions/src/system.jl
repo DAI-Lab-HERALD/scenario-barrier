@@ -22,12 +22,12 @@ export state_space_size, safe_set, unsafe_set, initial_set, regions, noise, next
     end
 end
 
-function System(Q, A, b, η, X0::P, Xs::P, Xu::AbstractVector{P}) where {T<:Real, P<:AbstractPolyhedron{T}}
-    n1, n2, n3 = size(A, 1), size(b, 1), size(Q, 1)
-    @assert(n1 == n2 && n2 == n3, "Number of regions and dynamics matrices must match")
+function System(Q, dyn, η, X0::P, Xs::P, Xu::AbstractVector{P}) where {T<:Real, P<:AbstractPolyhedron{T}}
+    n1, n2 = length(dyn), size(Q, 1)
+    @assert(n1 == n2, "Number of regions and dynamics matrices must match")
     @assert(n1 >= 1, "The number of regions must be at least 1")
 
-    elems = [DynamicsRegion(i, qi, (Ai, bi)) for (i, (qi, Ai, bi)) in enumerate(zip(Q, A, b))]
+    elems = [DynamicsRegion(i, qi, dyni) for (i, (qi, dyni)) in enumerate(zip(Q, dyn))]
 
     N = LazySets.dim(X0)
     Q = UnboundedIndex{T, N, DynamicsRegion{T}}()

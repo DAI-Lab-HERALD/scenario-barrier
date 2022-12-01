@@ -161,15 +161,16 @@ function expectation_constraint!(model, system, B, c, ϵ, qᵢ, conv_hull_η)
     end
 
     Bᵢ = B[qᵢ]
-    Aᵢ, bᵢ = dynamics(qᵢ)
-    qᵢ_next = minkowski_sum(Aᵢ * region(Bᵢ) + bᵢ, conv_hull_η, prune=false)
+    for (Aᵢ, bᵢ) in dynamics(qᵢ)
+        qᵢ_next = minkowski_sum(Aᵢ * region(Bᵢ) + bᵢ, conv_hull_η, prune=false)
 
-    query = RegionIntersectsQuery(qᵢ_next)
-    next_regions = Spatial.findall(query, regions(system))
+        query = RegionIntersectsQuery(qᵢ_next)
+        next_regions = Spatial.findall(query, regions(system))
 
-    for qⱼ in next_regions
-        # println("Next partition $qj")
-        expectation_partition_constraint!(model, Aᵢ, bᵢ, Bᵢ, B[qⱼ], c, ϵ, conv_hull_η)
+        for qⱼ in next_regions
+            # println("Next partition $qj")
+            expectation_partition_constraint!(model, Aᵢ, bᵢ, Bᵢ, B[qⱼ], c, ϵ, conv_hull_η)
+        end
     end
 end
 
