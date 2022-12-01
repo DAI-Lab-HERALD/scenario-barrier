@@ -13,4 +13,6 @@ function Distributions._rand!(rng::AbstractRNG, s::UnitSimplex, x::AbstractVecto
 
     shuffle!(rng, y)
     copyto!(x, y)
+    
+    return x
 end
