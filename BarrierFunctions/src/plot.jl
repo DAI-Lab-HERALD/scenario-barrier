@@ -57,7 +57,8 @@ function plot_forward_reachable_set_2d(system, num_samples; plot_safe=true, xlim
     conv_hull_η = tohrep(conv_hull_η)
 
     for q in regions(system)
-        Aᵢ, bᵢ = dynamics(q)
+        dyn = dynamics(q)
+        Aᵢ, bᵢ = dyn[1]  # TODO: Deal with convex hull dynamics
         q_next = minkowski_sum(Aᵢ * region(q) + bᵢ, conv_hull_η, prune=false)
 
         query = RegionIntersectsQuery(q_next)
