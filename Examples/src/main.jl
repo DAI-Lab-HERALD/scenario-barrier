@@ -7,7 +7,7 @@ plotly()
 include("1d.jl")
 include("car_with_sidewind.jl")
 
-system = linear1d
+system = car_with_sidewind
 H = 10
 traj = monte_carlo(system, H, 10000)
 # plot_monte_carlo_2d(system, traj, plot_safe=false)
