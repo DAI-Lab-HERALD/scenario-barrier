@@ -1,5 +1,9 @@
 module BarrierFunctions
     using JuMP
+
+    import MathOptInterface
+    const MOI = MathOptInterface
+
     using LazySets
     import Base.@kwdef
 

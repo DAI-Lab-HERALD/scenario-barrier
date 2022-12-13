@@ -1,7 +1,7 @@
 using Polyhedra
 import GLPK, JuMP
 
-export ConvexHullDynamics, singleton_dynamics, DynamicsRegion, Partition, is_intersection_zeromeasure, index, region, dynamics
+export AffineDynamics, ConvexHullDynamics, singleton_dynamics, DynamicsRegion, Partition, is_intersection_zeromeasure, index, region, dynamics
 
 # TYPE PIRACY! - the better approach is probably to use dim and let DynamicsRegion derive from LazySet
 Base.size(p::AbstractPolyhedron) = (length ∘ constraints_list)(p), LazySets.dim(p)
@@ -16,8 +16,15 @@ function Base.size(p::AbstractPolyhedron, d)
 end
 
 
-const ConvexHullDynamics{T} = Vector{Tuple{Matrix{T}, Vector{T}}}
-singleton_dynamics(d) = [d]
+struct AffineDynamics{T}
+    A::AbstractMatrix{T}
+    b::AbstractVector{T}
+end
+Base.iterate(d::AffineDynamics, args...) = iterate((d.A, d.b), args...)
+
+const ConvexHullDynamics{T} = AbstractVector{AffineDynamics{T}}
+singleton_dynamics(d::AffineDynamics) = [d]
+singleton_dynamics(A::AbstractMatrix{T}, b::AbstractVector{T}) where {T} = singleton_dynamics(AffineDynamics(A, b))
 
 # Dynamics
 @kwdef struct DynamicsRegion{T<:Real}

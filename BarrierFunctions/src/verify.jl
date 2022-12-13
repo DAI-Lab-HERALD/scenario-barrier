@@ -2,8 +2,6 @@ using LinearAlgebra
 
 using Distributions
 using Dualization
-using MosekTools
-using Gurobi
 using Polyhedra
 using CDDLib
 
@@ -11,15 +9,11 @@ export verify, barrier_variable!, partition_barrier_variable!, barrier_value, co
 export constraints!, assymetric_dual_constraint!, unsafe_constraint!, initial_constraint!
 export region_constraints!, expectation_constraint!, non_negativity_constraint!, expectation_partition_constraint!
 
-function verify(system::System; H::Int, ϵ::Number, β::Number, num_samples::Union{Int, Nothing}=nothing)
+function verify(solver, system::System; H::Int, ϵ::Number, β::Number, num_samples::Union{Int, Nothing}=nothing)
     @assert(H >= 1, "Horizon H must be greater than or equal to one (is $H)")
     @assert(0 < ϵ < 1, "Epsilon must be in range (0, 1) (is $ϵ)")
     @assert(0 < β < 1, "Beta must be in range (0, 1) (is $β)")
 
-    # solver = optimizer_with_attributes(Mosek.Optimizer, 
-    #     "QUIET" => false
-    # )
-    solver = Gurobi.Optimizer
     # solver = dual_optimizer(solver)
     model = Model(solver)
 

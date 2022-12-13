@@ -18,13 +18,12 @@ Q = [
 
 m = 1.0
 τ = 1.0
-A = [
-    1, τ;
-    0, (m - 0.1 * τ) / m
-]
-A = Matrix{Float64}[A, A, A, A, A]
-b = [0, 0]
-b = Vector{Float64}[b, b, b, b, b]
+
+Ab = singleton_dynamics([
+    1 τ;
+    0 (m - 0.1 * τ) / m
+], Float64[0, 0])
+dyn = [Ab, Ab, Ab, Ab, Ab]
 
 μ = [0, 0]
 Σ = PDiagMat([0.1, 0.1])
@@ -51,6 +50,6 @@ split_spec = [
     [1, 1],
     [1, 1]
 ]
-Q, A, b = grid_split(Q, A, b, split_spec)
+Q, dyn = grid_split(Q, dyn, split_spec)
 
-drone = System(Q, A, b, η, X0, Xs, Xu)
+drone = System(Q, dyn, η, X0, Xs, Xu)

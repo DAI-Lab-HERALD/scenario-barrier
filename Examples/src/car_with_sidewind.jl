@@ -19,38 +19,38 @@ Q = [
 ]
 
 dyn = ConvexHullDynamics{Float64}[
-    singleton_dynamics(([
+    singleton_dynamics([
         1 0;
         0 0.7;
-    ], [0, 0])),
-    singleton_dynamics(([
+    ], Float64[0, 0]),
+    singleton_dynamics([
         1 0;
         0 0.7;
-    ], [0, 0])),
-    singleton_dynamics(([
+    ], Float64[0, 0]),
+    singleton_dynamics([
         1 0;
         0 0.7;
-    ], [0, 0])),
-    singleton_dynamics(([
+    ], Float64[0, 0]),
+    singleton_dynamics([
         1 0;
         0 0.7;
-    ], [0, 0])),
-    singleton_dynamics(([
+    ], Float64[0, 0]),
+    singleton_dynamics([
         1 0;
         0 0.7;
-    ], [50 * (1000 / 3600), 0])), # 50 km/h in m/s (assuming 1s time steps
-    singleton_dynamics(([
+    ], [50 * (1000 / 3600), 0]), # 50 km/h in m/s (assuming 1s time steps
+    singleton_dynamics([
         1 0;
         0 0.7;
-    ], [50 * (1000 / 3600), 0])),
-    singleton_dynamics(([
+    ], [50 * (1000 / 3600), 0]),
+    singleton_dynamics([
         1 0;
         0 0.7;
-    ], [50 * (1000 / 3600), 1.0])), # A gust of wind from the side
-    singleton_dynamics(([
+    ], [50 * (1000 / 3600), 1.0]), # A gust of wind from the side
+    singleton_dynamics([
         1 0;
         0 0.7;
-    ], [50 * (1000 / 3600), 0])),
+    ], [50 * (1000 / 3600), 0]),
 ]
 
 μ = [0, 0]

@@ -1,5 +1,6 @@
 using Revise
 using BarrierFunctions
+using Gurobi
 
 using Plots
 plotly()
@@ -16,7 +17,7 @@ traj = monte_carlo(system, H, 10000)
 
 
 ϵ = 0.05 / H
-succ, B, prob = verify(system, H=H, ϵ=ϵ, β=1e-9)
+succ, B, prob = verify(Gurobi.Optimizer, system, H=H, ϵ=ϵ, β=1e-9)
 println("Success: $succ")
 # println("Barrier $B")
 println("Safety prob: $prob")
