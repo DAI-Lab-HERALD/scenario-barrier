@@ -1,6 +1,6 @@
 using Revise
 using BarrierFunctions
-using Gurobi
+using Gurobi, MosekTools, GLPK
 
 using Plots
 plotly()
