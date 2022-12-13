@@ -1,7 +1,7 @@
 using Polyhedra
 import GLPK, JuMP
 
-export DynamicsRegion, Partition, is_intersection_zeromeasure, index, region, dynamics
+export ConvexHullDynamics, singleton_dynamics, DynamicsRegion, Partition, is_intersection_zeromeasure, index, region, dynamics
 
 # TYPE PIRACY! - the better approach is probably to use dim and let DynamicsRegion derive from LazySet
 Base.size(p::AbstractPolyhedron) = (length ∘ constraints_list)(p), LazySets.dim(p)
@@ -15,11 +15,16 @@ function Base.size(p::AbstractPolyhedron, d)
     end
 end
 
+
+const ConvexHullDynamics{T} = Vector{Tuple{Matrix{T}, Vector{T}}}
+singleton_dynamics(d) = [d]
+
 # Dynamics
 @kwdef struct DynamicsRegion{T<:Real}
     index::Int
     polytope::AbstractPolyhedron{T}
-    dynamics::Tuple{Matrix{T}, Vector{T}}
+    # Convex hull of uncertain dynamics
+    conv_dynamics::ConvexHullDynamics{T}
 
     mbr::Union{AbstractHyperrectangle{T}, Nothing}
 end
@@ -74,6 +79,6 @@ Base.show(io::IO, p::DynamicsRegion) = print(io, p.index)
 LazySets.tosimplehrep(p::DynamicsRegion) = tosimplehrep(region(p))
 index(p::DynamicsRegion) = p.index
 region(p::DynamicsRegion) = p.polytope
-dynamics(p::DynamicsRegion) = p.dynamics
+dynamics(p::DynamicsRegion) = p.conv_dynamics
 
 Partition{T} = Vector{DynamicsRegion{T}}

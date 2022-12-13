@@ -52,11 +52,14 @@ end
 
 function plot_forward_reachable_set_2d(system, num_samples; plot_safe=true, xlims=nothing, ylims=nothing)
     distribution = noise(system)
-    η = rand(distribution)
+    ηs = rand(distribution, num_samples)
+    conv_hull_η = VPolytope(convex_hull([copy(η) for η in eachcol(ηs)]))
+    conv_hull_η = tohrep(conv_hull_η)
 
     for q in regions(system)
-        Aᵢ, bᵢ = dynamics(q)
-        q_next = concretize(Aᵢ * region(q) + bᵢ + η)
+        dyn = dynamics(q)
+        Aᵢ, bᵢ = dyn[1]  # TODO: Deal with convex hull dynamics
+        q_next = minkowski_sum(Aᵢ * region(q) + bᵢ, conv_hull_η, prune=false)
 
         query = RegionIntersectsQuery(q_next)
         next_regions = Spatial.findall(query, regions(system))
@@ -69,13 +72,14 @@ function plot_forward_reachable_set_2d(system, num_samples; plot_safe=true, xlim
             #     plot!(p, unsafe_set(system), label="Xu", fillcolor=:red)
             # end
             plot!(p, region(q), label="q", fillcolor=:goldenrod)
-            plot!(p, q_next, label="x(k+1) for q", fillcolor=:red)
+            plot!(p, q_next, label="noisy x(k+1) for q", fillcolor=:red)
+            plot!(p, concretize(Aᵢ * region(q) + bᵢ), label="nominal x(k+1) for q", fillcolor=:orange)
             plot!(p, region(qⱼ), label="overlapping", fillcolor=:yellow)
 
-            Hⱼ, hⱼ = tosimplehrep(region(qⱼ))
-            input_set = HPolyhedron(Hⱼ * Aᵢ, hⱼ - Hⱼ * (bᵢ + η))
-            input_set = intersection(input_set, region(q))
-            plot!(p, input_set, label="input_set", fillcolor=:green)
+            # Hⱼ, hⱼ = tosimplehrep(region(qⱼ))
+            # input_set = HPolyhedron(Hⱼ * Aᵢ, hⱼ - Hⱼ * (bᵢ + η))
+            # input_set = intersection(input_set, region(q))
+            # plot!(p, input_set, label="input_set", fillcolor=:green)
 
             display(p)
         end
@@ -85,27 +89,27 @@ end
 function plot_barrier_1d(x, barrier, system, plot_safe=true)
     f(z) = barrier(z)
     y = f.(x)
-    xlim = [minimum(x), maximum(x)]
-    ylim = [minimum(y), maximum(y)]
+    xlims = [minimum(x), maximum(x)]
+    ylims = [minimum(y), maximum(y)]
 
-    plot(initial_set(system), label="X0", fillcolor=:blue, xlim=xlim, ylim=ylim)
+    plot(initial_set(system), label="X0", fillcolor=:blue, xlims=xlims, ylims=ylims)
     if plot_safe
         plot!(safe_set(system), label="Xs", fillcolor=:green)
     else
         plot!(unsafe_set(system), label="Xu", fillcolor=:red)
     end
 
-    plot!(x, f, label="B")
+    plot!(x, f, label="B", ylims=(0,Inf))
 end
 
 function plot_barrier_2d(x, y, barrier, system, plot_safe=true)
     # TODO: Plot surface (and figure out how to plot regions on top)
     f(z) = barrier(z)
     y = f.(x)
-    xlim = [minimum(x), maximum(x)]
-    ylim = [minimum(y), maximum(y)]
+    xlims = [minimum(x), maximum(x)]
+    ylims = [minimum(y), maximum(y)]
 
-    plot(initial_set(system), label="X0", fillcolor=:blue, xlim=xlim, ylim=ylim)
+    plot(initial_set(system), label="X0", fillcolor=:blue, xlims=xlims, ylims=ylims)
     if plot_safe
         plot!(safe_set(system), label="Xs", fillcolor=:green)
     else

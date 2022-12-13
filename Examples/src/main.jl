@@ -1,6 +1,9 @@
 using Revise
 using BarrierFunctions
 
+using Plots
+plotly()
+
 include("1d.jl")
 include("car_with_sidewind.jl")
 include("drone.jl")
@@ -13,7 +16,7 @@ traj = monte_carlo(system, H, 10000)
 
 
 ϵ = 0.05 / H
-succ, B, prob = verify(system, H=H, ϵ=ϵ, β=1e-9, num_samples=100)
+succ, B, prob = verify(system, H=H, ϵ=ϵ, β=1e-9)
 println("Success: $succ")
 # println("Barrier $B")
 println("Safety prob: $prob")

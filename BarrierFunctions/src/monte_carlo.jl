@@ -44,6 +44,19 @@ function step(system, x, η)
     @assert length(q) == 1 "x should always belong to exactly one region"
 
     q = q[1]
-    A, b = dynamics(q)
+
+    A, b = mix_dynamics(q)
     return A * x .+ b .+ η, false
+end
+
+function mix_dynamics(q)
+    dyn = dynamics(q)
+    dist = UnitSimplex(length(dyn))
+    α = rand(dist)
+    
+    convex_combination(x) = sum(((αᵢ, xᵢ), ) -> αᵢ * xᵢ, zip(α, x))
+    A = convex_combination([Aᵢ for (Aᵢ, bᵢ) in dyn])
+    b = convex_combination([bᵢ for (Aᵢ, bᵢ) in dyn])
+
+    return A, b
 end
