@@ -72,5 +72,19 @@ function (B::PiecewiseBarrier)(x::VT) where {VT<:AbstractVector{<:Real}}
 end
 
 Base.getindex(B::PiecewiseBarrier, key...) = getindex(B.regions, key...)
-Base.iterate(B::PiecewiseBarrier) = iterate(B.regions)
-Base.iterate(B::PiecewiseBarrier, state) = iterate(B.regions, state)
+function Base.iterate(B::PiecewiseBarrier) 
+    it = iterate(B.regions)
+    if isnothing(it)
+        return nothing
+    end
+    (_, region), state = it
+    return region, state
+end
+function Base.iterate(B::PiecewiseBarrier, state)
+    it = iterate(B.regions, state)
+    if isnothing(it)
+        return nothing
+    end
+    (_, region), state = it
+    return region, state
+end

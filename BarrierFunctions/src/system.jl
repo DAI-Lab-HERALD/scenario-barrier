@@ -3,7 +3,6 @@ using Distributions
 export System, autonomous_system
 export state_space_size, safe_set, unsafe_set, initial_set, regions, noise, next_state
 
-# TODO: We could do it more generically with <:LazySet{T} for each region field
 @kwdef struct System{N, T<:Real, P<:AbstractPolyhedron{T}}
     Q::AbstractSpatialIndex{T, DynamicsRegion{T}}
 

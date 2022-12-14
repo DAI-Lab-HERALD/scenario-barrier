@@ -82,12 +82,12 @@ function region_barrier_variable!(model, system, qᵢ)
     return BarrierRegion(index(qᵢ), region(qᵢ), LinearBarrier(p, v))
 end
 
-barrier_value(B::PiecewiseBarrier) = PiecewiseBarrier(i => barrier_value(Bᵢ) for (i, Bᵢ) in B)
+barrier_value(B::PiecewiseBarrier) = PiecewiseBarrier(index(Bᵢ) => barrier_value(Bᵢ) for Bᵢ in B)
 barrier_value(B::BarrierRegion) = BarrierRegion(index(B), region(B), barrier_value(B.fun))
 barrier_value(B::LinearBarrier) = LinearBarrier(value.(B.p), value(B.v))
 barrier_value(B::ConstantBarrier) = ConstantBarrier(value(B.v))
 
-count_variables(B::PiecewiseBarrier) = sum(((i, Bᵢ),) -> count_variables(Bᵢ), B)
+count_variables(B::PiecewiseBarrier) = sum(Bᵢ -> count_variables(Bᵢ), B)
 count_variables(B::BarrierRegion) = count_variables(B.fun)
 count_variables(B::LinearBarrier{T, VT}) where {T<:AbstractVariableRef, VT} = length(B.p) + 1
 count_variables(B::LinearBarrier{T, VT}) where {T<:Number, VT} = 0
