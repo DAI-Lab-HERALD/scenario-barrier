@@ -9,7 +9,7 @@ include("1d.jl")
 include("car_with_sidewind.jl")
 include("drone.jl")
 
-system = car_with_sidewind
+system = linear1d
 H = 10
 traj = monte_carlo(system, H, 10000)
 # plot_monte_carlo_2d(system, traj, plot_safe=false)
@@ -23,4 +23,4 @@ println("Success: $succ")
 println("Safety prob: $prob")
 
 # x = LinRange(-3.0, 3.0, 1000)
-# plot_barrier_1d(x, B, system)
+plot_barrier(system, B)

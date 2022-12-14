@@ -1,6 +1,7 @@
 using Plots
+import ColorSchemes
 
-export plot_monte_carlo_2d, plot_forward_reachable_set_2d, plot_barrier_1d, plot_barrier_2d
+export plot_monte_carlo_2d, plot_forward_reachable_set_2d, plot_barrier
 
 
 function plot_monte_carlo_2d(system, traj; plot_safe=true, plot_regions=false, xlims=:auto, ylims=:auto)
@@ -86,23 +87,33 @@ function plot_forward_reachable_set_2d(system, num_samples; plot_safe=true, xlim
     end
 end
 
-function plot_barrier_1d(x, barrier, system, plot_safe=true)
-    f(z) = barrier(z)
-    y = f.(x)
-    xlims = [minimum(x), maximum(x)]
-    ylims = [minimum(y), maximum(y)]
+function plot_barrier(system::System{1, T, P}, B; xlims=nothing, plot_safe=true) where {T, P}
+    if isnothing(xlims)
+        xbounds = bounded_region_lims(system)
+        xext = 0.2 .* radius_hyperrectangle(xbounds)[1]
+        xlims = [low(xbounds, 1) - xext, high(xbounds, 1) .+ xext]
+    end
+    xbounds = Hyperrectangle(low=[xlims[1]], high=[xlims[2]])
+    ylims = [-0.05, 1.2]
 
-    plot(initial_set(system), label="X0", fillcolor=:blue, xlims=xlims, ylims=ylims)
+    p = plot(initial_set(system), label="X0", color=ColorSchemes.tab10[1], xlims=xlims, ylims=ylims, linewidth=4)
     if plot_safe
-        plot!(safe_set(system), label="Xs", fillcolor=:green)
+        plot!(p, safe_set(system), label="Xs", color=ColorSchemes.tab10[3], linewidth=4)
     else
-        plot!(unsafe_set(system), label="Xu", fillcolor=:red)
+        plot!(p, unsafe_set(system), label="Xu", color=ColorSchemes.tab10[4], linewidth=4)
     end
 
-    plot!(x, f, label="B", ylims=(0,Inf))
+    f(z) = B(z)
+
+    for (i, Bᵢ) in enumerate(B)
+        q = intersection(region(Bᵢ), xbounds)
+        x = LinRange(low(q, 1), high(q, 1), 2)
+        plot!(p, x, f, label=(i == 1 ? "B" : nothing), color=ColorSchemes.tab10[2], ylims=ylims)
+    end
+    return p
 end
 
-function plot_barrier_2d(x, y, barrier, system, plot_safe=true)
+function plot_barrier(system::System{2, T, P}, barrier, plot_safe=true) where {T, P}
     # TODO: Plot surface (and figure out how to plot regions on top)
     f(z) = barrier(z)
     y = f.(x)
@@ -117,4 +128,9 @@ function plot_barrier_2d(x, y, barrier, system, plot_safe=true)
     end
 
     plot!(x, f, label="B")
+end
+
+function bounded_region_lims(system)
+    mbrs = [mbr(region) for region in regions(system) if has_mbr(region)]
+    return join_mbr(mbrs)
 end
