@@ -90,11 +90,10 @@ end
 function plot_barrier(system::System{1, T, P}, B; xlims=nothing, plot_safe=true) where {T, P}
     if isnothing(xlims)
         xbounds = bounded_region_lims(system)
-        xext = 0.2 .* radius_hyperrectangle(xbounds)[1]
-        xlims = [low(xbounds, 1) - xext, high(xbounds, 1) .+ xext]
+        xext = 0.2 .* radius_hyperrectangle(xbounds)[1]  # Add a little space on either side of the MBR
+        xlims = (low(xbounds, 1) - xext, high(xbounds, 1) + xext)
     end
-    xbounds = Hyperrectangle(low=[xlims[1]], high=[xlims[2]])
-    ylims = [-0.05, 1.2]
+    ylims = (-0.05, 1.2)
 
     p = plot(initial_set(system), label="X0", color=ColorSchemes.tab10[1], xlims=xlims, ylims=ylims, linewidth=4)
     if plot_safe
@@ -103,31 +102,50 @@ function plot_barrier(system::System{1, T, P}, B; xlims=nothing, plot_safe=true)
         plot!(p, unsafe_set(system), label="Xu", color=ColorSchemes.tab10[4], linewidth=4)
     end
 
-    f(z) = B(z)
-
+    # Iterate over barrier regions, as the barrier is continuous for each region, but discontinuous across
+    xbounds = Hyperrectangle(low=[xlims[1]], high=[xlims[2]])
     for (i, Bᵢ) in enumerate(B)
-        q = intersection(region(Bᵢ), xbounds)
+        q = intersection(region(Bᵢ), xbounds)   # Intersection with plotting box to account for unbounded regions
         x = LinRange(low(q, 1), high(q, 1), 2)
-        plot!(p, x, f, label=(i == 1 ? "B" : nothing), color=ColorSchemes.tab10[2], ylims=ylims)
+        label = i == 1 ? "B" : nothing          # Only attach label to first region for legend
+
+        plot!(p, x, z -> Bᵢ(z), label=label, color=ColorSchemes.tab10[2], ylims=ylims)
     end
     return p
 end
 
-function plot_barrier(system::System{2, T, P}, barrier, plot_safe=true) where {T, P}
-    # TODO: Plot surface (and figure out how to plot regions on top)
-    f(z) = barrier(z)
-    y = f.(x)
-    xlims = [minimum(x), maximum(x)]
-    ylims = [minimum(y), maximum(y)]
-
-    plot(initial_set(system), label="X0", fillcolor=:blue, xlims=xlims, ylims=ylims)
-    if plot_safe
-        plot!(safe_set(system), label="Xs", fillcolor=:green)
-    else
-        plot!(unsafe_set(system), label="Xu", fillcolor=:red)
+function plot_barrier(system::System{2, T, P}, B; xylims=nothing, plot_safe=true) where {T, P}
+    if isnothing(xylims)
+        xybounds = bounded_region_lims(system)
+        xyext = 0.2 .* radius_hyperrectangle(xybounds)  # Add a little space on either side of the MBR
+        xylims = (low(xybounds) .- xyext, high(xybounds) .+ xyext)
     end
+    xlims = (xylims[1][1], xylims[2][1])
+    ylims = (xylims[1][2], xylims[2][2])
+    zlims = [-0.05, 1.2]
 
-    plot!(x, f, label="B")
+    # p = plot(initial_set(system), z=0, st=:surface, label="X0", color=ColorSchemes.tab10[1], xlims=xlims, ylims=ylims, zlims=zlims, linewidth=4)
+    # if plot_safe
+    #     plot!(p, safe_set(system), z=0, st=:surface, label="Xs", color=ColorSchemes.tab10[3], linewidth=4)
+    # else
+    #     plot!(p, unsafe_set(system), z=0, st=:surface, label="Xu", color=ColorSchemes.tab10[4], linewidth=4)
+    # end
+
+    p = plot()
+    f(z) = B(z)
+
+    # Iterate over barrier regions, as the barrier is continuous for each region, but discontinuous across
+    xybounds = Hyperrectangle(low=xylims[1], high=xylims[2])
+    for (i, Bᵢ) in enumerate(B)
+        q = intersection(region(Bᵢ), xybounds)   # Intersection with plotting box to account for unbounded regions
+        
+        x = LinRange(low(q, 1), high(q, 1), 2)
+        y = LinRange(low(q, 2), high(q, 2), 2)
+        label = i == 1 ? "B" : nothing           # Only attach label to first region for legend
+
+        plot!(p, x, y, (x, y) -> Bᵢ([x, y]), st=:surface, label=label, xlims=xlims, ylims=ylims, zlims=zlims, clims=(0, 1))
+    end
+    return p
 end
 
 function bounded_region_lims(system)

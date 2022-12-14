@@ -2,14 +2,15 @@ using Revise
 using BarrierFunctions
 using Gurobi, MosekTools, GLPK
 
-using Plots
-plotly()
+using Plots, PythonPlot
+pythonplot()
+pygui(true)
 
 include("1d.jl")
 include("car_with_sidewind.jl")
 include("drone.jl")
 
-system = linear1d
+system = car_with_sidewind
 H = 10
 traj = monte_carlo(system, H, 10000)
 # plot_monte_carlo_2d(system, traj, plot_safe=false)
