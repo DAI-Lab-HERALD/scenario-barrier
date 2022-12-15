@@ -23,5 +23,4 @@ println("Success: $succ")
 # println("Barrier $B")
 println("Safety prob: $prob")
 
-# x = LinRange(-3.0, 3.0, 1000)
 plot_barrier(system, B)

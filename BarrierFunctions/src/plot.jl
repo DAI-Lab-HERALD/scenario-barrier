@@ -146,7 +146,7 @@ function plot_barrier(system::System{2, T, P}, B; xylims=nothing, plot_safe=true
         xs = [x for (x, _) in xy]
         ys = [y for (_, y) in xy]
 
-        verts = vertices_list(tovrep(q))
+        verts = vertices_list(q)
         vertx = [v[1] for v in verts]
         verty = [v[2] for v in verts]
 

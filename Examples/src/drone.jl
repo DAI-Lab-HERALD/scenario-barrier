@@ -29,7 +29,7 @@ dyn = [Ab, Ab, Ab, Ab, Ab]
 Σ = PDiagMat([0.1, 0.1])
 η = DiagNormal(μ, Σ)
 
-# Start in a box [5m, 10m] × [-0.5m, 0.5m]
+# Start in a box [0.5m, 1.0m] × [-0.5m/s, 0.5m/s]
 X0 = HPolyhedron([x[2] ≤ 0.5, x[2] ≥ -0.5, x[1] ≥ 0.5, x[1] ≤ 1.0], vars)
 
 # On the road is safe
@@ -45,7 +45,7 @@ Xu = [
 
 split_spec = [
     [1, 1],
-    [24, 20],
+    [5, 5],
     [1, 1],
     [1, 1],
     [1, 1]
