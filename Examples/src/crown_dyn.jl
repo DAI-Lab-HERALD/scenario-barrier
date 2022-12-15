@@ -4,9 +4,9 @@ using MAT
 
 using Distributions, PDMats
 
-load_mat_system(system_name, bound_method, num_layers, num_regions) = load_mat_system("models/$system_name/$bound_method/$(num_layers)_layers/partition_data_$num_regions.mat")
+load_mat_system(system_name, bound_method, num_layers, num_regions, initial_region_cb) = load_mat_system("models/$system_name/$bound_method/$(num_layers)_layers/partition_data_$num_regions.mat", initial_region_cb)
 
-function load_mat_system(path)
+function load_mat_system(path, initial_region_cb)
     file = matopen(path)
 
     regions = read(file, "partitions")
@@ -21,19 +21,21 @@ function load_mat_system(path)
     n = size(state_space, 1)
     vars = Symbolics.@variables x[1:n]
 
+    eachfirstdim(A) = eachslice(A, dims=(1,))
+
     # Regions
     Q = []
-    for region in eachrow(regions)
-        push!(Q, HPolyhedron([region[1] .≤ x, x .≤ region[2]], vars))
+    for region in eachfirstdim(regions)
+        push!(Q, HPolyhedron([[region[1, i] ≤ x[i] for i in 1:n]; [x[i] ≤ region[2, i] for i in 1:n]], vars))
     end
 
     # Dynamics
     dyn = []
-    for (Mₗᵢ, Bₗᵢ, Mₕᵢ, Bₕᵢ) in zip(eachrow(Mₗ), eachrow(Bₗ), eachrow(Mₕ), eachrow(Bₕ))
+    for (Mₗᵢ, Bₗᵢ, Mₕᵢ, Bₕᵢ) in zip(eachfirstdim(Mₗ), eachfirstdim(Bₗ), eachfirstdim(Mₕ), eachfirstdim(Bₕ))
         Mₗᵢ = transpose(Mₗᵢ)  # Why is the transpose necessary?
         Mₕᵢ = transpose(Mₕᵢ)
 
-        dyn_i = [AffineDynamics(Mₗᵢ, Bₗᵢ), AffineDynamics(Mₕᵢ, Bₕᵢ)]
+        dyn_i = [AffineDynamics(copy(Mₗᵢ), copy(Bₗᵢ[:, 1])), AffineDynamics(copy(Mₕᵢ), copy(Bₕᵢ[:, 1]))]
         push!(dyn, dyn_i)
     end
 
@@ -41,17 +43,16 @@ function load_mat_system(path)
     Σ = PDiagMat([0.1^2, 0.1^2])  # Square to make std.dev. to variance.
     η = DiagNormal(μ, Σ)
 
-    # TODO: Figure out how to deal with the initial region
-    X0 = HPolyhedron([x[2] ≤ 0.5, x[2] ≥ -0.5, x[1] ≥ 5, x[1] ≤ 10], vars)
+    X0 = initial_region_cb(x, vars)
 
     # Safe
-    Xs = HPolyhedron([state_space[:, 1] .≤ x, x .≤ state_space[:, 2]], vars)
+    Xs = HPolyhedron([[state_space[i, 1] ≤ x[i] for i in 1:n]; [x[i] ≤ state_space[i, 2] for i in 1:n]], vars)
 
     # Unsafe
-    remaining_region = Universe()
+    remaining_region = Universe(n)
 
-    Xu = []
-    for (i, dim_bounds) in enumerate(eachrow(state_space))
+    Xu = HPolyhedron{Float64, Vector{Float64}}[]
+    for (i, dim_bounds) in enumerate(eachfirstdim(state_space))
         unsafe_lower = HPolyhedron([x[i] ≤ dim_bounds[1]], vars)
         unsafe_upper = HPolyhedron([x[i] ≥ dim_bounds[2]], vars)
 
@@ -63,8 +64,8 @@ function load_mat_system(path)
         push!(Q, unsafe_lower, unsafe_upper)
 
         # Just zero dynamics - not important as this region is unsafe and thus never propagated
-        dyn_i = [AffineDynamics(zero(Mₗ[1]), zero(Bₗ[1]))]
-        push!(dyn, dyn_i)
+        dyn_i = [AffineDynamics(zero(Mₗ[1, :, :]), zero(Bₗ[1, :, 1]))]
+        push!(dyn, dyn_i, dyn_i)
 
         remaining_region = intersection(remaining_region, HPolyhedron([dim_bounds[1] ≤ x[i], x[i] ≤ dim_bounds[2]], vars))
     end
@@ -72,3 +73,15 @@ function load_mat_system(path)
     crown_dyn_system = System(Q, dyn, η, X0, Xs, Xu)
     return crown_dyn_system
 end
+
+initial_region_pendulum(x, vars) = HPolyhedron([-deg2rad(5) ≤ x[1], x[1] ≤ deg2rad(5), x[2] == 0], vars)
+initial_region_cartpole(x, vars) = HPolyhedron([x[1] == 0, x[2] == 0, -deg2rad(5) ≤ x[3], x[3] ≤ deg2rad(5), x[4] == 0], vars)
+initial_region_husky4d(x, vars) = HPolyhedron([x[1] ≤ 0.1, x[1] ≥ -0.1, x[2] ≤ 0.1, x[2] ≥ -0.1, x[3] == 0, x[4] == 0], vars)
+initial_region_husky5d(x, vars) = HPolyhedron([x[1] ≤ 0.1, x[1] ≥ -0.1, x[2] ≤ 0.1, x[2] ≥ -0.1, x[3] == 0, x[4] == 0, x[5] == 0], vars)
+initial_region_acrobot(x, vars) = HPolyhedron([x[1] ≤ 0.1, x[1] ≥ -0.1, x[2] ≤ 0.1, x[2] ≥ -0.1, x[3] ≤ 0.1, x[3] ≥ -0.1, x[4] ≤ 0.1, x[4] ≥ -0.1, x[5] == 0, x[6] == 0], vars)
+
+pendulum_system = load_mat_system("pendulum", "alpha", 1, 120, initial_region_pendulum)
+cartpole_system = load_mat_system("cartpole", "alpha", 1, 960, initial_region_cartpole)
+husky4d_system = load_mat_system("husky4d", "alpha", 1, 900, initial_region_husky4d)
+husky5d_system = load_mat_system("husky5d", "alpha", 1, 432, initial_region_husky5d)
+acrobot_system = load_mat_system("acrobot", "alpha", 1, 144, initial_region_acrobot)
