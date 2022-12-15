@@ -41,13 +41,15 @@ function step(system, x, η)
     query = PointQuery(x)
     q = Spatial.findall(query, regions(system))
 
-    @assert length(q) == 1 "x should always belong to exactly one region"
+    @assert length(q) == 1 || pairwise_zeromeasure(q) "x should always belong to exactly one region"
 
     q = q[1]
 
     A, b = mix_dynamics(q)
     return A * x .+ b .+ η, false
 end
+
+pairwise_zeromeasure(Q) = all(qs -> is_intersection_zeromeasure(qs...), zip(Q[1:end - 1], Q[2:end]))
 
 function mix_dynamics(q)
     dyn = dynamics(q)

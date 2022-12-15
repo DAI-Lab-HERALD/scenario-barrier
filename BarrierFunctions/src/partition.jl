@@ -43,6 +43,7 @@ Spatial.region(region::DynamicsRegion) = region.polytope
 Base.hash(p::DynamicsRegion, h::UInt) = hash(p.index, h)
 Base.:(==)(p1::DynamicsRegion, p2::DynamicsRegion) = p1.index == p2.index
 
+is_intersection_zeromeasure(p::DynamicsRegion, q::DynamicsRegion; kwargs...) = is_intersection_zeromeasure(region(p), region(q); kwargs...)
 is_intersection_zeromeasure(p::DynamicsRegion, q::LazySet; kwargs...) = is_intersection_zeromeasure(region(p), q; kwargs...)
 is_intersection_zeromeasure(p::LazySet, q::DynamicsRegion; kwargs...) = is_intersection_zeromeasure(q, p; kwargs...)
 
