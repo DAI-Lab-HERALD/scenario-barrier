@@ -173,14 +173,12 @@ function non_negativity_constraint!(model, B::BarrierRegion{T, LinearBarrier{T1,
     H, h = tosimplehrep(region(B))
     p, v = B.fun.p, B.fun.v
     assymetric_dual_constraint!(model, -p, v, H, h)
-    
-    # assymetric_dual_constraint!(model, p, 1 - v, H, h)
 end
 
 function initial_constraint!(model, system, B::BarrierRegion{T, LinearBarrier{T1, VT1}}, γ) where {T, T1, VT1}
     X₀ = initial_set(system)
 
-    if is_intersection_zeromeasure(X₀, region(B))
+    if isdisjoint(X₀, region(B))  # Must be strictly disjoint, as this constraint does not involve dynamics
         return
     end
 
