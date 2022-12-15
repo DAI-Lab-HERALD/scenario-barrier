@@ -19,26 +19,26 @@ Q = [
     HPolyhedron([x[2] ≤ 2.5, x[2] ≥ 0.5, x[1] ≥ 10, x[1] ≤ 80], vars),
     HPolyhedron([x[2] ≤ 0.5, x[2] ≥ -0.5, x[1] ≥ 10, x[1] ≤ 80], vars),
     HPolyhedron([x[2] ≤ -0.5, x[2] ≥ -2.5, x[1] ≥ 10, x[1] ≤ 80], vars),
-    HPolyhedron([x[2] ≤ 2.5, x[2] ≥ 0.5, x[1] ≥ 80, x[1] ≤ 90], vars),
-    HPolyhedron([x[2] ≤ 0.5, x[2] ≥ -0.5, x[1] ≥ 80, x[1] ≤ 90], vars),
-    HPolyhedron([x[2] ≤ -0.5, x[2] ≥ -2.5, x[1] ≥ 80, x[1] ≤ 90], vars),
-    HPolyhedron([x[2] ≤ 2.5, x[2] ≥ 0.5, x[1] ≥ 90, x[1] ≤ 150], vars),
-    HPolyhedron([x[2] ≤ 0.5, x[2] ≥ -0.5, x[1] ≥ 90, x[1] ≤ 150], vars),
-    HPolyhedron([x[2] ≤ -0.5, x[2] ≥ -2.5, x[1] ≥ 90, x[1] ≤ 150], vars),
+    HPolyhedron([x[2] ≤ 2.5, x[2] ≥ 0.5, x[1] ≥ 80, x[1] ≤ 120], vars),
+    HPolyhedron([x[2] ≤ 0.5, x[2] ≥ -0.5, x[1] ≥ 80, x[1] ≤ 120], vars),
+    HPolyhedron([x[2] ≤ -0.5, x[2] ≥ -2.5, x[1] ≥ 80, x[1] ≤ 120], vars),
+    HPolyhedron([x[2] ≤ 2.5, x[2] ≥ 0.5, x[1] ≥ 120, x[1] ≤ 150], vars),
+    HPolyhedron([x[2] ≤ 0.5, x[2] ≥ -0.5, x[1] ≥ 120, x[1] ≤ 150], vars),
+    HPolyhedron([x[2] ≤ -0.5, x[2] ≥ -2.5, x[1] ≥ 120, x[1] ≤ 150], vars),
     HPolyhedron([x[2] ≤ 2.5, x[2] ≥ 0.5, x[1] ≥ 150], vars),
     HPolyhedron([x[2] ≤ 0.5, x[2] ≥ -0.5, x[1] ≥ 150], vars),
     HPolyhedron([x[2] ≤ -0.5, x[2] ≥ -2.5, x[1] ≥ 150], vars),
 ]
 
 v_long = 50 * (1000 / 3600) * dt
-Ab = [AffineDynamics(Float64[1 0; 0 1], [v_long, 0])]
+Ab = [AffineDynamics(Float64[1 0; 0 0.8], [v_long, 0])]
 ρ = [1.204, 1.342]
 v_wind = [8, 10]
 A = [4, 5.79865]
 Cd = [0.8, 1.05]
 m = [1125, 1350]
 a_lat = [0.5 * ρ[1] * v_wind[1]^2 * A[1] * Cd[1] / m[2], 0.5 * ρ[2] * v_wind[2]^2 * A[2] * Cd[2] / m[1]]
-Ab_gust = [AffineDynamics(Float64[1 0; 0 1], [v_long, 0.5 * a_lat[1] * dt^2]), AffineDynamics(Float64[1 0; 0 1], [v_long, 0.5 * a_lat[2] * dt^2])]
+Ab_gust = [AffineDynamics(Float64[1 0; 0 0.8], [v_long, 0.5 * a_lat[1] * dt^2]), AffineDynamics(Float64[1 0; 0 1], [v_long, 0.5 * a_lat[2] * dt^2])]
 dyn = [Ab, Ab, Ab, Ab, Ab, Ab, Ab, Ab, Ab, Ab_gust, Ab_gust, Ab_gust, Ab, Ab, Ab, Ab, Ab, Ab]
 
 μ = [0, 0]

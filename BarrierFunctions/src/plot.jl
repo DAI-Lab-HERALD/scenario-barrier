@@ -139,11 +139,23 @@ function plot_barrier(system::System{2, T, P}, B; xylims=nothing, plot_safe=true
     for (i, Bᵢ) in enumerate(B)
         q = intersection(region(Bᵢ), xybounds)   # Intersection with plotting box to account for unbounded regions
         
-        x = LinRange(low(q, 1), high(q, 1), 2)
-        y = LinRange(low(q, 2), high(q, 2), 2)
+        xs = LinRange(low(q, 1), high(q, 1), 5)
+        ys = LinRange(low(q, 2), high(q, 2), 5)
+
+        xy = [(x, y) for x in xs for y in ys if [x, y] ∈ q]
+        xs = [x for (x, _) in xy]
+        ys = [y for (_, y) in xy]
+
+        verts = vertices_list(tovrep(q))
+        vertx = [v[1] for v in verts]
+        verty = [v[2] for v in verts]
+
+        append!(xs, vertx)
+        append!(ys, verty)
+
         label = i == 1 ? "B" : nothing           # Only attach label to first region for legend
 
-        plot!(p, x, y, (x, y) -> Bᵢ([x, y]), st=:surface, label=label, xlims=xlims, ylims=ylims, zlims=zlims, clims=(0, 1))
+        plot!(p, xs, ys, (x, y) -> Bᵢ([x, y]), st=:surface, label=label, xlims=xlims, ylims=ylims, zlims=zlims, clims=(0, 1))
     end
     return p
 end
