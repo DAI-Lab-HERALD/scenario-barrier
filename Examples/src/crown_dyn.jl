@@ -1,6 +1,6 @@
 using BarrierFunctions
 using LazySets, Symbolics
-using MAT
+using MAT, ZipFile
 
 using Distributions, PDMats
 
@@ -80,8 +80,42 @@ initial_region_husky4d(x, vars) = HPolyhedron([x[1] ≤ 0.1, x[1] ≥ -0.1, x[2]
 initial_region_husky5d(x, vars) = HPolyhedron([x[1] ≤ 0.1, x[1] ≥ -0.1, x[2] ≤ 0.1, x[2] ≥ -0.1, x[3] == 0, x[4] == 0, x[5] == 0], vars)
 initial_region_acrobot(x, vars) = HPolyhedron([x[1] ≤ 0.1, x[1] ≥ -0.1, x[2] ≤ 0.1, x[2] ≥ -0.1, x[3] ≤ 0.1, x[3] ≥ -0.1, x[4] ≤ 0.1, x[4] ≥ -0.1, x[5] == 0, x[6] == 0], vars)
 
-pendulum_system = load_mat_system("pendulum", "alpha", 1, 120, initial_region_pendulum)
-cartpole_system = load_mat_system("cartpole", "alpha", 1, 960, initial_region_cartpole)
-husky4d_system = load_mat_system("husky4d", "alpha", 1, 900, initial_region_husky4d)
-husky5d_system = load_mat_system("husky5d", "alpha", 1, 432, initial_region_husky5d)
-acrobot_system = load_mat_system("acrobot", "alpha", 1, 144, initial_region_acrobot)
+function crown_dyn_system(system_name; download_models=false)
+    if download_models
+        download_crown_dyn_models!()
+    end
+
+    if system_name == "pendulum"
+        return load_mat_system("pendulum", "alpha", 1, 120, initial_region_pendulum)
+    elseif system_name == "cartpole"
+        return load_mat_system("cartpole", "alpha", 1, 960, initial_region_cartpole)
+    elseif system_name == "husky4d"
+        return load_mat_system("husky4d", "alpha", 1, 900, initial_region_husky4d)
+    elseif system_name == "husky5d"
+        return load_mat_system("husky5d", "alpha", 1, 432, initial_region_husky5d)
+    elseif system_name == "acrobot"
+        return load_mat_system("acrobot", "alpha", 1, 144, initial_region_acrobot)
+    else
+        throw("NNDM system not available")
+    end
+end
+
+function download_crown_dyn_models!()
+    # Download entire repo
+    tmp_path = download("https://github.com/aria-systems-group/NeuralNetControlBarrier/archive/9a927f3a90c1d79260cf0ddab89e734b5dea5b96.zip")
+    
+    # Extract models from zip
+    zarchive = ZipFile.Reader(tmp_path)
+    folder = joinpath("NeuralNetControlBarrier-9a927f3a90c1d79260cf0ddab89e734b5dea5b96", "NeuralNetControlBarrier.jl", "models")
+    for f in zarchive.files
+        if startswith(f.name, folder)
+            output_path = joinpath(splitpath(f.name)[3:end])
+            if isdirpath(f.name)
+                mkdir(output_path)
+            else
+                write(output_path, read(f))
+            end
+        end
+    end
+    close(zarchive)
+end
