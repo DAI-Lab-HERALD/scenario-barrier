@@ -1,5 +1,7 @@
 using Random, Distributions
 
+export UnitSimplex
+
 struct UnitSimplex <: Sampleable{Multivariate, Continuous}
     dim::Int
 end
@@ -7,12 +9,9 @@ end
 Base.length(s::UnitSimplex) = s.dim
 function Distributions._rand!(rng::AbstractRNG, s::UnitSimplex, x::AbstractVector{T}) where {T<:Real}
     exp_dist = Exponential()
-    y = rand(rng, exp_dist, length(s))
-    y = [0; cumsum(y) ./ sum(y)]
-    y = y[2:end] - y[1:end-1]
-
-    shuffle!(rng, y)
-    copyto!(x, y)
+    rand!(rng, exp_dist, x)
+    total = sum(x)
+    x ./= total
     
     return x
 end
