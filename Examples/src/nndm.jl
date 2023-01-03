@@ -70,8 +70,7 @@ function load_mat_system(path, initial_region_cb)
         remaining_region = intersection(remaining_region, HPolyhedron([dim_bounds[1] ≤ x[i], x[i] ≤ dim_bounds[2]], vars))
     end
 
-    crown_dyn_system = System(Q, dyn, η, X0, Xs, Xu)
-    return crown_dyn_system
+    return System(Q, dyn, η, X0, Xs, Xu)
 end
 
 initial_region_pendulum(x, vars) = HPolyhedron([-deg2rad(5) ≤ x[1], x[1] ≤ deg2rad(5), x[2] == 0], vars)
@@ -80,9 +79,9 @@ initial_region_husky4d(x, vars) = HPolyhedron([x[1] ≤ 0.1, x[1] ≥ -0.1, x[2]
 initial_region_husky5d(x, vars) = HPolyhedron([x[1] ≤ 0.1, x[1] ≥ -0.1, x[2] ≤ 0.1, x[2] ≥ -0.1, x[3] == 0, x[4] == 0, x[5] == 0], vars)
 initial_region_acrobot(x, vars) = HPolyhedron([x[1] ≤ 0.1, x[1] ≥ -0.1, x[2] ≤ 0.1, x[2] ≥ -0.1, x[3] ≤ 0.1, x[3] ≥ -0.1, x[4] ≤ 0.1, x[4] ≥ -0.1, x[5] == 0, x[6] == 0], vars)
 
-function crown_dyn_system(system_name; download_models=false)
+function nndm_system(system_name; download_models=false)
     if download_models
-        download_crown_dyn_models!()
+        download_nndm_models!()
     end
 
     if system_name == "pendulum"
@@ -100,7 +99,7 @@ function crown_dyn_system(system_name; download_models=false)
     end
 end
 
-function download_crown_dyn_models!()
+function download_nndm_models!()
     # Download entire repo
     tmp_path = download("https://github.com/aria-systems-group/NeuralNetControlBarrier/archive/9a927f3a90c1d79260cf0ddab89e734b5dea5b96.zip")
     
