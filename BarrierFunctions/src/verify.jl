@@ -14,7 +14,7 @@ function verify(solver, system::System; H::Int, ϵ::Number, β::Number, num_samp
     @assert(0 < ϵ < 1, "Epsilon must be in range (0, 1) (is $ϵ)")
     @assert(0 < β < 1, "Beta must be in range (0, 1) (is $β)")
 
-    # solver = dual_optimizer(solver)
+    solver = dual_optimizer(solver)
     model = Model(solver)
 
     # Decision variables
