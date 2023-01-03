@@ -6,7 +6,7 @@ using Distributions, PDMats
 # Only modeling longitudinal dynamics
 # x[1] = position
 # x[2] = velocity
-vars = @variables x[1:2]
+vars = Symbolics.@variables x[1:2]
 
 Q = [
     HPolyhedron([x[1] ≤ 0], vars),
