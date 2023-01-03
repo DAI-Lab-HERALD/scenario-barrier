@@ -11,7 +11,7 @@ include("car_with_sidewind.jl")
 include("drone.jl")
 include("nndm.jl")
 
-system = car_with_sidewind
+system = car_with_sidewind(split="none")
 H = 10
 traj = monte_carlo(system, H, 10000)
 # plot_monte_carlo_2d(system, traj, plot_safe=false)
@@ -24,4 +24,4 @@ println("Success: $succ")
 # println("Barrier $B")
 println("Safety prob: $prob")
 
-plot_barrier(system, B)
+# plot_barrier(system, B)

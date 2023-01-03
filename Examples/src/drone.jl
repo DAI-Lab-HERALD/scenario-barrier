@@ -43,12 +43,9 @@ Xu = [
     HPolyhedron([x[1] ≤ 0], vars)
 ]
 
-split_spec = [
-    [1, 1],
-    [5, 5],
-    [1, 1],
-    [1, 1],
-    [1, 1]
+split_spec = Int64[
+    [1 5 1 1 1]
+    [1 5 1 1 1]
 ]
 Q, dyn = grid_split(Q, dyn, split_spec)
 

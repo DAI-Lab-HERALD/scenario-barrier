@@ -2,11 +2,11 @@ export grid_split
 
 function grid_split(Q, dyn, num_subregions)
     n = length(Q)
-    @assert n == length(dyn) && n == length(num_subregions) "Number of subpartition specifications do no match number of partitions"
+    @assert n == length(dyn) && n == size(num_subregions, 2) "Number of subpartition specifications do no match number of partitions"
 
     Qnew, dyn_new = [], []
 
-    for (qᵢ, dynᵢ, split_spec) in zip(Q, dyn, num_subregions)
+    for (qᵢ, dynᵢ, split_spec) in zip(Q, dyn, eachcol(num_subregions))
         if LazySets.isbounded(qᵢ)
             rect = box_approximation(qᵢ)
             new_rects = split(rect, split_spec)
