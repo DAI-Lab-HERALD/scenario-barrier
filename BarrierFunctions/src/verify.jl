@@ -205,10 +205,10 @@ function expectation_partition_constraint!(model, Aᵢ, bᵢ, Bᵢ::BarrierRegio
 
     # We can let M = 1 [max B(x)] as B(x) can be modified aposterori to be capped at 1 without violating the theory
     M = 1
-    d = M * ϵ / (1 - ϵ)
+    d = M * ϵ
 
-    a = vcat(Aᵢ' * pⱼ .- pᵢ, pⱼ)
-    rhs = vᵢ - vⱼ + c - d - pⱼ ⋅ bᵢ
+    a = vcat(Aᵢ' * pⱼ .- (pᵢ / (1 - ϵ)), pⱼ)
+    rhs = (vᵢ + c - d) / (1 - ϵ) - vⱼ - pⱼ ⋅ bᵢ
     H = vcat(hcat(Hᵢ, zero(Hᵢ)), hcat(zero(Hη), Hη), hcat(Hⱼ * Aᵢ, Hⱼ))
     h = vcat(hᵢ, hη, hⱼ - Hⱼ * bᵢ)
 
