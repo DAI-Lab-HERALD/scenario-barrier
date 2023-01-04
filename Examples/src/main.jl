@@ -2,7 +2,9 @@ using Revise
 using BarrierFunctions
 using Gurobi, MosekTools, Mosek, GLPK, JuMP
 
-using Plots, PythonPlot
+using Plots
+import PythonPlot: pygui
+
 pythonplot()
 pygui(true)
 
