@@ -156,9 +156,15 @@ function expectation_constraint!(model, system, B, c, ϵ, qᵢ, conv_hull_η)
 
     Bᵢ = B[qᵢ]
     for (Aᵢ, bᵢ) in dynamics(qᵢ)
-        qᵢ_next = minkowski_sum(Aᵢ * region(Bᵢ) + bᵢ, conv_hull_η, prune=false)
+        qᵢ_next_nom = concretize(Aᵢ * region(Bᵢ) + bᵢ)
+        qᵢ_next = minkowski_sum(qᵢ_next_nom, conv_hull_η, prune=false)
+        if LazySets.isbounded(qᵢ_next_nom)
+            box = box_approximation(MinkowskiSum(qᵢ_next_nom, conv_hull_η))
+        else
+            box = nothing
+        end
 
-        query = RegionIntersectsQuery(qᵢ_next)
+        query = RegionIntersectsQuery(qᵢ_next, box)
         next_regions = Spatial.findall(query, regions(system))
 
         for qⱼ in next_regions
