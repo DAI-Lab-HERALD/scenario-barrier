@@ -1,12 +1,13 @@
 using BarrierFunctions
+import Spatial: has_mbr
 using LazySets, Symbolics
 using MAT, ZipFile
 
 using Distributions, PDMats
 
-load_mat_system(system_name, bound_method, num_layers, num_regions, initial_region_cb) = load_mat_system("models/$system_name/$bound_method/$(num_layers)_layers/partition_data_$num_regions.mat", initial_region_cb)
+load_mat_system(system_name, bound_method, num_layers, num_regions, initial_region_cb; eps=1e-12) = load_mat_system("models/$system_name/$bound_method/$(num_layers)_layers/partition_data_$num_regions.mat", initial_region_cb; eps=eps)
 
-function load_mat_system(path, initial_region_cb)
+function load_mat_system(path, initial_region_cb; eps=1e-12)
     file = matopen(path)
 
     regions = read(file, "partitions")
@@ -35,7 +36,7 @@ function load_mat_system(path, initial_region_cb)
         Mₗᵢ = transpose(Mₗᵢ)  # Why is the transpose necessary?
         Mₕᵢ = transpose(Mₕᵢ)
 
-        dyn_i = [AffineDynamics(copy(Mₗᵢ), copy(Bₗᵢ[:, 1])), AffineDynamics(copy(Mₕᵢ), copy(Bₕᵢ[:, 1]))]
+        dyn_i = [AffineDynamics(copy(Mₗᵢ), copy(Bₗᵢ[:, 1]) .- eps), AffineDynamics(copy(Mₕᵢ), copy(Bₕᵢ[:, 1]))]
         push!(dyn, dyn_i)
     end
 
@@ -79,21 +80,21 @@ initial_region_husky4d(x, vars) = HPolyhedron([x[1] ≤ 0.1, x[1] ≥ -0.1, x[2]
 initial_region_husky5d(x, vars) = HPolyhedron([x[1] ≤ 0.1, x[1] ≥ -0.1, x[2] ≤ 0.1, x[2] ≥ -0.1, x[3] == 0, x[4] == 0, x[5] == 0], vars)
 initial_region_acrobot(x, vars) = HPolyhedron([x[1] ≤ 0.1, x[1] ≥ -0.1, x[2] ≤ 0.1, x[2] ≥ -0.1, x[3] ≤ 0.1, x[3] ≥ -0.1, x[4] ≤ 0.1, x[4] ≥ -0.1, x[5] == 0, x[6] == 0], vars)
 
-function nndm_system(system_name; download_models=false)
+function nndm_system(system_name; download_models=false, eps=1e-12)
     if download_models
         download_nndm_models!()
     end
 
     if system_name == "pendulum"
-        return load_mat_system("pendulum", "alpha", 1, 120, initial_region_pendulum)
+        return load_mat_system("pendulum", "alpha", 1, 120, initial_region_pendulum; eps=eps)
     elseif system_name == "cartpole"
-        return load_mat_system("cartpole", "alpha", 1, 960, initial_region_cartpole)
+        return load_mat_system("cartpole", "alpha", 1, 960, initial_region_cartpole; eps=eps)
     elseif system_name == "husky4d"
-        return load_mat_system("husky4d", "alpha", 1, 900, initial_region_husky4d)
+        return load_mat_system("husky4d", "alpha", 1, 900, initial_region_husky4d; eps=eps)
     elseif system_name == "husky5d"
-        return load_mat_system("husky5d", "alpha", 1, 432, initial_region_husky5d)
+        return load_mat_system("husky5d", "alpha", 1, 432, initial_region_husky5d; eps=eps)
     elseif system_name == "acrobot"
-        return load_mat_system("acrobot", "alpha", 1, 144, initial_region_acrobot)
+        return load_mat_system("acrobot", "alpha", 1, 144, initial_region_acrobot; eps=eps)
     else
         throw("NNDM system not available")
     end
@@ -117,4 +118,43 @@ function download_nndm_models!()
         end
     end
     close(zarchive)
+end
+
+function plot_dynamics_bounds(system)
+    for q in regions(system)
+        if has_mbr(q)
+            p = plot(st=:surface)
+
+            verts = vertices_list(region(q))
+            xs = [v[1] for v in verts]
+            ys = [v[2] for v in verts]
+
+            for dyn in dynamics(q)
+                A, b = dyn
+                zs = [sum(A * v + b) for v in verts]
+                plot!(p, xs, ys, zs, st=:surface)
+            end
+            display(p)
+            readline()
+        end
+    end
+end
+
+function test_soundness_dynamics_bounds(system)
+    for q in regions(system)
+        if has_mbr(q)
+            println(q)
+
+            dyn = dynamics(q)
+            @assert length(dyn) == 2
+
+            A₁, b₁ = dyn[1]
+            A₂, b₂ = dyn[2]
+
+            verts = vertices_list(region(q))
+            for v in verts 
+                @assert all(A₁ * v + b₁ .≤ A₂ * v + b₂) "$(A₁ * v + b₁), $(A₂ * v + b₂)"
+            end
+        end
+    end
 end
