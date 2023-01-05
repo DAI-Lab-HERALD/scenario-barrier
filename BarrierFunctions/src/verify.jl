@@ -119,6 +119,9 @@ function constraints!(model, system, B, c, γ, ϵ, num_samples)
     distribution = noise(system)
     ηs = rand(distribution, num_samples)
     conv_hull_η = VPolytope(convex_hull([copy(η) for η in eachcol(ηs)]))
+
+    println("Using the convex hull, we reduce the number of samples from $(size(ηs, 2)) to $(length(vertices_list(conv_hull_η)))")
+
     conv_hull_η = tohrep(conv_hull_η)
 
     for qᵢ in regions(system)
