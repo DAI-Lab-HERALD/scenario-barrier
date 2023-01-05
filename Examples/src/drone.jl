@@ -26,7 +26,7 @@ Ab = singleton_dynamics([
 dyn = [Ab, Ab, Ab, Ab, Ab]
 
 μ = [0, 0]
-Σ = PDiagMat([0.1, 0.1])
+Σ = PDiagMat([0.1^2, 0.1^2])  # Square to make std.dev. to variance.
 η = DiagNormal(μ, Σ)
 
 # Start in a box [0.5m, 1.0m] × [-0.5m/s, 0.5m/s]
