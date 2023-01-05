@@ -13,6 +13,8 @@ include("car_with_sidewind.jl")
 include("drone.jl")
 include("nndm.jl")
 
+# system = nndm_system("pendulum")
+# H = 1
 system = car_with_sidewind(split="latlon")
 H = 10
 traj = monte_carlo(system, H, 10000)

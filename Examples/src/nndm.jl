@@ -41,7 +41,7 @@ function load_mat_system(path, initial_region_cb; eps=1e-12)
     end
 
     μ = [0, 0]
-    Σ = PDiagMat([0.1^2, 0.1^2])  # Square to make std.dev. to variance.
+    Σ = PDiagMat([0.002^2, 0.01^2])  # Square to make std.dev. to variance.
     η = DiagNormal(μ, Σ)
 
     X0 = initial_region_cb(x, vars)
