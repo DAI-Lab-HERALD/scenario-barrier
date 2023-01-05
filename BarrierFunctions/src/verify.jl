@@ -156,9 +156,10 @@ function expectation_constraint!(model, system, B, c, ϵ, qᵢ, conv_hull_η)
 
     Bᵢ = B[qᵢ]
     for (Aᵢ, bᵢ) in dynamics(qᵢ)
-        qᵢ_next_nom = concretize(Aᵢ * region(Bᵢ) + bᵢ)
+        qᵢ_next_nom = Aᵢ * region(Bᵢ) + bᵢ
         qᵢ_next = minkowski_sum(qᵢ_next_nom, conv_hull_η, prune=false)
         if LazySets.isbounded(qᵢ_next_nom)
+            qᵢ_next = tovrep(qᵢ_next)
             box = box_approximation(MinkowskiSum(qᵢ_next_nom, conv_hull_η))
         else
             box = nothing
