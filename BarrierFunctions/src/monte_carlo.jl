@@ -53,7 +53,7 @@ pairwise_zeromeasure(Q) = all(qs -> is_intersection_zeromeasure(qs...), zip(Q[1:
 
 function mix_dynamics(q)
     dyn = dynamics(q)
-    dist = UnitSimplex(length(dyn))
+    dist = ProbabilitySimplex(length(dyn))
     α = rand(dist)
     
     convex_combination(x) = sum(((αᵢ, xᵢ), ) -> αᵢ * xᵢ, zip(α, x))
