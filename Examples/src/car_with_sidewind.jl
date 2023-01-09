@@ -74,3 +74,15 @@ function car_with_sidewind(;split="none")
 
     return System(Q, dyn, η, X0, Xs, Xu)
 end
+
+prob_car_with_sidewind_no_paritioning = Problem("car_with_sidewind_no_paritioning", car_with_sidewind(split="none"), 10, 0.005/10, 1e-9)
+prob_car_with_sidewind_lat_paritioning = Problem("car_with_sidewind_lat_paritioning", car_with_sidewind(split="lat"), 10, 0.005/10, 1e-9)
+prob_car_with_sidewind_lon_paritioning = Problem("car_with_sidewind_lon_paritioning", car_with_sidewind(split="lon"), 10, 0.005/10, 1e-9)
+prob_car_with_sidewind_latlon_paritioning = Problem("car_with_sidewind_latlon_paritioning", car_with_sidewind(split="latlon"), 10, 0.005/10, 1e-9)
+
+probs_car_with_sidewind = [
+    prob_car_with_sidewind_no_paritioning,
+    prob_car_with_sidewind_lat_paritioning,
+    prob_car_with_sidewind_lon_paritioning,
+    prob_car_with_sidewind_latlon_paritioning
+]
