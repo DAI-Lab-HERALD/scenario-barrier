@@ -24,10 +24,10 @@ function verify(solver, system::System; H::Int, ϵ::Number, β::Number, num_samp
 
     n_variables = count_variables(B) + 2
     r_samples = required_samples(n_variables, ϵ, β)
-    println("Required number of samples given $n_variables variables and the desired confidence of $β is $r_samples.")
+    @info "Required number of samples given $n_variables variables and the desired confidence of $β is $r_samples."
     if !isnothing(num_samples)
         if num_samples < r_samples
-            println("Warning, the requested number of samples $num_samples is less than the required number of samples $r_samples")
+            @warn "The requested number of samples $num_samples is less than the required number of samples $r_samples"
         end
         n_samples = num_samples
     else
@@ -42,17 +42,17 @@ function verify(solver, system::System; H::Int, ϵ::Number, β::Number, num_samp
 
     # Solve
     JuMP.optimize!(model)
-    println(JuMP.solution_summary(model))
+    @debug JuMP.solution_summary(model)
 
     succ = JuMP.primal_status(model) == FEASIBLE_POINT
 
     B, c, γ = barrier_value(B), value(c), value(γ)
-    println("γ $γ, c $c")
+    @debug "γ $γ, c $c"
 
     # Alternatively use B(x_0) for γ if x_0 is a point
     prob = 1 - (γ + c * H)
 
-    println("termination status $(JuMP.termination_status(model)), primal status $(JuMP.primal_status(model)), safety prob $prob")
+    @info "Termination status $(JuMP.termination_status(model)), primal status $(JuMP.primal_status(model)), safety prob $prob"
 
     return succ, B, prob, n_variables
 end
@@ -120,13 +120,13 @@ function constraints!(model, system, B, c, γ, ϵ, num_samples)
     ηs = rand(distribution, num_samples)
     conv_hull_η = VPolytope(convex_hull([copy(η) for η in eachcol(ηs)]))
 
-    println("Using the convex hull, we reduce the number of samples from $(size(ηs, 2)) to $(length(vertices_list(conv_hull_η)))")
+    @debug "Using the convex hull, we reduce the number of samples from $(size(ηs, 2)) to $(length(vertices_list(conv_hull_η)))"
 
     conv_hull_η = tohrep(conv_hull_η)
     conv_hull_η = normalize(conv_hull_η)
 
     for qᵢ in regions(system)
-        println("Region $qᵢ, $(region(qᵢ))")
+        @debug "Region $qᵢ, $(region(qᵢ))"
         region_constraints!(model, system, B, c, γ, ϵ, qᵢ, conv_hull_η)
     end
 end
@@ -173,7 +173,6 @@ function expectation_constraint!(model, system, B, c, ϵ, qᵢ, conv_hull_η)
         next_regions = Spatial.findall(query, regions(system))
 
         for qⱼ in next_regions
-            # println("Next partition $qj")
             expectation_partition_constraint!(model, Aᵢ, bᵢ, Bᵢ, B[qⱼ], c, ϵ, conv_hull_η)
         end
     end
@@ -273,7 +272,6 @@ function expectation_partition_constraint!(model, Aᵢ, bᵢ, Bᵢ::BarrierRegio
     d = M * ϵ / (1 - ϵ)
 
     for η in eachcol(ηs)
-        # println("$qi -> $(qi_next + η), cap $qj")
         if is_intersection_zeromeasure(region(Bⱼ), qᵢ_next + η)
             continue
         end
