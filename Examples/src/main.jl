@@ -55,10 +55,12 @@ function run_and_benchmark_experiment(problem)
     @info "Running experiment" name=problem.name
 
     trial = benchmark_experiment(problem)
-    @info "Done with benchmark" name=problem.name trial
+    @info "Done with benchmark" name=problem.name 
+    println(trial.times)
 
     res = run_experiment(problem)
-    @info "Done with running" name=problem.name res
+    @info "Done with running" name=problem.name
+    println(res)
 end
 
 function run_multiple_experiments(problems)
