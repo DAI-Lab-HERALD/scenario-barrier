@@ -19,7 +19,7 @@ include("problem.jl")
 include("1d.jl")
 include("car_with_sidewind.jl")
 include("drone.jl")
-include("nndm.jl")
+# include("nndm.jl")
 
 # system = nndm_system("pendulum")
 # H = 1
@@ -64,6 +64,6 @@ function run_experiments(problems)
     end
 end
 
-# run_experiments(probs_car_with_sidewind)
+run_experiments(probs_car_with_sidewind)
 run_experiments(probs_drone)
 run_experiments(probs_linear1d)
