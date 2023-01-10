@@ -167,3 +167,135 @@ function test_soundness_dynamics_bounds(system)
         end
     end
 end
+
+# Systems taken from https://arxiv.org/pdf/2206.07811.pdf
+
+# Pendulum
+prob_nndm_pendulum_1layer_120regions = Problem("nndm_pendulum_1layer_120regions", nndm_system("pendulum", 1, 120), 1, 0.005/1, 1e-9)
+prob_nndm_pendulum_1layer_240regions = Problem("nndm_pendulum_1layer_240regions", nndm_system("pendulum", 1, 240), 1, 0.005/1, 1e-9)
+prob_nndm_pendulum_1layer_480regions = Problem("nndm_pendulum_1layer_480regions", nndm_system("pendulum", 1, 480), 1, 0.005/1, 1e-9)
+
+probs_nndm_pendulum_1layer = [
+    prob_nndm_pendulum_1layer_120regions,
+    prob_nndm_pendulum_1layer_240regions,
+    prob_nndm_pendulum_1layer_480regions
+]
+
+prob_nndm_pendulum_2layer_120regions = Problem("nndm_pendulum_2layer_120regions", nndm_system("pendulum", 2, 120), 1, 0.005/1, 1e-9)
+prob_nndm_pendulum_2layer_240regions = Problem("nndm_pendulum_2layer_240regions", nndm_system("pendulum", 2, 240), 1, 0.005/1, 1e-9)
+prob_nndm_pendulum_2layer_480regions = Problem("nndm_pendulum_2layer_480regions", nndm_system("pendulum", 2, 480), 1, 0.005/1, 1e-9)
+
+probs_nndm_pendulum_2layer = [
+    prob_nndm_pendulum_2layer_120regions,
+    prob_nndm_pendulum_2layer_240regions,
+    prob_nndm_pendulum_2layer_480regions
+]
+
+prob_nndm_pendulum_3layer_120regions = Problem("nndm_pendulum_3layer_120regions", nndm_system("pendulum", 3, 120), 1, 0.005/1, 1e-9)
+prob_nndm_pendulum_3layer_240regions = Problem("nndm_pendulum_3layer_240regions", nndm_system("pendulum", 3, 240), 1, 0.005/1, 1e-9)
+prob_nndm_pendulum_3layer_480regions = Problem("nndm_pendulum_3layer_480regions", nndm_system("pendulum", 3, 480), 1, 0.005/1, 1e-9)
+
+probs_nndm_pendulum_3layer = [
+    prob_nndm_pendulum_3layer_120regions,
+    prob_nndm_pendulum_3layer_240regions,
+    prob_nndm_pendulum_3layer_480regions
+]
+
+prob_nndm_pendulum_5layer_480regions = Problem("nndm_pendulum_5layer_480regions", nndm_system("pendulum", 5, 480), 1, 0.005/1, 1e-9)
+prob_nndm_pendulum_5layer_960regions = Problem("nndm_pendulum_5layer_960regions", nndm_system("pendulum", 5, 960), 1, 0.005/1, 1e-9)
+prob_nndm_pendulum_5layer_1920regions = Problem("nndm_pendulum_5layer_1920regions", nndm_system("pendulum", 5, 1920), 1, 0.005/1, 1e-9)
+
+probs_nndm_pendulum_5layer = [
+    prob_nndm_pendulum_5layer_480regions,
+    prob_nndm_pendulum_5layer_240regions,
+    prob_nndm_pendulum_5layer_1920regions
+]
+
+probs_nndm_pendulum = [
+    probs_nndm_pendulum_1layer;
+    probs_nndm_pendulum_2layer;
+    probs_nndm_pendulum_3layer;
+    probs_nndm_pendulum_5layer
+]
+
+# Cartpole
+prob_nndm_cartpole_1layer_960regions = Problem("nndm_cartpole_1layer_960regions", nndm_system("cartpole", 1, 960), 1, 0.005/1, 1e-9)
+prob_nndm_cartpole_1layer_1920regions = Problem("nndm_cartpole_1layer_1920regions", nndm_system("cartpole", 1, 1920), 1, 0.005/1, 1e-9)
+prob_nndm_cartpole_1layer_3840regions = Problem("nndm_cartpole_1layer_3840regions", nndm_system("cartpole", 1, 3840), 1, 0.005/1, 1e-9)
+
+probs_nndm_cartpole_1layer = [
+    prob_nndm_cartpole_1layer_960regions,
+    prob_nndm_cartpole_1layer_1920regions,
+    prob_nndm_cartpole_1layer_3840regions
+]
+
+prob_nndm_cartpole_2layer_960regions = Problem("nndm_cartpole_2layer_960regions", nndm_system("cartpole", 2, 960), 1, 0.005/1, 1e-9)
+prob_nndm_cartpole_2layer_1920regions = Problem("nndm_cartpole_2layer_1920regions", nndm_system("cartpole", 2, 1920), 1, 0.005/1, 1e-9)
+prob_nndm_cartpole_2layer_3840regions = Problem("nndm_cartpole_2layer_3840regions", nndm_system("cartpole", 2, 3840), 1, 0.005/1, 1e-9)
+
+probs_nndm_cartpole_2layer = [
+    prob_nndm_cartpole_2layer_960regions,
+    prob_nndm_cartpole_2layer_1920regions,
+    prob_nndm_cartpole_2layer_3840regions
+]
+
+probs_nndm_cartpole = [
+    probs_nndm_cartpole_1layer;
+    probs_nndm_cartpole_2layer
+]
+
+# Husky 4D
+prob_nndm_husky4d_1layer_900regions = Problem("nndm_husky4d_1layer_900regions", nndm_system("husky4d", 1, 900), 1, 0.005/1, 1e-9)
+prob_nndm_husky4d_1layer_1800regions = Problem("nndm_husky4d_1layer_1800regions", nndm_system("husky4d", 1, 1800), 1, 0.005/1, 1e-9)
+prob_nndm_husky4d_1layer_2250regions = Problem("nndm_husky4d_1layer_2250regions", nndm_system("husky4d", 1, 2250), 1, 0.005/1, 1e-9)
+prob_nndm_husky4d_1layer_4800regions = Problem("nndm_husky4d_1layer_4800regions", nndm_system("husky4d", 1, 4800), 1, 0.005/1, 1e-9)
+
+probs_nndm_husky4d_1layer = [
+    prob_nndm_husky4d_1layer_900regions,
+    prob_nndm_husky4d_1layer_1800regions,
+    prob_nndm_husky4d_1layer_2250regions,
+    prob_nndm_husky4d_1layer_4800regions
+]
+
+prob_nndm_husky4d_2layer_1800regions = Problem("nndm_husky4d_1layer_1800regions", nndm_system("husky4d", 2, 1800), 1, 0.005/1, 1e-9)
+prob_nndm_husky4d_2layer_2250regions = Problem("nndm_husky4d_1layer_2250regions", nndm_system("husky4d", 2, 2250), 1, 0.005/1, 1e-9)
+prob_nndm_husky4d_2layer_4800regions = Problem("nndm_husky4d_1layer_4800regions", nndm_system("husky4d", 2, 4800), 1, 0.005/1, 1e-9)
+
+probs_nndm_husky4d_2layer = [
+    prob_nndm_husky4d_2layer_1800regions,
+    prob_nndm_husky4d_2layer_2250regions,
+    prob_nndm_husky4d_2layer_4800regions
+]
+
+probs_nndm_husky4d = [
+    probs_nndm_husky4d_1layer;
+    probs_nndm_husky4d_2layer
+]
+
+# Husky 5D
+prob_nndm_husky5d_432regions = Problem("nndm_husky5d_432regions", nndm_system("husky5d", 1, 432), 1, 0.005/1, 1e-9)
+prob_nndm_husky5d_1080regions = Problem("nndm_husky5d_1080regions", nndm_system("husky5d", 1, 1080), 1, 0.005/1, 1e-9)
+prob_nndm_husky5d_1728regions = Problem("nndm_husky5d_1728regions", nndm_system("husky5d", 1, 1728), 1, 0.005/1, 1e-9)
+
+probs_nndm_husky5d = [
+    prob_nndm_husky5d_432regions,
+    prob_nndm_husky5d_1080regions,
+    prob_nndm_husky5d_1728regions
+]
+
+# Acrobot
+prob_nndm_acrobot_144regions = Problem("nndm_acrobot_144regions", nndm_system("acrobot", 1, 144), 1, 0.005/1, 1e-9)
+prob_nndm_acrobot_288regions = Problem("nndm_acrobot_288regions", nndm_system("acrobot", 1, 288), 1, 0.005/1, 1e-9)
+
+probs_nndm_acrobot = [
+    prob_nndm_acrobot_144regions,
+    prob_nndm_acrobot_288regions
+]
+
+probs_nndm = [
+    probs_nndm_pendulum;
+    probs_nndm_cartpole;
+    probs_nndm_husky4d;
+    probs_nndm_husky5d;
+    probs_nndm_acrobot
+]
