@@ -85,4 +85,4 @@ probs_car_with_sidewind = [
     prob_car_with_sidewind_lat_paritioning,
     prob_car_with_sidewind_lon_paritioning,
     prob_car_with_sidewind_latlon_paritioning
-]
+];

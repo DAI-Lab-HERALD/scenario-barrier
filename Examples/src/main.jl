@@ -16,11 +16,6 @@ pythonplot()
 pygui(true)
 
 include("problem.jl")
-include("1d.jl")
-include("car_with_sidewind.jl")
-include("drone.jl")
-# include("nndm.jl")
-
 # system = nndm_system("pendulum")
 # H = 1
 # system = car_with_sidewind(split="latlon")
@@ -39,7 +34,8 @@ function run_experiment(problem)
     verify(solver, problem.system, H=problem.horizon, ϵ=problem.ϵ, β=problem.β)
 
     # Experiment run
-    @progress for _ in 1:100
+    for i in 1:100
+        @info "Iteration $i/100"
         with_logger(TerminalLogger(stderr, LogLevel(1); right_justify=120)) do
             start_time = time()
             succ, _, prob, _ = verify(solver, problem.system, H=problem.horizon, ϵ=problem.ϵ, β=problem.β)
@@ -58,12 +54,14 @@ function run_experiment(problem)
 
     @info "Finished writing results"
 end
+
 function run_experiments(problems)
     for problem in problems
         run_experiment(problem)
     end
 end
 
-run_experiments(probs_car_with_sidewind)
-run_experiments(probs_drone)
-run_experiments(probs_linear1d)
+# run_experiments(probs_car_with_sidewind)
+# run_experiments(probs_drone)
+# run_experiments(probs_linear1d)
+# run_experiments(probs_nndm)

@@ -47,4 +47,4 @@ prob_linear1d_exact = Problem("linear1d_exact", martingale1d(false), 10, 0.005/1
 probs_linear1d = [
     prob_linear1d_uncertain,
     prob_linear1d_exact
-]
+];
