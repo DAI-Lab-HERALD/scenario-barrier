@@ -183,6 +183,10 @@ function non_negativity_constraint!(model, B::BarrierRegion{T, LinearBarrier{T1,
     H, h = tosimplehrep(region(B))
     p, v = B.fun.p, B.fun.v
     assymetric_dual_constraint!(model, -p, v, H, h)
+
+    # Upper bound by M for more robust solving
+    M = 5
+    assymetric_dual_constraint!(model, p, M - v, H, h)
 end
 
 function initial_constraint!(model, system, B::BarrierRegion{T, LinearBarrier{T1, VT1}}, γ) where {T, T1, VT1}
