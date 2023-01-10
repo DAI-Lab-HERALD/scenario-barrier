@@ -52,16 +52,18 @@ function run_experiment(problem)
     println(res)
 
     df = DataFrame(res)
+
+    mkpath("results", mode=0o755)
     CSV.write("results/$(problem.name).csv", df)
 
     @info "Finished writing results"
 end
 function run_experiments(problems)
-    mkpath("results", mode=0o755)
-
     for problem in problems
         run_experiment(problem)
     end
 end
 
-run_experiments(probs_car_with_sidewind)
+# run_experiments(probs_car_with_sidewind)
+run_experiments(probs_drone)
+run_experiments(probs_linear1d)
