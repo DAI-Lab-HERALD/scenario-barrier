@@ -207,7 +207,7 @@ prob_nndm_pendulum_5layer_1920regions = Problem("nndm_pendulum_5layer_1920region
 
 probs_nndm_pendulum_5layer = [
     prob_nndm_pendulum_5layer_480regions,
-    prob_nndm_pendulum_5layer_240regions,
+    prob_nndm_pendulum_5layer_960regions,
     prob_nndm_pendulum_5layer_1920regions
 ]
 
@@ -248,20 +248,22 @@ probs_nndm_cartpole = [
 prob_nndm_husky4d_1layer_900regions = Problem("nndm_husky4d_1layer_900regions", nndm_system("husky4d", 1, 900), 1, 0.005/1, 1e-9)
 prob_nndm_husky4d_1layer_1800regions = Problem("nndm_husky4d_1layer_1800regions", nndm_system("husky4d", 1, 1800), 1, 0.005/1, 1e-9)
 prob_nndm_husky4d_1layer_2250regions = Problem("nndm_husky4d_1layer_2250regions", nndm_system("husky4d", 1, 2250), 1, 0.005/1, 1e-9)
-prob_nndm_husky4d_1layer_4800regions = Problem("nndm_husky4d_1layer_4800regions", nndm_system("husky4d", 1, 4800), 1, 0.005/1, 1e-9)
+prob_nndm_husky4d_1layer_3600regions = Problem("nndm_husky4d_1layer_3600regions", nndm_system("husky4d", 1, 3600), 1, 0.005/1, 1e-9)
 
 probs_nndm_husky4d_1layer = [
     prob_nndm_husky4d_1layer_900regions,
     prob_nndm_husky4d_1layer_1800regions,
     prob_nndm_husky4d_1layer_2250regions,
-    prob_nndm_husky4d_1layer_4800regions
+    prob_nndm_husky4d_1layer_3600regions
 ]
 
+prob_nndm_husky4d_2layer_900regions = Problem("nndm_husky4d_2layer_900regions", nndm_system("husky4d", 2, 900), 1, 0.005/1, 1e-9)
 prob_nndm_husky4d_2layer_1800regions = Problem("nndm_husky4d_1layer_1800regions", nndm_system("husky4d", 2, 1800), 1, 0.005/1, 1e-9)
 prob_nndm_husky4d_2layer_2250regions = Problem("nndm_husky4d_1layer_2250regions", nndm_system("husky4d", 2, 2250), 1, 0.005/1, 1e-9)
 prob_nndm_husky4d_2layer_4800regions = Problem("nndm_husky4d_1layer_4800regions", nndm_system("husky4d", 2, 4800), 1, 0.005/1, 1e-9)
 
 probs_nndm_husky4d_2layer = [
+    prob_nndm_husky4d_2layer_900regions,
     prob_nndm_husky4d_2layer_1800regions,
     prob_nndm_husky4d_2layer_2250regions,
     prob_nndm_husky4d_2layer_4800regions
