@@ -124,20 +124,21 @@ function constraints!(model, system, B, c, γ, ϵ, num_samples)
 
     conv_hull_η = tohrep(conv_hull_η)
     conv_hull_η = normalize(conv_hull_η)
+    box_conv_hull_η = box_approximation(conv_hull_η)
 
     for qᵢ in regions(system)
         @debug "Region $qᵢ, $(region(qᵢ))"
-        region_constraints!(model, system, B, c, γ, ϵ, qᵢ, conv_hull_η)
+        region_constraints!(model, system, B, c, γ, ϵ, qᵢ, conv_hull_η, box_conv_hull_η)
     end
 end
 
-function region_constraints!(model, system, B, c, γ, ϵ, qᵢ, conv_hull_η)
+function region_constraints!(model, system, B, c, γ, ϵ, qᵢ, conv_hull_η, box_conv_hull_η)
     Bᵢ = B[qᵢ]
 
     non_negativity_constraint!(model, Bᵢ)
     initial_constraint!(model, system, Bᵢ, γ)
     unsafe_constraint!(model, system, Bᵢ)
-    expectation_constraint!(model, system, B, c, ϵ, qᵢ, conv_hull_η)
+    expectation_constraint!(model, system, B, c, ϵ, qᵢ, conv_hull_η, box_conv_hull_η)
 end
 
 function overlaps_unsafe(system, q)
@@ -152,19 +153,30 @@ function overlaps_unsafe(system, q)
     return false
 end
 
-function expectation_constraint!(model, system, B, c, ϵ, qᵢ, conv_hull_η)
+function expectation_constraint!(model, system, B, c, ϵ, qᵢ, conv_hull_η, box_conv_hull_η)
     Xₛ = safe_set(system)
     if is_intersection_zeromeasure(Xₛ, qᵢ)
         return
     end
 
     Bᵢ = B[qᵢ]
+    Bᵢ_region = region(Bᵢ)
+
+    is_qᵢ_bounded = LazySets.isbounded(Bᵢ_region)
+
+    if is_qᵢ_bounded
+        Bᵢ_region_vrep = VPolytope(vertices_list(Bᵢ_region))
+    end
+
     for (Aᵢ, bᵢ) in dynamics(qᵢ)
-        qᵢ_next_nom = Aᵢ * region(Bᵢ) + bᵢ
-        qᵢ_next = minkowski_sum(qᵢ_next_nom, conv_hull_η, prune=false)
-        if LazySets.isbounded(qᵢ_next_nom)
-            qᵢ_next = tovrep(qᵢ_next)
-            box = box_approximation(MinkowskiSum(qᵢ_next_nom, conv_hull_η))
+        qᵢ_next_nom = concretize(Aᵢ * Bᵢ_region + bᵢ)
+
+        qᵢ_next = minkowski_sum(HPolyhedron(constraints_list(qᵢ_next_nom)), conv_hull_η, prune=false)
+        qᵢ_next = normalize(qᵢ_next)
+
+        if is_qᵢ_bounded
+            qᵢ_next_nom = concretize(Aᵢ * Bᵢ_region_vrep + bᵢ)
+            box = minkowski_sum(box_approximation(qᵢ_next_nom), box_conv_hull_η)
         else
             box = nothing
         end
