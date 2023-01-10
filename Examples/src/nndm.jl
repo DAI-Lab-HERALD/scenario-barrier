@@ -5,9 +5,9 @@ using MAT, ZipFile
 
 using Distributions, PDMats
 
-load_mat_system(system_name, bound_method, num_layers, num_regions, initial_region_cb; eps=1e-12) = load_mat_system("models/$system_name/$bound_method/$(num_layers)_layers/partition_data_$num_regions.mat", initial_region_cb; eps=eps)
+load_mat_system(system_name, bound_method, num_layers, num_regions, initial_region_cb, stddev; eps=1e-12) = load_mat_system("models/$system_name/$bound_method/$(num_layers)_layers/partition_data_$num_regions.mat", initial_region_cb, stddev; eps=eps)
 
-function load_mat_system(path, initial_region_cb; eps=1e-12)
+function load_mat_system(path, initial_region_cb, stddev; eps=1e-12)
     file = matopen(path)
 
     regions = read(file, "partitions")
@@ -41,7 +41,7 @@ function load_mat_system(path, initial_region_cb; eps=1e-12)
     end
 
     μ = [0, 0]
-    Σ = PDiagMat([0.002^2, 0.01^2])  # Square to make std.dev. to variance.
+    Σ = PDiagMat(stddev .^ 2)  # Square to make std.dev. to variance.
     η = DiagNormal(μ, Σ)
 
     X0 = initial_region_cb(x, vars)
@@ -80,21 +80,30 @@ initial_region_husky4d(x, vars) = HPolyhedron([x[1] ≤ 0.1, x[1] ≥ -0.1, x[2]
 initial_region_husky5d(x, vars) = HPolyhedron([x[1] ≤ 0.1, x[1] ≥ -0.1, x[2] ≤ 0.1, x[2] ≥ -0.1, x[3] == 0, x[4] == 0, x[5] == 0], vars)
 initial_region_acrobot(x, vars) = HPolyhedron([x[1] ≤ 0.1, x[1] ≥ -0.1, x[2] ≤ 0.1, x[2] ≥ -0.1, x[3] ≤ 0.1, x[3] ≥ -0.1, x[4] ≤ 0.1, x[4] ≥ -0.1, x[5] == 0, x[6] == 0], vars)
 
-function nndm_system(system_name; download_models=false, eps=1e-12)
+function nndm_system(system_name, num_layers, num_regions; download_models=false, eps=1e-12)
     if download_models
         download_nndm_models!()
     end
 
+    # Noise of 1/100th of the width of the safe set across each dimension is applied.
+
     if system_name == "pendulum"
-        return load_mat_system("pendulum", "alpha", 1, 120, initial_region_pendulum; eps=eps)
+        # θ × θ̇
+        return load_mat_system("pendulum", "alpha", num_layers, num_regions, initial_region_pendulum, [deg2rad(12) / 100, 1 / 100]; eps=eps)
     elseif system_name == "cartpole"
-        return load_mat_system("cartpole", "alpha", 1, 960, initial_region_cartpole; eps=eps)
+        # x × ẋ × θ × θ̇
+        return load_mat_system("cartpole", "alpha", num_layers, num_regions, initial_region_cartpole, [1 / 100, 0.6 / 100, deg2rad(12) / 100, 0.6 / 100]; eps=eps)
     elseif system_name == "husky4d"
-        return load_mat_system("husky4d", "alpha", 1, 900, initial_region_husky4d; eps=eps)
+        # x × y × θ × v
+        return load_mat_system("husky4d", "alpha", num_layers, num_regions, initial_region_husky4d, [1.25 / 100, 1 / 100, deg2rad(15) / 100, 0.5 / 100]; eps=eps)
     elseif system_name == "husky5d"
-        return load_mat_system("husky5d", "alpha", 1, 432, initial_region_husky5d; eps=eps)
+        # x × y × θ × v × θ̇
+        # Unsure about the order of variables (some places in the paper angular velocity is 4th and other places the 5th position).
+        # However, it doesn't matter because v and θ̇ have the interval (and thus I apply the same noise).
+        return load_mat_system("husky5d", "alpha", num_layers, num_regions, initial_region_husky5d, [1.25 / 100, 1 / 100, deg2rad(15) / 100, 0.5 / 100, 0.5 / 100]; eps=eps)
     elseif system_name == "acrobot"
-        return load_mat_system("acrobot", "alpha", 1, 144, initial_region_acrobot; eps=eps)
+        # cos(θ₁) × sin(θ₁) × cos(θ₂) × sin(θ₂) × θ̇₁ × θ̇₂ 
+        return load_mat_system("acrobot", "alpha", num_layers, num_regions, initial_region_acrobot, [0.1 / 100, 0.6 / 100, 0.1 / 100, 0.6 / 100, 0.25 / 100, 0.25 / 100]; eps=eps)
     else
         throw("NNDM system not available")
     end
