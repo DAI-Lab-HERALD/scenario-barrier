@@ -236,6 +236,8 @@ function assymetric_dual_constraint!(model, c, rhs, H, h)
     m = size(H, 1)
     y = @variable(model, [1:m], lower_bound = 0)
 
+    H, h = tosimplehrep(normalize(HPolyhedron(H, h)))
+
     @constraint(model, y ⋅ h ≤ rhs)
     @constraint(model, H' * y .== c)
 end
