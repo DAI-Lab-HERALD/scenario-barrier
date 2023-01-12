@@ -39,7 +39,7 @@ function car_with_sidewind(;split="none")
     Cd = [0.8, 1.05]
     m = [1125, 1350]
     a_lat = [0.5 * ρ[1] * v_wind[1]^2 * A[1] * Cd[1] / m[2], 0.5 * ρ[2] * v_wind[2]^2 * A[2] * Cd[2] / m[1]]
-    Ab_gust = [AffineDynamics(Float64[1 0; 0 0.8], [v_long, 0.5 * a_lat[1] * dt^2]), AffineDynamics(Float64[1 0; 0 1], [v_long, 0.5 * a_lat[2] * dt^2])]
+    Ab_gust = [AffineDynamics(Float64[1 0; 0 0.8], [v_long, 0.5 * a_lat[1] * dt^2]), AffineDynamics(Float64[1 0; 0 0.8], [v_long, 0.5 * a_lat[2] * dt^2])]
     dyn = [Ab, Ab, Ab, Ab, Ab, Ab, Ab, Ab, Ab, Ab_gust, Ab_gust, Ab_gust, Ab, Ab, Ab, Ab, Ab, Ab]
 
     μ = [0, 0]
