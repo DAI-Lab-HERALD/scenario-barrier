@@ -31,7 +31,7 @@ function run_experiment(problem)
 
     # Warmup
     @info "Warmup" name=problem.name
-    verify(solver, problem.system, H=problem.horizon, ϵ=problem.ϵ, β=problem.β)
+    @time verify(solver, problem.system, H=problem.horizon, ϵ=problem.ϵ, β=problem.β)
 
     # Experiment run
     for i in 1:100
