@@ -29,7 +29,8 @@ probs_to_analyze = [
     "nndm_pendulum_1layer_120regions",
     "nndm_pendulum_1layer_240regions",
     "nndm_pendulum_1layer_480regions",
-    "nndm_pendulum_2layer_120regions"
+    "nndm_pendulum_2layer_120regions",
+    "nndm_pendulum_2layer_240regions"
 ]
 
 for problem in probs_to_analyze
