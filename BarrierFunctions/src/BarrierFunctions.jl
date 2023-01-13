@@ -12,6 +12,7 @@ module BarrierFunctions
     include("system.jl")
     include("barrier.jl")
     include("split.jl")
+    include("expectation.jl")
     include("verify.jl")
     include("random.jl")
     include("monte_carlo.jl")

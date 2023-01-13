@@ -75,10 +75,10 @@ function car_with_sidewind(;split="none")
     return System(Q, dyn, η, X0, Xs, Xu)
 end
 
-prob_car_with_sidewind_no_partitioning = Problem("car_with_sidewind_no_partitioning", car_with_sidewind(split="none"), 10, 0.005/10, 1e-9)
-prob_car_with_sidewind_lat_partitioning = Problem("car_with_sidewind_lat_partitioning", car_with_sidewind(split="lat"), 10, 0.005/10, 1e-9)
-prob_car_with_sidewind_lon_partitioning = Problem("car_with_sidewind_lon_partitioning", car_with_sidewind(split="lon"), 10, 0.005/10, 1e-9)
-prob_car_with_sidewind_latlon_partitioning = Problem("car_with_sidewind_latlon_partitioning", car_with_sidewind(split="latlon"), 10, 0.005/10, 1e-9)
+prob_car_with_sidewind_no_partitioning = Problem("car_with_sidewind_no_partitioning", car_with_sidewind(split="none"), 10, ScenarioApproach(0.005/10, 1e-9))
+prob_car_with_sidewind_lat_partitioning = Problem("car_with_sidewind_lat_partitioning", car_with_sidewind(split="lat"), 10, ScenarioApproach(0.005/10, 1e-9))
+prob_car_with_sidewind_lon_partitioning = Problem("car_with_sidewind_lon_partitioning", car_with_sidewind(split="lon"), 10, ScenarioApproach(0.005/10, 1e-9))
+prob_car_with_sidewind_latlon_partitioning = Problem("car_with_sidewind_latlon_partitioning", car_with_sidewind(split="latlon"), 10, ScenarioApproach(0.005/10, 1e-9))
 
 probs_car_with_sidewind = [
     prob_car_with_sidewind_no_partitioning,

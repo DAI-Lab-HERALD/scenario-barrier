@@ -2,17 +2,14 @@ using LinearAlgebra
 
 using Distributions
 using Dualization
-using Polyhedra
-using CDDLib
+using Polyhedra, CDDLib
 
-export verify, barrier_variable!, partition_barrier_variable!, barrier_value, count_variables, required_samples, overlaps_unsafe
+export verify, barrier_variable!, partition_barrier_variable!, barrier_value, count_variables, overlaps_unsafe
 export constraints!, assymetric_dual_constraint!, unsafe_constraint!, initial_constraint!
-export region_constraints!, expectation_constraint!, non_negativity_constraint!, expectation_partition_constraint!
+export region_constraints!, non_negativity_constraint!
 
-function verify(solver, system::System; H::Int, ϵ::Number, β::Number, num_samples::Union{Int, Nothing}=nothing)
+function verify(solver, system::System, H::Int, expectation_method::ExpectationMethod)
     @assert(H >= 1, "Horizon H must be greater than or equal to one (is $H)")
-    @assert(0 < ϵ < 1, "Epsilon must be in range (0, 1) (is $ϵ)")
-    @assert(0 < β < 1, "Beta must be in range (0, 1) (is $β)")
 
     solver = dual_optimizer(solver)
     model = Model(solver)
@@ -22,20 +19,8 @@ function verify(solver, system::System; H::Int, ϵ::Number, β::Number, num_samp
     @variable(model, c, lower_bound = 0)
     B = barrier_variable!(model, system)
 
-    n_variables = count_variables(B) + 2
-    r_samples = required_samples(n_variables, ϵ, β)
-    @info "Required number of samples given $n_variables variables and the desired confidence of $β is $r_samples."
-    if !isnothing(num_samples)
-        if num_samples < r_samples
-            @warn "The requested number of samples $num_samples is less than the required number of samples $r_samples"
-        end
-        n_samples = num_samples
-    else
-        n_samples = r_samples
-    end
-
     # Constraints
-    constraints!(model, system, B, c, γ, ϵ, n_samples)
+    constraints!(model, system, B, c, γ, expectation_method)
 
     # Objective
     @objective(model, Min, γ + c * H)
@@ -54,7 +39,7 @@ function verify(solver, system::System; H::Int, ϵ::Number, β::Number, num_samp
 
     @info "Termination status $(JuMP.termination_status(model)), primal status $(JuMP.primal_status(model)), safety prob $prob"
 
-    return succ, B, prob, n_variables
+    return succ, B, prob
 end
 
 function barrier_variable!(model, system)
@@ -94,51 +79,24 @@ count_variables(B::LinearBarrier{T, VT}) where {T<:Number, VT} = 0
 count_variables(B::ConstantBarrier{T}) where {T<:AbstractVariableRef} = 1
 count_variables(B::ConstantBarrier{T}) where {T<:Number} = 0
 
-function required_samples(d, ϵ, β)
-    lower_bound = d + 1
-    upper_bound = ceil(Int, (ℯ / (ℯ - 1)) * (1 / ϵ) * (d + log(1 / β)))  # The funny ℯ is Euler's constant
-
-    beta(N) = sum(i -> binomial(big(N), i) * ϵ^i * (1 - ϵ)^(N - i), 0:(d - 1))
-
-    while lower_bound + 1 < upper_bound
-        mid = floor(Int, (lower_bound + upper_bound) / 2)
-        b = beta(mid)
-
-        if b > β
-            lower_bound = mid
-        else
-            upper_bound = mid
-        end
-    end
-
-    return upper_bound
-end
-
 # Constraints
-function constraints!(model, system, B, c, γ, ϵ, num_samples)
-    distribution = noise(system)
-    ηs = rand(distribution, num_samples)
-    conv_hull_η = VPolytope(convex_hull([copy(η) for η in eachcol(ηs)]))
-
-    @debug "Using the convex hull, we reduce the number of samples from $(size(ηs, 2)) to $(length(vertices_list(conv_hull_η)))"
-
-    conv_hull_η = tohrep(conv_hull_η)
-    conv_hull_η = normalize(conv_hull_η)
-    box_conv_hull_η = box_approximation(conv_hull_η)
+function constraints!(model, system, B, c, γ, expectation_method)
+    n_variables = count_variables(B) + 2
+    expectation = prepare(system, expectation_method, n_variables)
 
     for qᵢ in regions(system)
         @debug "Region $qᵢ, $(region(qᵢ))"
-        region_constraints!(model, system, B, c, γ, ϵ, qᵢ, conv_hull_η, box_conv_hull_η)
+        region_constraints!(model, system, B, c, γ, qᵢ, expectation)
     end
 end
 
-function region_constraints!(model, system, B, c, γ, ϵ, qᵢ, conv_hull_η, box_conv_hull_η)
+function region_constraints!(model, system, B, c, γ, qᵢ, expectation)
     Bᵢ = B[qᵢ]
 
     non_negativity_constraint!(model, Bᵢ)
     initial_constraint!(model, system, Bᵢ, γ)
     unsafe_constraint!(model, system, Bᵢ)
-    expectation_constraint!(model, system, B, c, ϵ, qᵢ, conv_hull_η, box_conv_hull_η)
+    expectation_constraint!(model, system, B, c, qᵢ, expectation)
 end
 
 function overlaps_unsafe(system, q)
@@ -151,43 +109,6 @@ function overlaps_unsafe(system, q)
     end
 
     return false
-end
-
-function expectation_constraint!(model, system, B, c, ϵ, qᵢ, conv_hull_η, box_conv_hull_η)
-    Xₛ = safe_set(system)
-    if is_intersection_zeromeasure(Xₛ, qᵢ)
-        return
-    end
-
-    Bᵢ = B[qᵢ]
-    Bᵢ_region = region(Bᵢ)
-
-    is_qᵢ_bounded = LazySets.isbounded(Bᵢ_region)
-
-    if is_qᵢ_bounded
-        Bᵢ_region_vrep = VPolytope(vertices_list(Bᵢ_region))
-    end
-
-    for (Aᵢ, bᵢ) in dynamics(qᵢ)
-        qᵢ_next_nom = concretize(Aᵢ * Bᵢ_region + bᵢ)
-
-        qᵢ_next = minkowski_sum(HPolyhedron(constraints_list(qᵢ_next_nom)), conv_hull_η, prune=false)
-        qᵢ_next = normalize(qᵢ_next)
-
-        if is_qᵢ_bounded
-            qᵢ_next_nom = concretize(Aᵢ * Bᵢ_region_vrep + bᵢ)
-            box = minkowski_sum(box_approximation(qᵢ_next_nom), box_conv_hull_η)
-        else
-            box = nothing
-        end
-
-        query = RegionIntersectsQuery(qᵢ_next, box)
-        next_regions = Spatial.findall(query, regions(system))
-
-        for qⱼ in next_regions
-            expectation_partition_constraint!(model, Aᵢ, bᵢ, Bᵢ, B[qⱼ], c, ϵ, conv_hull_η)
-        end
-    end
 end
 
 # Piece-wise linear barrier
@@ -219,26 +140,6 @@ function unsafe_constraint!(model, system, B::BarrierRegion{T, LinearBarrier{T1,
         p, v = B.fun.p, B.fun.v
         assymetric_dual_constraint!(model, -p, v - 1.0, H, h)
     end
-end
-
-function expectation_partition_constraint!(model, Aᵢ, bᵢ, Bᵢ::BarrierRegion{T, LinearBarrier{T1, VT1}}, Bⱼ::BarrierRegion{T, LinearBarrier{T2, VT2}}, c, ϵ, conv_hull_η) where {T, T1, VT1, T2, VT2}
-    Hᵢ, hᵢ = tosimplehrep(region(Bᵢ))
-    Hⱼ, hⱼ = tosimplehrep(region(Bⱼ))
-    Hη, hη = tosimplehrep(conv_hull_η)
-
-    pᵢ, vᵢ = Bᵢ.fun.p, Bᵢ.fun.v
-    pⱼ, vⱼ = Bⱼ.fun.p, Bⱼ.fun.v
-
-    # We can let M = 1 [max B(x)] as B(x) can be modified aposterori to be capped at 1 without violating the theory
-    M = 1
-    d = M * ϵ
-
-    a = vcat(Aᵢ' * pⱼ .- (pᵢ / (1 - ϵ)), pⱼ)
-    rhs = (vᵢ + c - d) / (1 - ϵ) - vⱼ - pⱼ ⋅ bᵢ
-    H = vcat(hcat(Hᵢ, zero(Hᵢ)), hcat(zero(Hη), Hη), hcat(Hⱼ * Aᵢ, Hⱼ))
-    h = vcat(hᵢ, hη, hⱼ - Hⱼ * bᵢ)
-
-    assymetric_dual_constraint!(model, a, rhs, H, h)
 end
 
 function assymetric_dual_constraint!(model, c, rhs, H, h)
@@ -279,25 +180,6 @@ function unsafe_constraint!(model, system, B::BarrierRegion{T, ConstantBarrier{T
     end
 end
 
-function expectation_partition_constraint!(model, Aᵢ, bᵢ, Bᵢ::BarrierRegion{T, ConstantBarrier{T1}}, Bⱼ::BarrierRegion{T, ConstantBarrier{T2}}, c, ϵ, η) where {T, T1, T2}
-    qᵢ_next = Aᵢ * region(Bᵢ) + bᵢ
-
-    vᵢ = Bᵢ.fun.v
-    vⱼ = Bⱼ.fun.v
-
-    # We can let M = 1 [max B(x)] as B(x) can be modified aposterori to be capped at 1 without violating the theory
-    M = 5
-    d = M * ϵ / (1 - ϵ)
-
-    for η in eachcol(ηs)
-        if is_intersection_zeromeasure(region(Bⱼ), qᵢ_next + η)
-            continue
-        end
-
-        @constraint(model, vⱼ - vᵢ - c + d ≤ 0.0)
-    end
-end
-
 # Piece-wise quadratic barrier
 function non_negativity_constraint!(model, B::BarrierRegion{T, QuadraticBarrier{T1, VT1, VVT1}}) where {T, T1, VT1, VVT1}
     s_mat = s_procedure(model, q)
@@ -331,28 +213,6 @@ function unsafe_constraint!(model, system, B::BarrierRegion{T, QuadraticBarrier{
 
         @constraint(model, -B[q] + one_mat - s_mat ≤ 0, PSDCone())
     end
-end
-
-function expectation_partition_constraint!(model, Aᵢ, bᵢ, Bᵢ::BarrierRegion{T, QuadraticBarrier{T1, VT1, VVT1}}, Bⱼ::BarrierRegion{T, QuadraticBarrier{T2, VT2, VVT2}}, c, ϵ, η) where {T, T1, VT1, VVT1, T2, VT2, VVT2}
-    Pᵢ, pᵢ, vᵢ = Bᵢ.fun.P, Bᵢ.fun.p, Bᵢ.fun.v
-    Pⱼ, pⱼ, vⱼ = Bⱼ.fun.P, Bⱼ.fun.p, Bⱼ.fun.v
-
-    # We can let M = 1 [max B(x)] as B(x) can be modified aposterori to be capped at 1 without violating the theory
-    M = 1
-    d = M * ϵ / (1 - ϵ)
-
-    bᵢη = bᵢ + η
-    quadratic = Aᵢ' * Pⱼ * Aᵢ - Pᵢ
-    linear = Aᵢ' * Pⱼ * bᵢη + 0.5 * Aᵢ' * pⱼ - 0.5 * pᵢ 
-    constant = bᵢη' * Pⱼ * bᵢη + bᵢη' * pⱼ + vⱼ - vᵢ - c + d
-
-    mat = vcat(
-        hcat(quadratic, linear),
-        hcat(linear', constant)
-    )
-
-    s_mat = s_procedure(model, qi)
-    @constraint(model, mat - s_mat ≤ 0, PSDCone())
 end
 
 function s_procedure(model, p)

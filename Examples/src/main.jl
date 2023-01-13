@@ -38,7 +38,7 @@ function run_experiment(problem)
         @info "Iteration $i/100"
         with_logger(TerminalLogger(stderr, LogLevel(1); right_justify=120)) do
             start_time = time()
-            succ, _, prob, _ = verify(solver, problem.system, H=problem.horizon, ϵ=problem.ϵ, β=problem.β)
+            succ, _, prob = verify(solver, problem.system, problem.horizon, problem.expectation_method)
             exec_time = time() - start_time
             push!(res, (success=succ, probability=prob, computation_time=exec_time))
         end

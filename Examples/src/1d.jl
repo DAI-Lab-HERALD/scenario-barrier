@@ -41,8 +41,8 @@ function martingale1d(uncertain=true)
 end
 
 
-prob_linear1d_uncertain = Problem("linear1d_uncertain", martingale1d(true), 10, 0.005/10, 1e-9)
-prob_linear1d_exact = Problem("linear1d_exact", martingale1d(false), 10, 0.005/10, 1e-9)
+prob_linear1d_uncertain = Problem("linear1d_uncertain", martingale1d(true), 10, ScenarioApproach(0.005/10, 1e-9))
+prob_linear1d_exact = Problem("linear1d_exact", martingale1d(false), 10, ScenarioApproach(0.005/10, 1e-9))
 
 probs_linear1d = [
     prob_linear1d_uncertain,

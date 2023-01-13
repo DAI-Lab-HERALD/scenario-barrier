@@ -3,6 +3,5 @@ struct Problem
     system::System
     horizon::Int64
 
-    ϵ::Float64
-    β::Float64
+    expectation_method::ExpectationMethod
 end
