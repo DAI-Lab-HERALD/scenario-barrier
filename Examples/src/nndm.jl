@@ -40,7 +40,7 @@ function load_mat_system(path, initial_region_cb, stddev; eps=1e-12)
         push!(dyn, dyn_i)
     end
 
-    μ = [0, 0]
+    μ = zero(stddev)
     Σ = PDiagMat(stddev .^ 2)  # Square to make std.dev. to variance.
     η = DiagNormal(μ, Σ)
 
