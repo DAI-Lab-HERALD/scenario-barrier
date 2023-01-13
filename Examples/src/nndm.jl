@@ -221,7 +221,7 @@ probs_nndm_pendulum = [
 # Cartpole
 prob_nndm_cartpole_1layer_960regions = Problem("nndm_cartpole_1layer_960regions", nndm_system("cartpole", 1, 960), 1, ScenarioApproach(0.005/1, 1e-9))
 prob_nndm_cartpole_1layer_1920regions = Problem("nndm_cartpole_1layer_1920regions", nndm_system("cartpole", 1, 1920), 1, ScenarioApproach(0.005/1, 1e-9))
-prob_nndm_cartpole_1layer_3840regions = Problem("nndm_cartpole_1layer_3840regions", nndm_system("cartpole", 1, 3840), 1, 9)ScenarioApproach(0.005/1, 1e-9)
+prob_nndm_cartpole_1layer_3840regions = Problem("nndm_cartpole_1layer_3840regions", nndm_system("cartpole", 1, 3840), 1, ScenarioApproach(0.005/1, 1e-9))
 
 probs_nndm_cartpole_1layer = [
     prob_nndm_cartpole_1layer_960regions,
