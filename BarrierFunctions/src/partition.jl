@@ -3,19 +3,6 @@ import GLPK, JuMP
 
 export AffineDynamics, ConvexHullDynamics, singleton_dynamics, DynamicsRegion, Partition, is_intersection_zeromeasure, index, region, dynamics
 
-# TYPE PIRACY! - the better approach is probably to use dim and let DynamicsRegion derive from LazySet
-Base.size(p::AbstractPolyhedron) = (length ∘ constraints_list)(p), LazySets.dim(p)
-function Base.size(p::AbstractPolyhedron, d) 
-    @assert(1 ≤ d ≤ 2)
-
-    if d == 1
-        return (length ∘ constraints_list)(p)
-    else
-        return LazySets.dim(p)
-    end
-end
-
-
 struct AffineDynamics{T}
     A::AbstractMatrix{T}
     b::AbstractVector{T}

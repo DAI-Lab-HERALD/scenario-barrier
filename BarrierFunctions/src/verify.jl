@@ -215,7 +215,8 @@ function unsafe_constraint!(model, system, B::BarrierRegion{T, QuadraticBarrier{
 end
 
 function s_procedure(model, p)
-    m, n = size(p)
+    H, h = tosimplehrep(p)
+    m, n = size(H)
     τ = @variable(model, [1:m], lower_bound = 0)
     H, h = tosimplehrep(p)
 
