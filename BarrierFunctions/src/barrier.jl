@@ -29,6 +29,12 @@ function (B::QuadraticBarrier)(x)
 end
 matrix(B::QuadraticBarrier) = vcat(hcat(B.P, B.p), hcat(B.p', B.v))
 
+@kwdef struct PolynomialBarrier{T} <: BarrierFunction
+    p::AbstractPolynomialLike{T}
+end
+function (B::PolynomialBarrier)(x)
+    return B.p(x)
+end
 
 # Piece-wise barrier
 @kwdef struct BarrierRegion{T<:Real, B<:BarrierFunction}

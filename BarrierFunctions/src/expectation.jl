@@ -95,6 +95,21 @@ function prepare(system::PiecewiseSystem, method::ScenarioApproach, d, num_sampl
     )
 end
 
+function prepare(system::PolynomialSystem, method::ScenarioApproach, d, num_samples)
+    distribution = noise(system)
+    ηs = rand(distribution, num_samples)
+    ηs = [copy(η) for η in eachcol(ηs)]
+
+    if method.conv_hull
+        @warn "Convex hull approach does not work polynomial systems"
+    end
+
+    return ExpectationData(
+        method,
+        ηs
+    )
+end
+
 ### Override number of samples for data-driven expectation methods
 struct OverrideNumSamples <: ExpectationMethod
     underlying_method::DataDrivenExpectationMethod
@@ -214,5 +229,22 @@ function expectation_partition_constraint!(model, Aᵢ, bᵢ, Bᵢ::BarrierRegio
 
         s_mat = s_procedure(model, qi)
         @constraint(model, mat - s_mat ≤ 0, PSDCone())
+    end
+end
+
+function expectation_constraint!(model, system, B::PolynomialBarrier, c, expectation::ExpectationData{ScenarioApproach})
+    Xₛ = safe_set(system)
+    f = dynamics(system)
+
+    @polyvar w[1:dimensionality(system)]
+    B_next = subs(B, variables(system) => f + w)
+
+    # We can let M = 1 [max B(x)] as B(x) can be modified aposterori to be capped at 1 without violating the theory
+    ϵ = expectation.method.ϵ
+    M = 1
+    d = M * ϵ
+
+    for η in expectation.data
+        @constraint(model, -subs(B_next, w => η) + (B + c - d) / (1 - ϵ) in SOSCone(), domain=Xₛ)
     end
 end

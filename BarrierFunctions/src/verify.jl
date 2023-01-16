@@ -50,6 +50,15 @@ function barrier_variable!(model, system::PiecewiseSystem)
     return B
 end
 
+function barrier_variable!(model, system::PolynomialSystem)
+    vars = variables(system)
+    monos = monomials(vars, 0:4)
+    # Use SOSPoly to enforce non-negativity
+    B = @variable(model, variable_type=SOSPoly(monos))
+
+    return PolynomialBarrier(B)
+end
+
 # Optimization variables
 function region_barrier_variable!(model, system, qᵢ)
     n = dimensionality(system)
@@ -70,6 +79,7 @@ barrier_value(B::PiecewiseBarrier) = PiecewiseBarrier(index(Bᵢ) => barrier_val
 barrier_value(B::BarrierRegion) = BarrierRegion(index(B), region(B), barrier_value(B.fun))
 barrier_value(B::LinearBarrier) = LinearBarrier(value.(B.p), value(B.v))
 barrier_value(B::ConstantBarrier) = ConstantBarrier(value(B.v))
+barrier_value(B::PolynomialBarrier) = PolynomialBarrier(value(B.p))
 
 count_variables(B::PiecewiseBarrier) = sum(Bᵢ -> count_variables(Bᵢ), B)
 count_variables(B::BarrierRegion) = count_variables(B.fun)
@@ -77,6 +87,7 @@ count_variables(B::LinearBarrier{T, VT}) where {T<:AbstractVariableRef, VT} = le
 count_variables(B::LinearBarrier{T, VT}) where {T<:Number, VT} = 0
 count_variables(B::ConstantBarrier{T}) where {T<:AbstractVariableRef} = 1
 count_variables(B::ConstantBarrier{T}) where {T<:Number} = 0
+count_variables(B::PolynomialBarrier) = length(monomials(B.p))
 
 # Piece-wise constraints
 function constraints!(model, system::PiecewiseSystem, B, c, γ, expectation_method)
@@ -231,4 +242,28 @@ function s_procedure(model, p)
     )
 
     return mat
+end
+
+# Polynomial constraints
+function constraints!(model, system::PolynomialSystem, B, c, γ, expectation_method)
+    n_variables = count_variables(B) + 2
+    expectation = prepare(system, expectation_method, n_variables)
+
+    initial_constraint!(model, system, B, γ)
+    unsafe_constraint!(model, system, B)
+    expectation_constraint!(model, system, B, c, q, expectation)
+end
+
+function initial_constraint!(model, system, B::PolynomialBarrier, γ)
+    X₀ = initial_set(system)
+
+    @constraint(model, γ - B.p in SOSCone(), domain=X₀)
+end
+
+function unsafe_constraint!(model, system, B::PolynomialBarrier)
+    Xᵤ = unsafe_set(system)
+
+    for subset in Xᵤ
+        @constraint(model, B.p - 1.0 in SOSCone(), domain=subset)
+    end
 end
