@@ -79,7 +79,7 @@ function prepare(system, method::ScenarioApproach, d, num_samples)
 
     if method.conv_hull
         old_length = size(ηs, 2)
-        ηs = convex_hull(ηs)
+        ηs = convex_hull(ηs; backend=CDDLib.Library())
         new_length = size(ηs, 2)
         @debug "Using the convex hull, we reduce the number of samples from $old_length to $new_length"
     end

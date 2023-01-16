@@ -2,7 +2,6 @@ using LinearAlgebra
 
 using Distributions
 using Dualization
-using Polyhedra, CDDLib
 
 export verify, barrier_variable!, partition_barrier_variable!, barrier_value, count_variables, overlaps_unsafe
 export constraints!, assymetric_dual_constraint!, unsafe_constraint!, initial_constraint!
