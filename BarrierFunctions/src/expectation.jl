@@ -34,9 +34,17 @@ struct SampleAverage <: DataDrivenExpectationMethod
     end
 end
 confidence(method::SampleAverage) = method.β
+required_samples(method::SampleAverage, d) = 1.0 / (method.ϵ^2 * method.β)
 
 function prepare(system, method::SampleAverage, d)
+    distribution = noise(system)
+    ηs = rand(distribution, num_samples)
+    ηs = [copy(η) for η in eachcol(ηs)]
 
+    return ExpectationData(
+        method,
+        ηs
+    )
 end
 
 ### The scenario approach
@@ -129,6 +137,23 @@ function prepare(system, method::OverrideNumSamples, d)
     return prepare(system, method.underlying_method, d, method.num_samples)
 end
 
+### Sample average expecation
+function expectation_constraint!(model, system, B::PolynomialSystem, c, expectation::ExpectationData{SampleAverage})
+    Xₛ = safe_set(system)
+    f = dynamics(system)
+
+
+    # We can let M = 1 [max B(x)] as B(x) can be modified aposterori to be capped at 1 without violating the theory
+    ϵ = expectation.method.ϵ
+    M = 1
+    d = M * ϵ
+
+    @polyvar w[1:dimensionality(system)]
+    B_next = subs(B, variables(system) => f + w)
+    B_next = mean([subs(B_next, w => η) for η in expectation.data])
+
+    @constraint(model, -B_next + B + c - d in SOSCone(), domain=Xₛ)
+end
 
 ### Scenario approach expectation for different families of barriers
 function expectation_constraint!(model, system, B::PiecewiseBarrier, c, qᵢ, expectation::ExpectationData{ScenarioApproach})
