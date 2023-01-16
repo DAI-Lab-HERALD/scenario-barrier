@@ -37,7 +37,7 @@ function martingale1d(uncertain=true)
         HPolyhedron([x ≤ -2.5], vars)
     ]
 
-    return System(Q, dyn, η, X0, Xs, Xu)
+    return PiecewiseSystem(Q, dyn, η, X0, Xs, Xu)
 end
 
 

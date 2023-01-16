@@ -69,7 +69,7 @@ function drone(uncertain=true)
     ]
     Q, dyn = grid_split(Q, dyn, split_spec)
 
-    return System(Q, dyn, η, X0, Xs, Xu)
+    return PiecewiseSystem(Q, dyn, η, X0, Xs, Xu)
 end
 
 prob_drone_uncertain = Problem("drone_uncertain", drone(true), 10, ScenarioApproach(0.005/10, 1e-9))

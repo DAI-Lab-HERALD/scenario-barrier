@@ -72,7 +72,7 @@ function required_samples(method::ScenarioApproach, d)
     return upper_bound
 end
 
-function prepare(system, method::ScenarioApproach, d, num_samples)
+function prepare(system::PiecewiseSystem, method::ScenarioApproach, d, num_samples)
     distribution = noise(system)
     ηs = rand(distribution, num_samples)
     ηs = [copy(η) for η in eachcol(ηs)]
@@ -114,7 +114,7 @@ end
 
 
 ### Scenario approach expectation for different families of barriers
-function expectation_constraint!(model, system, B, c, qᵢ, expectation::ExpectationData{ScenarioApproach})
+function expectation_constraint!(model, system, B::PiecewiseBarrier, c, qᵢ, expectation::ExpectationData{ScenarioApproach})
     Xₛ = safe_set(system)
     if is_intersection_zeromeasure(Xₛ, qᵢ)
         return

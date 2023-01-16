@@ -7,6 +7,8 @@ module BarrierFunctions
     using LazySets
     import Base.@kwdef
 
+    using MultivariatePolynomials, DynamicPolynomials, SemialgebraicSets
+
     include("utils/index.jl")
     include("utils/split.jl")
     include("utils/random.jl")
@@ -17,10 +19,7 @@ module BarrierFunctions
     include("utils/plot.jl")
 
     include("barrier.jl")
-    include("split.jl")
     include("expectation.jl")
     include("verify.jl")
-    include("random.jl")
     include("monte_carlo.jl")
-    include("plot.jl")
 end

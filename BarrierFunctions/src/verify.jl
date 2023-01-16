@@ -7,7 +7,7 @@ export verify, barrier_variable!, partition_barrier_variable!, barrier_value, co
 export constraints!, assymetric_dual_constraint!, unsafe_constraint!, initial_constraint!
 export region_constraints!, non_negativity_constraint!
 
-function verify(solver, system::System, H::Int, expectation_method::ExpectationMethod)
+function verify(solver, system::AbstractSystem, H::Int, expectation_method::ExpectationMethod)
     @assert(H >= 1, "Horizon H must be greater than or equal to one (is $H)")
 
     solver = dual_optimizer(solver)
@@ -41,7 +41,7 @@ function verify(solver, system::System, H::Int, expectation_method::ExpectationM
     return succ, B, prob
 end
 
-function barrier_variable!(model, system)
+function barrier_variable!(model, system::PiecewiseSystem)
     B = PiecewiseBarrier(
            qᵢ => region_barrier_variable!(model, system, qᵢ)
            for qᵢ in regions(system)
@@ -52,7 +52,7 @@ end
 
 # Optimization variables
 function region_barrier_variable!(model, system, qᵢ)
-    n = state_space_size(system)
+    n = dimensionality(system)
 
     Xₛ = safe_set(system)
     if is_intersection_zeromeasure(Xₛ, qᵢ)
@@ -78,8 +78,8 @@ count_variables(B::LinearBarrier{T, VT}) where {T<:Number, VT} = 0
 count_variables(B::ConstantBarrier{T}) where {T<:AbstractVariableRef} = 1
 count_variables(B::ConstantBarrier{T}) where {T<:Number} = 0
 
-# Constraints
-function constraints!(model, system, B, c, γ, expectation_method)
+# Piece-wise constraints
+function constraints!(model, system::PiecewiseSystem, B, c, γ, expectation_method)
     n_variables = count_variables(B) + 2
     expectation = prepare(system, expectation_method, n_variables)
 

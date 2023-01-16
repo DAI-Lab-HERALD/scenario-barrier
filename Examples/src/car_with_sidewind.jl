@@ -72,7 +72,7 @@ function car_with_sidewind(;split="none")
     end
     Q, dyn = grid_split(Q, dyn, split_spec)
 
-    return System(Q, dyn, η, X0, Xs, Xu)
+    return PiecewiseSystem(Q, dyn, η, X0, Xs, Xu)
 end
 
 prob_car_with_sidewind_no_partitioning = Problem("car_with_sidewind_no_partitioning", car_with_sidewind(split="none"), 10, ScenarioApproach(0.005/10, 1e-9))

@@ -71,7 +71,7 @@ function load_mat_system(path, initial_region_cb, stddev; eps=1e-12)
         remaining_region = intersection(remaining_region, HPolyhedron([dim_bounds[1] ≤ x[i], x[i] ≤ dim_bounds[2]], vars))
     end
 
-    return System(Q, dyn, η, X0, Xs, Xu)
+    return PiecewiseSystem(Q, dyn, η, X0, Xs, Xu)
 end
 
 initial_region_pendulum(x, vars) = HPolyhedron([-deg2rad(5) ≤ x[1], x[1] ≤ deg2rad(5), x[2] == 0], vars)
