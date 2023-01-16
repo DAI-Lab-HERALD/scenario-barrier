@@ -87,9 +87,9 @@ function prepare(system::PiecewiseSystem, method::ScenarioApproach, d, num_sampl
     end
 
     ηs = VPolytope(ηs)
+    box_ηs = box_approximation(ηs)
 
     ηs = normalize(tohrep(ηs))
-    box_ηs = box_approximation(ηs)
 
     return ExpectationData(
         method,
