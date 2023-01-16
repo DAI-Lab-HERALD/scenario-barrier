@@ -1,7 +1,7 @@
 using BarrierFunctions
 using LazySets, Symbolics
 
-using Distributions, PDMats
+using Distributions, PDMats, Random
 
 function martingale1d(uncertain=true)
     vars = Symbolics.@variables x
@@ -48,3 +48,16 @@ probs_linear1d = [
     prob_linear1d_uncertain,
     prob_linear1d_exact
 ];
+
+function sanity_check()
+    system = martingale1d(false)
+    solver = optimizer_with_attributes(Mosek.Optimizer, "INTPNT_BASIS" => MSK_BI_NEVER)
+
+    Random.seed!(1596743182)
+    _, _, convhull_prob = verify(solver, system, 2,  ScenarioApproach(0.005/2, 1e-4, true))
+
+    Random.seed!(1596743182)
+    _, _, no_convhull_prob = verify(solver, system, 2,  ScenarioApproach(0.005/2, 1e-4, false))
+
+    println("Found safety probabilities $convhull_prob / $no_convhull_prob, difference: $(convhull_prob - no_convhull_prob)")
+end
