@@ -181,15 +181,17 @@ end
 
 # Piece-wise quadratic barrier
 function non_negativity_constraint!(model, B::BarrierRegion{T, QuadraticBarrier{T1, VT1, VVT1}}) where {T, T1, VT1, VVT1}
+    q = region(B)
     s_mat = s_procedure(model, q)
 
-    @constraint(model, -B[q] - s_mat ≤ 0, PSDCone())
+    @constraint(model, -matrix(B) - s_mat ≤ 0, PSDCone())
 end
 
 function initial_constraint!(model, system, B::BarrierRegion{T, QuadraticBarrier{T1, VT1, VVT1}}, γ) where {T, T1, VT1, VVT1}
     X₀ = initial_set(system)
+    q = region(B)
 
-    if is_intersection_zeromeasure(X₀, region(B))
+    if is_intersection_zeromeasure(X₀, q)
         return
     end
 
@@ -198,11 +200,12 @@ function initial_constraint!(model, system, B::BarrierRegion{T, QuadraticBarrier
     γ_mat = zero(s_mat)
     γ_mat[end, end] = γ
 
-    @constraint(model, B[q] - γ_mat - s_mat ≤ 0, PSDCone())
+    @constraint(model, matrix(B) - γ_mat - s_mat ≤ 0, PSDCone())
 end
 
 function unsafe_constraint!(model, system, B::BarrierRegion{T, QuadraticBarrier{T1, VT1, VVT1}}) where {T, T1, VT1, VVT1}
-    if overlaps_unsafe(system, region(B))
+    q = region(B)
+    if overlaps_unsafe(system, q)
         # We may need to refine partitions if a partition cover too large part of the safe set
 
         s_mat = s_procedure(model, q)
@@ -210,7 +213,7 @@ function unsafe_constraint!(model, system, B::BarrierRegion{T, QuadraticBarrier{
         one_mat = zero(s_mat)
         one_mat[end, end] = 1
 
-        @constraint(model, -B[q] + one_mat - s_mat ≤ 0, PSDCone())
+        @constraint(model, -matrix(B) + one_mat - s_mat ≤ 0, PSDCone())
     end
 end
 
@@ -218,7 +221,6 @@ function s_procedure(model, p)
     H, h = tosimplehrep(p)
     m, n = size(H)
     τ = @variable(model, [1:m], lower_bound = 0)
-    H, h = tosimplehrep(p)
 
     Hτ = H' * τ
     hτ = -2 * h' * τ

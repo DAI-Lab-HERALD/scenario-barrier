@@ -27,6 +27,8 @@ end
 function (B::QuadraticBarrier)(x)
     return x' * B.P * x + B.p' * x + B.v
 end
+matrix(B::QuadraticBarrier) = vcat(hcat(B.P, B.p), hcat(B.p', B.v))
+
 
 # Piece-wise barrier
 @kwdef struct BarrierRegion{T<:Real, B<:BarrierFunction}
