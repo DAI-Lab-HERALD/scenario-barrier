@@ -88,9 +88,9 @@ function prepare(system::PiecewiseSystem, method::ScenarioApproach, d, num_sampl
     ηs = [copy(η) for η in eachcol(ηs)]
 
     if method.conv_hull
-        old_length = size(ηs, 2)
+        old_length = length(ηs)
         ηs = convex_hull(ηs; backend=CDDLib.Library())
-        new_length = size(ηs, 2)
+        new_length = length(ηs)
         @debug "Using the convex hull, we reduce the number of samples from $old_length to $new_length"
     end
 
