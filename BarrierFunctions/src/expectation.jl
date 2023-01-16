@@ -1,3 +1,5 @@
+using Polyhedra, CDDLib
+
 export ExpectationMethod, SampleAverage, ScenarioApproach, OverrideNumSamples
 export ExpectationData
 
