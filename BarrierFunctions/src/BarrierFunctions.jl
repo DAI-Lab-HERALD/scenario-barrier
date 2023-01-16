@@ -7,9 +7,15 @@ module BarrierFunctions
     using LazySets
     import Base.@kwdef
 
-    include("index.jl")
+    include("utils/index.jl")
+    include("utils/split.jl")
+    include("utils/random.jl")
+
     include("partition.jl")
     include("system.jl")
+
+    include("utils/plot.jl")
+
     include("barrier.jl")
     include("split.jl")
     include("expectation.jl")
