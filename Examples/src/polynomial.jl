@@ -1,5 +1,5 @@
 using BarrierFunctions
-using MultivariatePolynomials, DynamicPolynomials
+using MultivariatePolynomials, DynamicPolynomials, SemialgebraicSets
 
 using Distributions, PDMats
 
@@ -24,8 +24,8 @@ function polynomial()
     return PolynomialSystem{2, Float64}(f, η, X0, Xs, Xu)
 end
 
-prob_polynomial_scenario_approach = Problem("prob_polynomial_scenario_approach", polynomial(), 10, ScenarioApproach(0.005/10, 1e-4, conv_hull=false))
-prob_polynomial_sample_average = Problem("prob_polynomial_sample_average", polynomial(), 10, SampleAverage(0.005/10, 1e-4))
+prob_polynomial_scenario_approach = Problem("prob_polynomial_scenario_approach", polynomial(), 1, ScenarioApproach(0.005/1, 1e-4, false))
+prob_polynomial_sample_average = Problem("prob_polynomial_sample_average", polynomial(), 1, SampleAverage(0.005/1, 1e-4))
 
 probs_polynomial = [
     prob_polynomial_scenario_approach,

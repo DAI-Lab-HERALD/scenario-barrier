@@ -264,7 +264,7 @@ function expectation_constraint!(model, system, B::PolynomialBarrier, c, expecta
     f = dynamics(system)
 
     @polyvar w[1:dimensionality(system)]
-    B_next = subs(B, variables(system) => f + w)
+    B_next = subs(B.p, variables(system) => f + w)
 
     # We can let M = 1 [max B(x)] as B(x) can be modified aposterori to be capped at 1 without violating the theory
     ϵ = expectation.method.ϵ
@@ -272,6 +272,6 @@ function expectation_constraint!(model, system, B::PolynomialBarrier, c, expecta
     d = M * ϵ
 
     for η in expectation.data
-        @constraint(model, -subs(B_next, w => η) + (B + c - d) / (1 - ϵ) in SOSCone(), domain=Xₛ)
+        @constraint(model, -subs(B_next, w => η) + (B.p + c - d) / (1 - ϵ) in SOSCone(), domain=Xₛ)
     end
 end

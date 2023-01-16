@@ -46,8 +46,8 @@ regions(system::PiecewiseSystem) = system.Q
 noise(s::PiecewiseSystem) = s.η
 
 @kwdef struct PolynomialSystem{N, T<:Real} <: AbstractSystem
-    vars::Vector{MultivariatePolynomials.AbstractVariable}
-    f::AbstractPolynomialLike{T}
+    vars::Vector{<:MultivariatePolynomials.AbstractVariable}
+    f::Vector{AbstractPolynomialLike{T}}
 
     η::Sampleable
 
@@ -56,7 +56,7 @@ noise(s::PiecewiseSystem) = s.η
     Xu::Vector{AbstractSemialgebraicSet}
 end
 
-PolynomialSystem{N, T}(f, η, X0, Xs, Xu) where {N, T} = PolynomialSystem{N, T}(variables(f), f, η, X0, Xs, Xu)
+PolynomialSystem{N, T}(f, η, X0, Xs, Xu) where {N, T} = PolynomialSystem{N, T}(MultivariatePolynomials.variables(f), f, η, X0, Xs, Xu)
 
 dimensionality(::PolynomialSystem{N, T}) where {N, T} = N
 initial_set(s::PolynomialSystem) = s.X0

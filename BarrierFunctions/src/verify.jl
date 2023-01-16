@@ -251,7 +251,7 @@ function constraints!(model, system::PolynomialSystem, B, c, γ, expectation_met
 
     initial_constraint!(model, system, B, γ)
     unsafe_constraint!(model, system, B)
-    expectation_constraint!(model, system, B, c, q, expectation)
+    expectation_constraint!(model, system, B, c, expectation)
 end
 
 function initial_constraint!(model, system, B::PolynomialBarrier, γ)

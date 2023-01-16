@@ -1,5 +1,5 @@
 module BarrierFunctions
-    using JuMP
+    using JuMP, PolyJuMP, SumOfSquares
 
     import MathOptInterface
     const MOI = MathOptInterface
