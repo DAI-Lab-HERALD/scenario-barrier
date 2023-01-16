@@ -1,4 +1,4 @@
-export BarrierFunction, ConstantBarrier, LinearBarrier, QuadraticBarrier, BarrierRegion, PiecewiseBarrier
+export BarrierFunction, ConstantBarrier, LinearBarrier, QuadraticBarrier, BarrierRegion, PiecewiseBarrier, PolynomialBarrier
 
 
 abstract type BarrierFunction end

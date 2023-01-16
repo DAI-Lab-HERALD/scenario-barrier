@@ -1,6 +1,6 @@
 struct Problem
     name::String
-    system::System
+    system::AbstractSystem
     horizon::Int64
 
     expectation_method::ExpectationMethod

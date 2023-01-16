@@ -1,6 +1,6 @@
 using Distributions
 
-export PiecewiseSystem
+export AbstractSystem, PiecewiseSystem, PolynomialSystem
 export dimensionality, safe_set, unsafe_set, initial_set, regions, noise, next_state
 
 abstract type AbstractSystem end
