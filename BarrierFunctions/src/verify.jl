@@ -19,7 +19,7 @@ function verify(solver, system::AbstractSystem, H::Int, expectation_method::Expe
     B = barrier_variable!(model, system)
 
     # Constraints
-    constraints!(model, system, B, c, γ, expectation_method)
+    constraints!(model, system, B, c, γ, expectation_method, solver)
 
     # Objective
     @objective(model, Min, γ + c * H)
@@ -90,9 +90,9 @@ count_variables(B::ConstantBarrier{T}) where {T<:Number} = 0
 count_variables(B::PolynomialBarrier) = length(monomials(B.p))
 
 # Piece-wise constraints
-function constraints!(model, system::PiecewiseSystem, B, c, γ, expectation_method)
+function constraints!(model, system::PiecewiseSystem, B, c, γ, expectation_method, solver)
     n_variables = count_variables(B) + 2
-    expectation = prepare(system, expectation_method, n_variables)
+    expectation = prepare(system, expectation_method, solver, n_variables)
 
     for qᵢ in regions(system)
         @debug "Region $qᵢ, $(region(qᵢ))"

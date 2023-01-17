@@ -12,6 +12,7 @@ module BarrierFunctions
     include("utils/index.jl")
     include("utils/split.jl")
     include("utils/random.jl")
+    include("utils/convex_hull.jl")
 
     include("partition.jl")
     include("system.jl")

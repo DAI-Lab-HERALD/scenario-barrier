@@ -1,4 +1,4 @@
-using Polyhedra, CDDLib
+using Polyhedra
 
 export ExpectationMethod, SampleAverage, ScenarioApproach, OverrideNumSamples
 export ExpectationData
@@ -10,10 +10,10 @@ export expectation_constraint!, expectation_partition_constraint!
 abstract type ExpectationMethod end
 abstract type DataDrivenExpectationMethod <: ExpectationMethod end
 
-function prepare(system, method::DataDrivenExpectationMethod, d)
+function prepare(system, method::DataDrivenExpectationMethod, solver, d)
     n_samples = required_samples(method, d)
     @info "Required number of samples given $d variables and the desired confidence $(confidence(method)) is $n_samples."
-    return prepare(system, method, d, n_samples)
+    return prepare(system, method, d, solver, n_samples)
 end
 
 struct ExpectationData{T <: ExpectationMethod}
@@ -36,7 +36,7 @@ end
 confidence(method::SampleAverage) = method.β
 required_samples(method::SampleAverage, d) = 1.0 / (method.ϵ^2 * method.β)
 
-function prepare(system, method::SampleAverage, d)
+function prepare(system, method::SampleAverage, solver, d)
     distribution = noise(system)
     ηs = rand(distribution, num_samples)
     ηs = [copy(η) for η in eachcol(ηs)]
@@ -82,21 +82,22 @@ function required_samples(method::ScenarioApproach, d)
     return upper_bound
 end
 
-function prepare(system::PiecewiseSystem, method::ScenarioApproach, d, num_samples)
+function prepare(system::PiecewiseSystem, method::ScenarioApproach, solver, d, num_samples)
     distribution = noise(system)
     ηs = rand(distribution, num_samples)
-    ηs = [copy(η) for η in eachcol(ηs)]
 
     if method.conv_hull
         old_length = length(ηs)
-        ηs = convex_hull(ηs; backend=CDDLib.Library())
+        ηs = quick_convex_hull(ηs, solver)
         new_length = length(ηs)
         @debug "Using the convex hull, we reduce the number of samples from $old_length to $new_length"
     end
 
+    ηs = [copy(η) for η in eachcol(ηs)]
     ηs = VPolytope(ηs)
     box_ηs = box_approximation(ηs)
 
+    # Don't transform to H-rep (it requires more constraints in 3D+)
     ηs = normalize(tohrep(ηs))
 
     return ExpectationData(
@@ -105,7 +106,7 @@ function prepare(system::PiecewiseSystem, method::ScenarioApproach, d, num_sampl
     )
 end
 
-function prepare(system::PolynomialSystem, method::ScenarioApproach, d, num_samples)
+function prepare(system::PolynomialSystem, method::ScenarioApproach, solver, d, num_samples)
     distribution = noise(system)
     ηs = rand(distribution, num_samples)
     ηs = [copy(η) for η in eachcol(ηs)]
