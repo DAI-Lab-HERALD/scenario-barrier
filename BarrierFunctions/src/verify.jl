@@ -245,9 +245,9 @@ function s_procedure(model, p)
 end
 
 # Polynomial constraints
-function constraints!(model, system::PolynomialSystem, B, c, γ, expectation_method)
+function constraints!(model, system::PolynomialSystem, B, c, γ, expectation_method, solver)
     n_variables = count_variables(B) + 2
-    expectation = prepare(system, expectation_method, n_variables)
+    expectation = prepare(system, expectation_method, solver, n_variables)
 
     initial_constraint!(model, system, B, γ)
     unsafe_constraint!(model, system, B)
