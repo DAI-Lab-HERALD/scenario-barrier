@@ -13,7 +13,7 @@ abstract type DataDrivenExpectationMethod <: ExpectationMethod end
 function prepare(system, method::DataDrivenExpectationMethod, solver, d)
     n_samples = required_samples(method, d)
     @info "Required number of samples given $d variables and the desired confidence $(confidence(method)) is $n_samples."
-    return prepare(system, method, d, solver, n_samples)
+    return prepare(system, method, solver, d, n_samples)
 end
 
 struct ExpectationData{T <: ExpectationMethod}
