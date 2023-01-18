@@ -10,7 +10,7 @@ function drone(uncertain=true)
     vars = Symbolics.@variables x[1:2]
 
     Q = [
-        HPolyhedron([x[1] ≥ 0, x[1] ≤ 20, x[2] ≥ -10, x[2] ≤ 10], vars),
+        Hyperrectangle(low=[0, -10], high=[20, 10]),
         HPolyhedron([x[1] ≤ 0, x[2] ≥ -10, x[2] ≤ -6], vars),
         HPolyhedron([x[1] ≤ 0, x[2] ≥ -6, x[2] ≤ -2], vars),
         HPolyhedron([x[1] ≤ 0, x[2] ≥ -2, x[2] ≤ 2], vars),
@@ -52,7 +52,7 @@ function drone(uncertain=true)
     η = DiagNormal(μ, Σ)
 
     # Start in a box [0.5m, 1.0m] × [-0.5m/s, 0.5m/s]
-    X0 = HPolyhedron([x[2] ≤ 0.5, x[2] ≥ -0.5, x[1] ≥ 0.5, x[1] ≤ 1.0], vars)
+    X0 = Hyperrectangle(low=[0.5, -0.5], high=[1.0, 0.5])
 
     # On the road is safe
     Xs = HPolyhedron([x[2] ≤ 10, x[2] ≥ -10], vars)

@@ -9,9 +9,9 @@ function martingale1d(uncertain=true)
     Q = [
         HPolyhedron([x ≥ 2.5], vars),
         HPolyhedron([x ≤ -2.5], vars),
-        HPolyhedron([x ≤ 2.5, x ≥ 0.5], vars),
-        HPolyhedron([x ≤ 0.5, x ≥ -0.5], vars),
-        HPolyhedron([x ≤ -0.5, x ≥ -2.5], vars)
+        Interval(0.5, 2.5),
+        Interval(-0.5, 0.5),
+        Interval(-2.5, 0.5)
     ]
 
     if uncertain
@@ -26,10 +26,10 @@ function martingale1d(uncertain=true)
     η = DiagNormal(μ, Σ)
 
     # Start in a box [-0.5, 0.5]
-    X0 = HPolyhedron([x ≤ 0.5, x ≥ -0.5], vars)
+    X0 = Interval(-0.5, 0.5)
 
     # Center is safe
-    Xs = HPolyhedron([x ≤ 2.5, x ≥ -2.5], vars)
+    Xs = Interval(-2.5, 2.5)
 
     # Outside the center is dangerous
     Xu = [

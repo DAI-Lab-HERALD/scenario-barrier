@@ -27,7 +27,7 @@ function load_mat_system(path, initial_region_cb, stddev; eps=1e-12)
     # Regions
     Q = []
     for region in eachfirstdim(regions)
-        push!(Q, HPolyhedron([[region[1, i] ≤ x[i] for i in 1:n]; [x[i] ≤ region[2, i] for i in 1:n]], vars))
+        push!(Q, Hyperrectangle(low=region[1], high=region[2]))
     end
 
     # Dynamics

@@ -14,18 +14,18 @@ function car_with_sidewind(;split="none")
         HPolyhedron([x[2] ≥ 2.5], vars),
         HPolyhedron([x[2] ≤ -2.5], vars),
         HPolyhedron([x[2] ≤ 2.5, x[2] ≥ -2.5, x[1] ≤ 0], vars),
-        HPolyhedron([x[2] ≤ 2.5, x[2] ≥ 0.5, x[1] ≥ 0, x[1] ≤ 10], vars),
-        HPolyhedron([x[2] ≤ 0.5, x[2] ≥ -0.5, x[1] ≥ 0, x[1] ≤ 10], vars),
-        HPolyhedron([x[2] ≤ -0.5, x[2] ≥ -2.5, x[1] ≥ 0, x[1] ≤ 10], vars),
-        HPolyhedron([x[2] ≤ 2.5, x[2] ≥ 0.5, x[1] ≥ 10, x[1] ≤ 80], vars),
-        HPolyhedron([x[2] ≤ 0.5, x[2] ≥ -0.5, x[1] ≥ 10, x[1] ≤ 80], vars),
-        HPolyhedron([x[2] ≤ -0.5, x[2] ≥ -2.5, x[1] ≥ 10, x[1] ≤ 80], vars),
-        HPolyhedron([x[2] ≤ 2.5, x[2] ≥ 0.5, x[1] ≥ 80, x[1] ≤ 120], vars),
-        HPolyhedron([x[2] ≤ 0.5, x[2] ≥ -0.5, x[1] ≥ 80, x[1] ≤ 120], vars),
-        HPolyhedron([x[2] ≤ -0.5, x[2] ≥ -2.5, x[1] ≥ 80, x[1] ≤ 120], vars),
-        HPolyhedron([x[2] ≤ 2.5, x[2] ≥ 0.5, x[1] ≥ 120, x[1] ≤ 150], vars),
-        HPolyhedron([x[2] ≤ 0.5, x[2] ≥ -0.5, x[1] ≥ 120, x[1] ≤ 150], vars),
-        HPolyhedron([x[2] ≤ -0.5, x[2] ≥ -2.5, x[1] ≥ 120, x[1] ≤ 150], vars),
+        Hyperrectangle(low=[0, 0.5], high=[10, 2.5]),
+        Hyperrectangle(low=[0, -0.5], high=[10, 0.5]),
+        Hyperrectangle(low=[0, -2.5], high=[10, -0.5]),
+        Hyperrectangle(low=[10, 0.5], high=[80, 2.5]),
+        Hyperrectangle(low=[10, -0.5], high=[80, 0.5]),
+        Hyperrectangle(low=[10, -2.5], high=[80, -0.5]),
+        Hyperrectangle(low=[80, 0.5], high=[120, 2.5]),
+        Hyperrectangle(low=[80, -0.5], high=[120, 0.5]),
+        Hyperrectangle(low=[80, -2.5], high=[120, -0.5]),
+        Hyperrectangle(low=[120, 0.5], high=[150, 2.5]),
+        Hyperrectangle(low=[120, -0.5], high=[150, 0.5]),
+        Hyperrectangle(low=[120, -2.5], high=[150, -0.5]),
         HPolyhedron([x[2] ≤ 2.5, x[2] ≥ 0.5, x[1] ≥ 150], vars),
         HPolyhedron([x[2] ≤ 0.5, x[2] ≥ -0.5, x[1] ≥ 150], vars),
         HPolyhedron([x[2] ≤ -0.5, x[2] ≥ -2.5, x[1] ≥ 150], vars),
@@ -47,7 +47,7 @@ function car_with_sidewind(;split="none")
     η = DiagNormal(μ, Σ)
 
     # Start in a box [5m, 10m] × [-0.5m, 0.5m]
-    X0 = HPolyhedron([x[2] ≤ 0.5, x[2] ≥ -0.5, x[1] ≥ 5, x[1] ≤ 10], vars)
+    X0 = Hyperrectangle(low=[5, -0.5], high=[10, 0.5])
 
     # On the road is safe
     Xs = HPolyhedron([x[2] ≤ 2.5, x[2] ≥ -2.5], vars)

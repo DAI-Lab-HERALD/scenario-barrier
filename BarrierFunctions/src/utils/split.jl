@@ -7,21 +7,23 @@ function grid_split(Q, dyn, num_subregions)
     Qnew, dyn_new = [], []
 
     for (qᵢ, dynᵢ, split_spec) in zip(Q, dyn, eachcol(num_subregions))
-        if LazySets.isbounded(qᵢ)
-            rect = box_approximation(qᵢ)
-            new_rects = split(rect, split_spec)
-            
-            for rect in new_rects
-                push!(Qnew, rect)
-                push!(dyn_new, dynᵢ)
-            end
-        else
-            @assert all(split_spec .== 1) "Cannot split an unbounded region into a grid"
-
-            push!(Qnew, qᵢ)
+        for rect in split_region(qᵢ, split_spec)
+            push!(Qnew, rect)
             push!(dyn_new, dynᵢ)
         end
     end
 
     return Qnew, dyn_new
+end
+
+function split_region(q::AbstractHyperrectangle{N}, split_spec) where {N}
+    new_rects = split(q, split_spec)
+
+    return new_rects
+end
+
+function split_region(q, split_spec)
+    @assert all(split_spec .== 1) "Cannot split an unbounded region into a grid"
+
+    return [q]
 end
