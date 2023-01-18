@@ -87,7 +87,7 @@ function plot_forward_reachable_set_2d(system, num_samples; plot_safe=true, xlim
     end
 end
 
-function plot_barrier(system::PiecewiseSystem{1, T, P}, B; xlims=nothing, plot_safe=true) where {T, P}
+function plot_barrier(system::PiecewiseSystem{1, T}, B; xlims=nothing, plot_safe=true) where {T}
     if isnothing(xlims)
         xbounds = bounded_region_lims(system)
         xext = 0.2 .* radius_hyperrectangle(xbounds)[1]  # Add a little space on either side of the MBR
@@ -114,7 +114,7 @@ function plot_barrier(system::PiecewiseSystem{1, T, P}, B; xlims=nothing, plot_s
     return p
 end
 
-function plot_barrier(system::PiecewiseSystem{2, T, P}, B; xylims=nothing, plot_safe=true) where {T, P}
+function plot_barrier(system::PiecewiseSystem{2, T}, B; xylims=nothing, plot_safe=true) where {T}
     if isnothing(xylims)
         xybounds = bounded_region_lims(system)
         xyext = 0.2 .* radius_hyperrectangle(xybounds)  # Add a little space on either side of the MBR
