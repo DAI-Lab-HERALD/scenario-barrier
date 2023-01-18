@@ -27,7 +27,7 @@ function load_mat_system(path, initial_region_cb, stddev; eps=1e-12)
     # Regions
     Q = []
     for region in eachfirstdim(regions)
-        push!(Q, Hyperrectangle(low=region[1], high=region[2]))
+        push!(Q, Hyperrectangle(low=region[1, :], high=region[2, :]))
     end
 
     # Dynamics
