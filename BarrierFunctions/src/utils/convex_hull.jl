@@ -1,5 +1,5 @@
 using InvertedIndices, LinearAlgebra
-using Polyhedra, QHull
+using Polyhedra, CDDLib
 
 using JuMP
 import MathOptInterface
@@ -10,11 +10,12 @@ const MOI = MathOptInterface
 # - the convex hull is non-degenerate
 function quick_convex_hull(A::AbstractMatrix{T}, solver) where {T <: Real}
     d = size(A, 1)
-    initial_points, A = find_initial_points(A)
-
-    if isnothing(A)
-        return initial_points
+    if d <= 2
+        A = convex_hull([copy(p) for p in eachcol(A)])
+        return reduce(hcat, A)
     end
+
+    initial_points, A = find_initial_points(A)
     
     remaining_points = [initial_points]
 
@@ -24,7 +25,7 @@ function quick_convex_hull(A::AbstractMatrix{T}, solver) where {T <: Real}
         Asubset = A[:, halfspace_index .== index]
 
         if size(Asubset, 2) >= d + 1  # The amount of points necessary for a d-simplex.
-            v = polyhedron(vrep([copy(p) for p in eachcol(Asubset)]), QHull.Library(solver))
+            v = polyhedron(vrep([copy(p) for p in eachcol(Asubset)]), CDDLib.Library())
             removevredundancy!(v)
             v = reduce(hcat, points(vrep(v)))
             push!(remaining_points, v)
@@ -35,7 +36,7 @@ function quick_convex_hull(A::AbstractMatrix{T}, solver) where {T <: Real}
 
     A = reduce(hcat, remaining_points)
 
-    v = polyhedron(vrep([copy(p) for p in eachcol(A)]), QHull.Library(solver))
+    v = polyhedron(vrep([copy(p) for p in eachcol(A)]), CDDLib.Library())
     removevredundancy!(v)
     
     v = reduce(hcat, points(vrep(v)))
@@ -51,10 +52,6 @@ function find_initial_points(A::AbstractMatrix{T}) where {T <: Real}
     f_all = vcat(f_axis, f_diagonal)
     initial_idx = [argmax(map(f, eachcol(A))) for f in f_all]
     unique!(initial_idx)
-
-    if d == 1
-        return A[:, initial_idx], nothing
-    end
 
     initial_points, A = A[:, initial_idx], A[:, Not(initial_idx)]
 
