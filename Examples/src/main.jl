@@ -24,7 +24,12 @@ include("problem.jl")
 # plot_monte_carlo_2d(system, traj, plot_safe=false)
 # plot_forward_reachable_set_2d(system, 1000, plot_safe=false, xlims=[-10, 160], ylims=[-10, 10])
 
-function run_experiment(problem)
+function run_experiment(make_problem::Function)
+    problem = make_problem()
+    run_experiment(problem)
+end
+
+function run_experiment(problem::Problem)
     @info "Running experiment" name=problem.name
     solver = optimizer_with_attributes(Mosek.Optimizer, "INTPNT_BASIS" => MSK_BI_NEVER, "QUIET" => true)
     res = []
