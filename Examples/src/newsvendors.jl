@@ -16,7 +16,8 @@ function newsvendor_optimal_inventory(solver, demand_dist, profit, loss, ϵ, β)
     @variable(model, x, lower_bound = 0.0, upper_bound = 1500.0)
     @variable(model, t)
 
-    δ = 1500.0 * ϵ
+    M = 1500.0 * max(loss, profit)
+    δ = M * ϵ
 
     demand_realizations = rand(demand_dist, num_samples)
 
