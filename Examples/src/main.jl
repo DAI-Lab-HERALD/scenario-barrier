@@ -16,6 +16,7 @@ pythonplot()
 pygui(true)
 
 include("problem.jl")
+include("systems.jl")
 # system = nndm_system("pendulum")
 # H = 1
 # system = car_with_sidewind(split="latlon")

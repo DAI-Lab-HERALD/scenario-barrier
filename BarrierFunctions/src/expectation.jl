@@ -97,12 +97,11 @@ function prepare(system::PiecewiseSystem, method::ScenarioApproach, solver, d, n
     ηs = VPolytope(ηs)
     box_ηs = box_approximation(ηs)
 
-    # Don't transform to H-rep (it requires more constraints in 3D+)
-    ηs = normalize(tohrep(ηs))
+    hrep_ηs = normalize(tohrep(ηs))
 
     return ExpectationData(
         method,
-        (ηs, box_ηs)
+        (ηs, hrep_ηs, box_ηs)
     )
 end
 
@@ -174,13 +173,17 @@ function expectation_constraint!(model, system, B::PiecewiseBarrier, c, qᵢ, ex
 
     for (Aᵢ, bᵢ) in dynamics(qᵢ)
         qᵢ_next_nom = concretize(Aᵢ * Bᵢ_region + bᵢ)
+        qᵢ_next_nom = HPolyhedron(constraints_list(qᵢ_next_nom))
+        qᵢ_next_nom = normalize(qᵢ_next_nom)
 
-        qᵢ_next = minkowski_sum(HPolyhedron(constraints_list(qᵢ_next_nom)), expectation.data[1], prune=false)
+        qᵢ_next = minkowski_sum(qᵢ_next_nom, expectation.data[2])
+        # qᵢ_next = custom_minkowski_sum(qᵢ_next_nom, expectation.data[1])
         qᵢ_next = normalize(qᵢ_next)
+        # println(qᵢ_next)
 
         if is_qᵢ_bounded
             qᵢ_next_nom = concretize(Aᵢ * Bᵢ_region_vrep + bᵢ)
-            box = minkowski_sum(box_approximation(qᵢ_next_nom), expectation.data[2])
+            box = minkowski_sum(box_approximation(qᵢ_next_nom), expectation.data[3])
         else
             box = nothing
         end
@@ -194,10 +197,21 @@ function expectation_constraint!(model, system, B::PiecewiseBarrier, c, qᵢ, ex
     end
 end
 
+function custom_minkowski_sum(qᵢ_next_nom, ηs)
+    sets = [qᵢ_next_nom + η for η in vertices_list(ηs)]
+
+    constraints = mapreduce(constraints_list, vcat, sets)
+    remove_redundant_constraints!(constraints)
+
+    qᵢ_next = HPolyhedron(constraints)
+
+    return qᵢ_next
+end
+
 function expectation_partition_constraint!(model, Aᵢ, bᵢ, Bᵢ::BarrierRegion{T, LinearBarrier{T1, VT1}}, Bⱼ::BarrierRegion{T, LinearBarrier{T2, VT2}}, c, expectation::ExpectationData{ScenarioApproach}) where {T, T1, VT1, T2, VT2}
     Hᵢ, hᵢ = tosimplehrep(region(Bᵢ))
     Hⱼ, hⱼ = tosimplehrep(region(Bⱼ))
-    Hη, hη = tosimplehrep(expectation.data[1])
+    Hη, hη = tosimplehrep(expectation.data[2])
 
     pᵢ, vᵢ = Bᵢ.fun.p, Bᵢ.fun.v
     pⱼ, vⱼ = Bⱼ.fun.p, Bⱼ.fun.v
