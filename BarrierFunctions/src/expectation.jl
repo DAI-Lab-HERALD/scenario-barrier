@@ -87,9 +87,9 @@ function prepare(system::PiecewiseSystem, method::ScenarioApproach, solver, d, n
     ηs = rand(distribution, num_samples)
 
     if method.conv_hull
-        old_length = length(ηs)
+        old_length = size(ηs, 2)
         ηs = quick_convex_hull(ηs, solver)
-        new_length = length(ηs)
+        new_length = size(ηs, 2)
         @debug "Using the convex hull, we reduce the number of samples from $old_length to $new_length"
     end
 
@@ -98,10 +98,13 @@ function prepare(system::PiecewiseSystem, method::ScenarioApproach, solver, d, n
     box_ηs = box_approximation(ηs)
 
     hrep_ηs = normalize(tohrep(ηs))
+    
+    template_dirs = CustomDirections([h.a for h in constraints_list(hrep_ηs)])
+    template_dirs = [(d, ρ(d, ηs)) for d in template_dirs]
 
     return ExpectationData(
         method,
-        (ηs, hrep_ηs, box_ηs)
+        (vrep=ηs, hrep=hrep_ηs, box=box_ηs, template_dirs=template_dirs)
     )
 end
 
@@ -168,20 +171,15 @@ function expectation_constraint!(model, system, B::PiecewiseBarrier, c, qᵢ, ex
     is_qᵢ_bounded = LazySets.isbounded(Bᵢ_region)
 
     if is_qᵢ_bounded
-        Bᵢ_region_vrep = VPolytope(vertices_list(Bᵢ_region))
+        Bᵢ_region = VPolytope(vertices_list(Bᵢ_region))
     end
 
     for (Aᵢ, bᵢ) in dynamics(qᵢ)
         qᵢ_next_nom = concretize(Aᵢ * Bᵢ_region + bᵢ)
-        qᵢ_next_nom = HPolyhedron(constraints_list(qᵢ_next_nom))
-        qᵢ_next_nom = normalize(qᵢ_next_nom)
-
-        qᵢ_next = custom_minkowski_sum(qᵢ_next_nom, expectation.data[1], expectation.data[2])
-        qᵢ_next = normalize(qᵢ_next)
+        qᵢ_next = custom_minkowski_sum(qᵢ_next_nom, expectation)
 
         if is_qᵢ_bounded
-            qᵢ_next_nom = concretize(Aᵢ * Bᵢ_region_vrep + bᵢ)
-            box = minkowski_sum(box_approximation(qᵢ_next_nom), expectation.data[3])
+            box = minkowski_sum(box_approximation(qᵢ_next_nom), expectation.data.box)
         else
             box = nothing
         end
@@ -195,12 +193,31 @@ function expectation_constraint!(model, system, B::PiecewiseBarrier, c, qᵢ, ex
     end
 end
 
-function custom_minkowski_sum(qᵢ_next_nom, vrep_ηs, hrep_ηs)
-    template_dirs = [[h.a for h in constraints_list(qᵢ_next_nom)]; [h.a for h in constraints_list(hrep_ηs)]]
+function custom_minkowski_sum(qᵢ_next_nom::AbstractPolyhedron{N}, expectation) where {N}
 
-    sets = MinkowskiSum(qᵢ_next_nom, vrep_ηs)
+    hrep_qᵢ_next_nom = HPolyhedron(constraints_list(qᵢ_next_nom))
+    hrep_qᵢ_next_nom = normalize(hrep_qᵢ_next_nom)
+    nomial_template_dirs = CustomDirections([h.a for h in constraints_list(hrep_qᵢ_next_nom)])
+    
+    H = Vector{LazySets.HalfSpace{N, Vector{N}}}()
+    sizehint!(H, length(nomial_template_dirs) + length(expectation.data.template_dirs))
 
-    qᵢ_next = overapproximate(sets, HPolyhedron, CustomDirections(template_dirs); prune=false)
+    for d in nomial_template_dirs
+        sf = ρ(d, qᵢ_next_nom) + ρ(d, expectation.data.vrep)
+        if !isinf(sf)
+            push!(H, LazySets.HalfSpace(d, sf))
+        end
+    end
+
+    for (d, ρ_val_noise) in expectation.data.template_dirs
+        sf = ρ(d, qᵢ_next_nom) + ρ_val_noise
+        if !isinf(sf)
+            push!(H, LazySets.HalfSpace(d, sf))
+        end
+    end
+
+    qᵢ_next = HPolyhedron(H)
+    qᵢ_next = normalize(qᵢ_next)
 
     return qᵢ_next
 end
@@ -208,7 +225,7 @@ end
 function expectation_partition_constraint!(model, Aᵢ, bᵢ, Bᵢ::BarrierRegion{T, LinearBarrier{T1, VT1}}, Bⱼ::BarrierRegion{T, LinearBarrier{T2, VT2}}, c, expectation::ExpectationData{ScenarioApproach}) where {T, T1, VT1, T2, VT2}
     Hᵢ, hᵢ = tosimplehrep(region(Bᵢ))
     Hⱼ, hⱼ = tosimplehrep(region(Bⱼ))
-    Hη, hη = tosimplehrep(expectation.data[2])
+    Hη, hη = tosimplehrep(expectation.data.hrep)
 
     pᵢ, vᵢ = Bᵢ.fun.p, Bᵢ.fun.v
     pⱼ, vⱼ = Bⱼ.fun.p, Bⱼ.fun.v
