@@ -176,10 +176,8 @@ function expectation_constraint!(model, system, B::PiecewiseBarrier, c, qᵢ, ex
         qᵢ_next_nom = HPolyhedron(constraints_list(qᵢ_next_nom))
         qᵢ_next_nom = normalize(qᵢ_next_nom)
 
-        qᵢ_next = minkowski_sum(qᵢ_next_nom, expectation.data[2])
-        # qᵢ_next = custom_minkowski_sum(qᵢ_next_nom, expectation.data[1])
+        qᵢ_next = custom_minkowski_sum(qᵢ_next_nom, expectation.data[1], expectation.data[2])
         qᵢ_next = normalize(qᵢ_next)
-        # println(qᵢ_next)
 
         if is_qᵢ_bounded
             qᵢ_next_nom = concretize(Aᵢ * Bᵢ_region_vrep + bᵢ)
@@ -197,13 +195,12 @@ function expectation_constraint!(model, system, B::PiecewiseBarrier, c, qᵢ, ex
     end
 end
 
-function custom_minkowski_sum(qᵢ_next_nom, ηs)
-    sets = [qᵢ_next_nom + η for η in vertices_list(ηs)]
+function custom_minkowski_sum(qᵢ_next_nom, vrep_ηs, hrep_ηs)
+    template_dirs = [[h.a for h in constraints_list(qᵢ_next_nom)]; [h.a for h in constraints_list(hrep_ηs)]]
 
-    constraints = mapreduce(constraints_list, vcat, sets)
-    remove_redundant_constraints!(constraints)
+    sets = MinkowskiSum(qᵢ_next_nom, vrep_ηs)
 
-    qᵢ_next = HPolyhedron(constraints)
+    qᵢ_next = overapproximate(sets, HPolyhedron, CustomDirections(template_dirs); prune=false)
 
     return qᵢ_next
 end
