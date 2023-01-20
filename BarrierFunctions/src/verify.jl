@@ -10,7 +10,7 @@ export region_constraints!, non_negativity_constraint!
 function verify(solver, system::AbstractSystem, H::Int, expectation_method::ExpectationMethod)
     @assert(H >= 1, "Horizon H must be greater than or equal to one (is $H)")
 
-    solver = dual_optimizer(solver)
+    # solver = dual_optimizer(solver)
     model = Model(solver)
 
     # Decision variables
