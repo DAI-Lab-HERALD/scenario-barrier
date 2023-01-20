@@ -24,6 +24,8 @@ function verify(solver, system::AbstractSystem, H::Int, expectation_method::Expe
     # Objective
     @objective(model, Min, γ + c * H)
 
+    @info "Done constructing the optimization problem"
+
     # Solve
     JuMP.optimize!(model)
     @debug JuMP.solution_summary(model)

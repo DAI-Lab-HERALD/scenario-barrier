@@ -7,7 +7,7 @@ import PythonPlot: pygui
 
 using Logging
 using TerminalLoggers: TerminalLoggers, TerminalLogger
-global_logger(TerminalLogger(right_justify=120))
+global_logger(TerminalLogger(stderr, Logging.Debug; right_justify=120))
 using ProgressLogging
 
 using CSV, DataFrames
