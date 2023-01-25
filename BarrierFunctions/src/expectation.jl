@@ -1,4 +1,4 @@
-using Polyhedra
+using Polyhedra, LinearAlgebra
 
 export ExpectationMethod, SampleAverage, ScenarioApproach, OverrideNumSamples
 export ExpectationData
@@ -166,38 +166,47 @@ function expectation_constraint!(model, system, B::PiecewiseBarrier, c, qᵢ, ex
     end
 
     Bᵢ = B[qᵢ]
-    Bᵢ_region = region(Bᵢ)
-
-    is_qᵢ_bounded = LazySets.isbounded(Bᵢ_region)
+    
+    qᵢ_next_nom = overapproximate_one_step_reachable_set(qᵢ)
+    qᵢ_next = custom_minkowski_sum(qᵢ_next_nom, expectation)
 
     if is_qᵢ_bounded
-        Bᵢ_region = VPolytope(vertices_list(Bᵢ_region))
+        box = minkowski_sum(box_approximation(qᵢ_next_nom), expectation.data.box)
+    else
+        box = nothing
     end
 
-    for (Aᵢ, bᵢ) in dynamics(qᵢ)
-        qᵢ_next_nom = concretize(Aᵢ * Bᵢ_region + bᵢ)
-        qᵢ_next = custom_minkowski_sum(qᵢ_next_nom, expectation)
+    query = RegionIntersectsQuery(qᵢ_next, box)
+    next_regions = Spatial.findall(query, regions(system))
 
-        if is_qᵢ_bounded
-            box = minkowski_sum(box_approximation(qᵢ_next_nom), expectation.data.box)
-        else
-            box = nothing
-        end
-
-        query = RegionIntersectsQuery(qᵢ_next, box)
-        next_regions = Spatial.findall(query, regions(system))
-
-        for qⱼ in next_regions
+    for qⱼ in next_regions
+        for (Aᵢ, bᵢ) in dynamics(qᵢ)
             expectation_partition_constraint!(model, Aᵢ, bᵢ, Bᵢ, B[qⱼ], c, expectation)
         end
     end
 end
 
+function overapproximate_one_step_reachable_set(qᵢ)
+    dyn = dynamics(qᵢ)
+    qᵢ = region(qᵢ)
+
+    is_qᵢ_bounded = LazySets.isbounded(qᵢ)
+
+    if is_qᵢ_bounded
+        qᵢ = VPolytope(vertices_list(qᵢ))
+    end
+
+    reachable_sets = [concretize(Aᵢ * qᵢ + bᵢ) for (Aᵢ, bᵢ) in dyn]
+    normal_vectors = vec([[normalize(h.a) for h in constraints_list(set)] for set in reachable_sets])
+    reachable_set = overapproximate(UnionSetArray(reachable_sets), CustomDirections(normal_vectors); prune=false)
+
+    return reachable_set
+end
+
 function custom_minkowski_sum(qᵢ_next_nom::AbstractPolyhedron{N}, expectation) where {N}
 
     hrep_qᵢ_next_nom = HPolyhedron(constraints_list(qᵢ_next_nom))
-    hrep_qᵢ_next_nom = normalize(hrep_qᵢ_next_nom)
-    nomial_template_dirs = CustomDirections([h.a for h in constraints_list(hrep_qᵢ_next_nom)])
+    nomial_template_dirs = CustomDirections([normalize(h.a) for h in constraints_list(hrep_qᵢ_next_nom)])
     
     H = Vector{LazySets.HalfSpace{N, Vector{N}}}()
     sizehint!(H, length(nomial_template_dirs) + length(expectation.data.template_dirs))
