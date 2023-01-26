@@ -167,10 +167,10 @@ function expectation_constraint!(model, system, B::PiecewiseBarrier, c, qᵢ, ex
 
     Bᵢ = B[qᵢ]
     
-    qᵢ_next_nom = overapproximate_one_step_reachable_set(qᵢ)
+    qᵢ_next_nom = one_step_reachable_set(qᵢ)
     qᵢ_next = custom_minkowski_sum(qᵢ_next_nom, expectation)
 
-    if is_qᵢ_bounded
+    if LazySets.isbounded(region(qᵢ))
         box = minkowski_sum(box_approximation(qᵢ_next_nom), expectation.data.box)
     else
         box = nothing
@@ -180,24 +180,17 @@ function expectation_constraint!(model, system, B::PiecewiseBarrier, c, qᵢ, ex
     next_regions = Spatial.findall(query, regions(system))
 
     for qⱼ in next_regions
-        for (Aᵢ, bᵢ) in dynamics(qᵢ)
-            expectation_partition_constraint!(model, Aᵢ, bᵢ, Bᵢ, B[qⱼ], c, expectation)
-        end
+        expectation_partition_constraint!(model, qᵢ, Bᵢ, B[qⱼ], c, expectation)
     end
 end
 
-function overapproximate_one_step_reachable_set(qᵢ)
+function one_step_reachable_set(qᵢ)
     dyn = dynamics(qᵢ)
     qᵢ = region(qᵢ)
 
-    is_qᵢ_bounded = LazySets.isbounded(qᵢ)
-
-    if is_qᵢ_bounded
-        qᵢ = VPolytope(vertices_list(qᵢ))
-    end
-
     reachable_sets = [concretize(Aᵢ * qᵢ + bᵢ) for (Aᵢ, bᵢ) in dyn]
-    normal_vectors = vec([[normalize(h.a) for h in constraints_list(set)] for set in reachable_sets])
+    normal_vectors = [[normalize(h.a) for h in constraints_list(set)] for set in reachable_sets]
+    normal_vectors = reduce(vcat, normal_vectors)
     reachable_set = overapproximate(UnionSetArray(reachable_sets), CustomDirections(normal_vectors); prune=false)
 
     return reachable_set
@@ -231,9 +224,11 @@ function custom_minkowski_sum(qᵢ_next_nom::AbstractPolyhedron{N}, expectation)
     return qᵢ_next
 end
 
-function expectation_partition_constraint!(model, Aᵢ, bᵢ, Bᵢ::BarrierRegion{T, LinearBarrier{T1, VT1}}, Bⱼ::BarrierRegion{T, LinearBarrier{T2, VT2}}, c, expectation::ExpectationData{ScenarioApproach}) where {T, T1, VT1, T2, VT2}
+function expectation_partition_constraint!(model, qᵢ, Bᵢ::BarrierRegion{T, LinearBarrier{T1, VT1}}, Bⱼ::BarrierRegion{T, LinearBarrier{T2, VT2}}, c, expectation::ExpectationData{ScenarioApproach}) where {T, T1, VT1, T2, VT2}
+    backward_reachable_set = one_step_backward_reachable_set(qᵢ, region(Bⱼ))
+    
     Hᵢ, hᵢ = tosimplehrep(region(Bᵢ))
-    Hⱼ, hⱼ = tosimplehrep(region(Bⱼ))
+    Hreach, hreach = tosimplehrep(backward_reachable_set)
     Hη, hη = tosimplehrep(expectation.data.hrep)
 
     pᵢ, vᵢ = Bᵢ.fun.p, Bᵢ.fun.v
@@ -244,12 +239,26 @@ function expectation_partition_constraint!(model, Aᵢ, bᵢ, Bᵢ::BarrierRegio
     M = 1
     d = M * ϵ
 
-    a = vcat(Aᵢ' * pⱼ .- (pᵢ / (1 - ϵ)), pⱼ)
-    rhs = (vᵢ + c - d) / (1 - ϵ) - vⱼ - pⱼ ⋅ bᵢ
-    H = vcat(hcat(Hᵢ, zero(Hᵢ)), hcat(zero(Hη), Hη), hcat(Hⱼ * Aᵢ, Hⱼ))
-    h = vcat(hᵢ, hη, hⱼ - Hⱼ * bᵢ)
+    for (Aᵢ, bᵢ) in dynamics(qᵢ)
+        a = vcat(Aᵢ' * pⱼ .- (pᵢ / (1 - ϵ)), pⱼ)
+        rhs = (vᵢ + c - d) / (1 - ϵ) - vⱼ - pⱼ ⋅ bᵢ
+        H = vcat(hcat(Hᵢ, zero(Hᵢ)), hcat(zero(Hη), Hη), Hreach)
+        h = vcat(hᵢ, hη, hreach)
 
-    assymetric_dual_constraint!(model, a, rhs, H, h)
+        assymetric_dual_constraint!(model, a, rhs, H, h)
+    end
+end
+
+function one_step_backward_reachable_set(qᵢ, qⱼ)
+    dyn = dynamics(qᵢ)
+    Hⱼ, hⱼ = tosimplehrep(qⱼ)
+
+    reachable_sets = [HPolyhedron(hcat(Hⱼ * Aᵢ, Hⱼ), hⱼ - Hⱼ * bᵢ) for (Aᵢ, bᵢ) in dyn]
+    normal_vectors = [[normalize(h.a) for h in constraints_list(set)] for set in reachable_sets]
+    normal_vectors = reduce(vcat, normal_vectors)
+    reachable_set = overapproximate(UnionSetArray(reachable_sets), CustomDirections(normal_vectors); prune=false)
+
+    return reachable_set
 end
 
 function expectation_partition_constraint!(model, Aᵢ, bᵢ, Bᵢ::BarrierRegion{T, ConstantBarrier{T1}}, Bⱼ::BarrierRegion{T, ConstantBarrier{T2}}, c, expectation::ExpectationData{ScenarioApproach}) where {T, T1, T2}
