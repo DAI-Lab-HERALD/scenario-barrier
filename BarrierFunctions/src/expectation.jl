@@ -186,14 +186,134 @@ end
 
 function one_step_reachable_set(qᵢ)
     dyn = dynamics(qᵢ)
-    qᵢ = region(qᵢ)
+    qᵢ = convert(HPolyhedron, region(qᵢ))
 
-    reachable_sets = [concretize(Aᵢ * qᵢ + bᵢ) for (Aᵢ, bᵢ) in dyn]
+    reachable_sets = [affine_map(Aᵢ, qᵢ, bᵢ) for (Aᵢ, bᵢ) in dyn]
     normal_vectors = [[normalize(h.a) for h in constraints_list(set)] for set in reachable_sets]
     normal_vectors = reduce(vcat, normal_vectors)
-    reachable_set = overapproximate(UnionSetArray(reachable_sets), CustomDirections(normal_vectors); prune=false)
+    reachable_set = overapproximate(HPolyUnionSetArray(reachable_sets), CustomDirections(normal_vectors); prune=false)
 
     return reachable_set
+end
+
+const HPoly{N} = Union{HPolytope{N}, HPolyhedron{N}}
+struct HPolyUnionSetArray{N, S<:AbstractPolyhedron{N}} <: LazySet{N}
+    array::Vector{S}
+end
+
+isoperationtype(::Type{<:HPolyUnionSetArray}) = true
+isconvextype(::Type{<:HPolyUnionSetArray}) = false
+
+function array(cup::HPolyUnionSetArray)
+    return cup.array
+end
+
+function LazySets.dim(cup::HPolyUnionSetArray)
+    return length(cup.array) == 0 ? 0 : LazySets.dim(cup.array[1])
+ end
+
+function LazySets.ρ(d::AbstractVector, cup::HPolyUnionSetArray)
+    A = array(cup)
+    println("d: $d")
+    return maximum(Xi -> ρ_hpolyhedron(d, Xi), A)
+end
+
+function ρ_hpolyhedron(d::AbstractVector{M}, P::HPoly{N}) where {M, N}
+    (res, unbounded) = σ_helper_halfspace_direction(d, P)
+
+    if unbounded
+        if P isa HPolytope
+            error("the support function in direction $(d) is undefined " *
+                "because the polytope is unbounded")
+        end
+        return N(Inf)
+    end
+    return dot(d, res)
+end
+
+function σ_helper_halfspace_direction(d::AbstractVector, P::HPoly)
+    constraints = constraints_list(P)
+
+    if length(constraints) == 0
+        res = d
+        unbounded = true
+
+        println("A")
+        return res, unbounded
+    end
+
+    # Copy d as this method should not mutate d or P.
+    d = LinearAlgebra.normalize(d)
+
+    # Since norm(d) == 1.0, we can ignore it in the denomiator
+    # Profview reveals that dot and norm are the bottlenecks
+    # of the entire σ computation with this algorithm.
+    @inline cosine_to_d(h) = dot(h.a, d) / norm(h.a)
+    
+    # If cos is negative then the normal vector is pointing
+    # away from d and cannot bound d. A normal vector orthogonal
+    # to `d` can possibly bound `σ` if there exists another
+    # normal vector `a` such that `d = λ a` for some `λ > 0`. 
+    @inline isnonegative(x) = x >= 0
+    # More meaningful names
+    @inline tuple_cos_angle(x) = x.cos_angle
+    @inline tuple_constraint(x) = x.halfspace
+
+    constraints = map(h -> (cos_angle=cosine_to_d(h), halfspace=h), constraints)
+    filter!(isnonegative ∘ tuple_cos_angle, constraints)
+
+    dimensionality = LazySets.dim(P)
+
+    if length(constraints) < dimensionality
+        unbounded = true
+        # Project d onto Ax ≤ 0 polyhedral cone
+        res = d
+        @inbounds for h in tuple_constraint.(constraints)
+            res -= h.a * dot(h.a, res) / norm(h.a)^2
+        end
+
+        println("B")
+
+        return res, unbounded
+    end
+
+    if length(constraints) > dimensionality
+        # It might be possible to improve the performance of this 
+        # using a min-heap, keeping it at most dim(p) large.
+        partialsort!(constraints, dimensionality, by=tuple_cos_angle, rev=true)
+    end
+
+    num_orthogonal = count(x -> tuple_cos_angle(x) == 0.0, @view(constraints[1:LazySets.dim(P)]))
+
+    if num_orthogonal == dimensionality
+        res = d
+        unbounded = true
+
+        println("C")
+        return res, unbounded
+    end
+
+    if num_orthogonal > 1
+        # At least 2 vectors in top dim(P) angles are orthogonal to d.
+        println(constraints)
+        constraints = tuple_constraint.(constraints)
+        (A, b) = tosimplehrep(constraints)
+        println(d, A, b)
+        throw("Wat")
+    else
+        constraints = constraints[1:LazySets.dim(P)]
+    end
+
+    constraints = tuple_constraint.(constraints)
+
+    println("D")
+    
+    unbounded = false
+    (A, b) = tosimplehrep(constraints)
+    println(d, A, b)
+    res = A \ b
+
+    return res, unbounded
 end
 
 function custom_minkowski_sum(qᵢ_next_nom::AbstractPolyhedron{N}, expectation) where {N}
@@ -225,11 +345,9 @@ function custom_minkowski_sum(qᵢ_next_nom::AbstractPolyhedron{N}, expectation)
 end
 
 function expectation_partition_constraint!(model, qᵢ, Bᵢ::BarrierRegion{T, LinearBarrier{T1, VT1}}, Bⱼ::BarrierRegion{T, LinearBarrier{T2, VT2}}, c, expectation::ExpectationData{ScenarioApproach}) where {T, T1, VT1, T2, VT2}
-    backward_reachable_set = one_step_backward_reachable_set(qᵢ, region(Bⱼ))
+    set = expectation_set(qᵢ, region(Bⱼ), expectation.data.hrep)
     
-    Hᵢ, hᵢ = tosimplehrep(region(Bᵢ))
-    Hreach, hreach = tosimplehrep(backward_reachable_set)
-    Hη, hη = tosimplehrep(expectation.data.hrep)
+    H, h = tosimplehrep(set)
 
     pᵢ, vᵢ = Bᵢ.fun.p, Bᵢ.fun.v
     pⱼ, vⱼ = Bⱼ.fun.p, Bⱼ.fun.v
@@ -242,23 +360,40 @@ function expectation_partition_constraint!(model, qᵢ, Bᵢ::BarrierRegion{T, L
     for (Aᵢ, bᵢ) in dynamics(qᵢ)
         a = vcat(Aᵢ' * pⱼ .- (pᵢ / (1 - ϵ)), pⱼ)
         rhs = (vᵢ + c - d) / (1 - ϵ) - vⱼ - pⱼ ⋅ bᵢ
-        H = vcat(hcat(Hᵢ, zero(Hᵢ)), hcat(zero(Hη), Hη), Hreach)
-        h = vcat(hᵢ, hη, hreach)
 
         assymetric_dual_constraint!(model, a, rhs, H, h)
     end
 end
 
-function one_step_backward_reachable_set(qᵢ, qⱼ)
+function expectation_set(qᵢ, qⱼ, ηs)
     dyn = dynamics(qᵢ)
-    Hⱼ, hⱼ = tosimplehrep(qⱼ)
+    n = length(dyn)
+    qᵢ = region(qᵢ)
 
-    reachable_sets = [HPolyhedron(hcat(Hⱼ * Aᵢ, Hⱼ), hⱼ - Hⱼ * bᵢ) for (Aᵢ, bᵢ) in dyn]
-    normal_vectors = [[normalize(h.a) for h in constraints_list(set)] for set in reachable_sets]
-    normal_vectors = reduce(vcat, normal_vectors)
-    reachable_set = overapproximate(UnionSetArray(reachable_sets), CustomDirections(normal_vectors); prune=false)
+    Hᵢ, hᵢ = tosimplehrep(qᵢ)
+    # Hⱼ, hⱼ = tosimplehrep(qⱼ)
+    Hη, hη = tosimplehrep(ηs)
 
-    return reachable_set
+    backward = minkowski_difference(qⱼ, ηs)
+    Hⱼ, hⱼ = tosimplehrep(backward)
+    
+    println("New region")
+    println(qⱼ)
+    backward_reachable_sets1 = [HPolyhedron(Hⱼ * Aᵢ, hⱼ - Hⱼ * bᵢ) for (Aᵢ, bᵢ) in dyn]
+    # These can be empty, as we do not account for the noise - how to fix?
+    backward_reachable_sets2 = [remove_redundant_constraints(HPolyhedron(vcat(Hᵢ, Hⱼ * Aᵢ), vcat(hᵢ, hⱼ - Hⱼ * bᵢ))) for (Aᵢ, bᵢ) in dyn]
+    println(backward_reachable_sets1)
+    normal_vectors = [[normalize(h.a) for h in constraints_list(set)] for set in backward_reachable_sets1]
+    normal_vectors = unique(reduce(vcat, normal_vectors))
+    backward_reachable_set = overapproximate(HPolyUnionSetArray(backward_reachable_sets2), CustomDirections(normal_vectors); prune=false)
+    Hreach, hreach = tosimplehrep(normalize(backward_reachable_set))
+
+    Hᵢ = hcat(Hᵢ, zero(Hᵢ))
+    Hη = hcat(zero(Hη), Hη)
+
+    set = HPolyhedron(vcat(Hᵢ, Hη, hcat(Hreach, zero(Hreach))), vcat(hᵢ, hη, hreach))
+
+    return set
 end
 
 function expectation_partition_constraint!(model, Aᵢ, bᵢ, Bᵢ::BarrierRegion{T, ConstantBarrier{T1}}, Bⱼ::BarrierRegion{T, ConstantBarrier{T2}}, c, expectation::ExpectationData{ScenarioApproach}) where {T, T1, T2}
