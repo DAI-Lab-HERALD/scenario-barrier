@@ -35,7 +35,7 @@ function newsvendor_optimal_inventory(solver, demand_dist, profit, loss, ϵ, β)
 
     optimize!(model)
 
-    return value(x), objective_value(model)
+    return value(x), objective_value(model), mean(demand_realizations)
 end
 
 
