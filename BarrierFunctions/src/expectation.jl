@@ -189,11 +189,44 @@ function one_step_reachable_set(qᵢ)
     qᵢ = convert(HPolyhedron, region(qᵢ))
 
     reachable_sets = [affine_map(Aᵢ, qᵢ, bᵢ) for (Aᵢ, bᵢ) in dyn]
+
+    if length(reachable_sets) == 1
+        return reachable_sets[1]
+    end
+
     normal_vectors = [[normalize(h.a) for h in constraints_list(set)] for set in reachable_sets]
     normal_vectors = reduce(vcat, normal_vectors)
-    reachable_set = overapproximate(HPolyUnionSetArray(reachable_sets), CustomDirections(normal_vectors); prune=false)
+    reachable_set = overapproximate(UnionSetArray(reachable_sets), CustomDirections(normal_vectors); prune=false)
 
     return reachable_set
+end
+
+function custom_minkowski_sum(qᵢ_next_nom::AbstractPolyhedron{N}, expectation) where {N}
+
+    hrep_qᵢ_next_nom = HPolyhedron(constraints_list(qᵢ_next_nom))
+    nomial_template_dirs = CustomDirections([normalize(h.a) for h in constraints_list(hrep_qᵢ_next_nom)])
+    
+    H = Vector{LazySets.HalfSpace{N, Vector{N}}}()
+    sizehint!(H, length(nomial_template_dirs) + length(expectation.data.template_dirs))
+
+    for d in nomial_template_dirs
+        sf = ρ(d, qᵢ_next_nom) + ρ(d, expectation.data.vrep)
+        if !isinf(sf)
+            push!(H, LazySets.HalfSpace(d, sf))
+        end
+    end
+
+    for (d, ρ_val_noise) in expectation.data.template_dirs
+        sf = ρ(d, qᵢ_next_nom) + ρ_val_noise
+        if !isinf(sf)
+            push!(H, LazySets.HalfSpace(d, sf))
+        end
+    end
+
+    qᵢ_next = HPolyhedron(H)
+    qᵢ_next = normalize(qᵢ_next)
+
+    return qᵢ_next
 end
 
 const HPoly{N} = Union{HPolytope{N}, HPolyhedron{N}}
@@ -214,7 +247,6 @@ function LazySets.dim(cup::HPolyUnionSetArray)
 
 function LazySets.ρ(d::AbstractVector, cup::HPolyUnionSetArray)
     A = array(cup)
-    println("d: $d")
     return maximum(Xi -> ρ_hpolyhedron(d, Xi), A)
 end
 
@@ -238,7 +270,6 @@ function σ_helper_halfspace_direction(d::AbstractVector, P::HPoly)
         res = d
         unbounded = true
 
-        println("A")
         return res, unbounded
     end
 
@@ -272,76 +303,33 @@ function σ_helper_halfspace_direction(d::AbstractVector, P::HPoly)
             res -= h.a * dot(h.a, res) / norm(h.a)^2
         end
 
-        println("B")
-
         return res, unbounded
     end
 
     if length(constraints) > dimensionality
         # It might be possible to improve the performance of this 
         # using a min-heap, keeping it at most dim(p) large.
-        partialsort!(constraints, dimensionality, by=tuple_cos_angle, rev=true)
+        constraints = partialsort!(constraints, 1:dimensionality, by=tuple_cos_angle, rev=true)
     end
 
-    num_orthogonal = count(x -> tuple_cos_angle(x) == 0.0, @view(constraints[1:LazySets.dim(P)]))
+    # If one halfspace (a, b) is pointing in the direction of d, then the support vector is equal
+    # to (d / norm(d)) * b
+    same_dir = Base.findfirst(x -> isapprox(tuple_cos_angle(x), 1.0), constraints)
+    if !isnothing(same_dir)
+        res = d * tuple_constraint(constraints[same_dir]).b
+        unbounded = false
 
-    if num_orthogonal == dimensionality
-        res = d
-        unbounded = true
-
-        println("C")
         return res, unbounded
     end
 
-    if num_orthogonal > 1
-        # At least 2 vectors in top dim(P) angles are orthogonal to d.
-        println(constraints)
-        constraints = tuple_constraint.(constraints)
-        (A, b) = tosimplehrep(constraints)
-        println(d, A, b)
-        throw("Wat")
-    else
-        constraints = constraints[1:LazySets.dim(P)]
-    end
-
     constraints = tuple_constraint.(constraints)
-
-    println("D")
     
     unbounded = false
     (A, b) = tosimplehrep(constraints)
-    println(d, A, b)
+    # res = qr(A, ColumnNorm()) \ b
     res = A \ b
 
     return res, unbounded
-end
-
-function custom_minkowski_sum(qᵢ_next_nom::AbstractPolyhedron{N}, expectation) where {N}
-
-    hrep_qᵢ_next_nom = HPolyhedron(constraints_list(qᵢ_next_nom))
-    nomial_template_dirs = CustomDirections([normalize(h.a) for h in constraints_list(hrep_qᵢ_next_nom)])
-    
-    H = Vector{LazySets.HalfSpace{N, Vector{N}}}()
-    sizehint!(H, length(nomial_template_dirs) + length(expectation.data.template_dirs))
-
-    for d in nomial_template_dirs
-        sf = ρ(d, qᵢ_next_nom) + ρ(d, expectation.data.vrep)
-        if !isinf(sf)
-            push!(H, LazySets.HalfSpace(d, sf))
-        end
-    end
-
-    for (d, ρ_val_noise) in expectation.data.template_dirs
-        sf = ρ(d, qᵢ_next_nom) + ρ_val_noise
-        if !isinf(sf)
-            push!(H, LazySets.HalfSpace(d, sf))
-        end
-    end
-
-    qᵢ_next = HPolyhedron(H)
-    qᵢ_next = normalize(qᵢ_next)
-
-    return qᵢ_next
 end
 
 function expectation_partition_constraint!(model, qᵢ, Bᵢ::BarrierRegion{T, LinearBarrier{T1, VT1}}, Bⱼ::BarrierRegion{T, LinearBarrier{T2, VT2}}, c, expectation::ExpectationData{ScenarioApproach}) where {T, T1, VT1, T2, VT2}
@@ -367,31 +355,30 @@ end
 
 function expectation_set(qᵢ, qⱼ, ηs)
     dyn = dynamics(qᵢ)
-    n = length(dyn)
     qᵢ = region(qᵢ)
 
     Hᵢ, hᵢ = tosimplehrep(qᵢ)
-    # Hⱼ, hⱼ = tosimplehrep(qⱼ)
+    Hⱼ, hⱼ = tosimplehrep(qⱼ)
     Hη, hη = tosimplehrep(ηs)
-
-    backward = minkowski_difference(qⱼ, ηs)
-    Hⱼ, hⱼ = tosimplehrep(backward)
     
-    println("New region")
-    println(qⱼ)
-    backward_reachable_sets1 = [HPolyhedron(Hⱼ * Aᵢ, hⱼ - Hⱼ * bᵢ) for (Aᵢ, bᵢ) in dyn]
-    # These can be empty, as we do not account for the noise - how to fix?
-    backward_reachable_sets2 = [remove_redundant_constraints(HPolyhedron(vcat(Hᵢ, Hⱼ * Aᵢ), vcat(hᵢ, hⱼ - Hⱼ * bᵢ))) for (Aᵢ, bᵢ) in dyn]
-    println(backward_reachable_sets1)
-    normal_vectors = [[normalize(h.a) for h in constraints_list(set)] for set in backward_reachable_sets1]
-    normal_vectors = unique(reduce(vcat, normal_vectors))
-    backward_reachable_set = overapproximate(HPolyUnionSetArray(backward_reachable_sets2), CustomDirections(normal_vectors); prune=false)
-    Hreach, hreach = tosimplehrep(normalize(backward_reachable_set))
-
     Hᵢ = hcat(Hᵢ, zero(Hᵢ))
     Hη = hcat(zero(Hη), Hη)
 
-    set = HPolyhedron(vcat(Hᵢ, Hη, hcat(Hreach, zero(Hreach))), vcat(hᵢ, hη, hreach))
+    backward_reachable_sets = [HPolyhedron(vcat(Hᵢ, Hη, hcat(Hⱼ * Aᵢ, Hⱼ)), vcat(hᵢ, hη, hⱼ - Hⱼ * bᵢ)) for (Aᵢ, bᵢ) in dyn]
+
+    if length(backward_reachable_sets) == 1
+        return backward_reachable_sets[1]
+    end
+
+    backward_reachable_sets = filter(p -> !isempty(p), backward_reachable_sets)
+
+    normal_vectors = [hcat(Hⱼ * Aᵢ, Hⱼ) for (Aᵢ, bᵢ) in dyn]
+    normal_vectors = [Hᵢ; Hη; reduce(vcat, normal_vectors)]
+    normal_vectors = mapslices(normalize, normal_vectors, dims=2)
+            
+    template_directions = CustomDirections(collect(eachrow(normal_vectors)))
+    backward_reachable_set = overapproximate(UnionSetArray(backward_reachable_sets), template_directions; prune=false)
+    set = normalize(backward_reachable_set)
 
     return set
 end
