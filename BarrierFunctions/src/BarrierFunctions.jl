@@ -4,7 +4,7 @@ module BarrierFunctions
     import MathOptInterface
     const MOI = MathOptInterface
 
-    using LazySets
+    using LazySets, ReachabilityBase
     import Base.@kwdef
 
     using MultivariatePolynomials, DynamicPolynomials, SemialgebraicSets
