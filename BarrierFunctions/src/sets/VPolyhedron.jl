@@ -1,12 +1,12 @@
 import Base: rand,
              ∈
+using Random, Polyhedra
 
 export VPolyhedron,
        vertices_list,
        rays_list,
        linear_map,
        remove_redundant_vertices,
-       remove_redundant_rays,
        tohrep,
        tovrep
 
@@ -109,6 +109,29 @@ function LazySets.dim(P::VPolyhedron)
 end
 
 """
+    ρ(d::AbstractVector{M}, P::VPolyhedron{N};
+      solver=default_lp_solver(N)) where {M, N}
+Evaluate the support function of a polyhedron in vertex/ray representation in a
+given direction.
+### Input
+- `d`      -- direction
+- `P`      -- polyhedron in vertex/ray representation
+- `solver` -- (optional, default: `default_lp_solver(N)`) the backend used to
+              solve the linear program
+### Output
+The evaluation of the support function for the polyhedron.
+If a polyhedron is unbounded in the given direction, the result is `Inf`.
+"""
+function ρ(d::AbstractVector{M}, P::VPolyhedron{N};
+           solver=default_lp_solver(N)) where {M, N}
+    res, unbounded = σ_helper(d, P, solver)
+    if unbounded
+        return N(Inf)
+    end
+    return dot(d, res)
+end
+
+"""
     σ(d::AbstractVector{M}, P::VPolyhedron{N};
       solver=default_lp_solver(M, N)) where {M, N}
 Return a support vector of a polyhedron in vertex/ray representation in a given
@@ -124,45 +147,11 @@ For a polyhedron, the support function is always maximized in some vertex.
 Hence it is sufficient to check all vertices.
 """
 function LazySets.σ(d::AbstractVector{M}, P::VPolyhedron{N};
-    solver=default_lp_solver(M, N)) where {M, N}
+    solver=default_lp_solver(N)) where {M, N}
 
-    if isempty(P.rays)
-        # base cases
-        m = length(P.vertices)
-        if m == 0
-            error("the support function of an empty polyhedron is undefined")
-        elseif m == 1
-            @inbounds return P.vertices[1]
-        end
-
-        # evaluate support function in every vertex
-        N = promote_type(eltype(d), eltype(P))
-        max_ρ = N(-Inf)
-        max_idx = 0
-        for (i, vi) in enumerate(P.vertices)
-            ρ_i = dot(d, vi)
-            if ρ_i > max_ρ
-                max_ρ = ρ_i
-                max_idx = i
-            end
-        end
-        @inbounds return P.vertices[max_idx]
-    end
-
-    lp, unbounded = σ_helper(d, P, solver)
+    res, unbounded = σ_helper(d, P, solver)
     if unbounded
-        if P isa HPolytope
-            error("the support vector in direction $(d) is undefined because " *
-                "the polytope is unbounded")
-        end
-        # construct the solution from the solver's ray result
-        if lp == nothing
-            ray = d
-        elseif has_lp_infeasibility_ray(lp.model)
-            ray = lp.sol  # infeasibility ray is stored as the solution
-        else
-            error("LP solver did not return an infeasibility ray")
-        end
+        ray = sol
         res = Vector{N}(undef, length(ray))
         @inbounds for i in 1:length(ray)
             if ray[i] == zero(N)
@@ -173,10 +162,69 @@ function LazySets.σ(d::AbstractVector{M}, P::VPolyhedron{N};
                 res[i] = N(-Inf)
             end
         end
-        return res
-    else
-        return lp.sol
     end
+
+    return res
+end
+
+function σ_helper(d, P, solver)
+    vertices = P.vertices
+    rays = P.rays
+
+    # base case
+    m = length(vertices)
+    o = length(rays)
+
+    if m == 0
+        error("the support function of an empty polyhedron is undefined")
+    end
+
+    if o == 0
+        if m == 1
+            @inbounds return vertices[1], false
+        end
+
+        # evaluate support function in every vertex
+        N = promote_type(eltype(d), eltype(P))
+        max_ρ = N(-Inf)
+        max_idx = 0
+        for (i, vi) in enumerate(vertices)
+            ρ_i = dot(d, vi)
+            if ρ_i > max_ρ
+                max_ρ = ρ_i
+                max_idx = i
+            end
+        end
+        @inbounds return vertices[max_idx], false
+    end
+
+    model = Model(solver)
+    n = LazySets.dim(P)
+
+    @variable(model, x[1:n])
+    @variable(model, λ[1:m] ≥ 0)
+    @variable(model, μ[1:o] ≥ 0)
+
+    @constraint(model, sum(λ) == 1)
+
+    multiply((w, v)) = w .* v
+    @constraint(model, sum(multiply, zip(λ, vertices)) .+ sum(multiply, zip(μ, rays)) .== x)
+
+    @objective(model, Max, dot(d, x))
+
+    optimize!(model)
+
+    if termination_status(model) == MathOptInterface.OPTIMAL
+        res = value.(x)
+        unbounded = false
+    elseif primal_status(model) == MathOptInterface.INFEASIBILITY_CERTIFICATE
+        res = value.(x)
+        unbounded = true
+    else
+        error("LP solver did not return an infeasibility ray")
+    end
+
+    return res, unbounded
 end
 
 """
@@ -295,8 +343,8 @@ a polyhedron in vertex/ray representation. The output type is again a `VPolyhedr
 """
 function LazySets.linear_map(M::AbstractMatrix, P::VPolyhedron;
                     apply_convex_hull::Bool=false)
-    @assert dim(P) == size(M, 2) "a linear map of size $(size(M)) cannot be " *
-        "applied to a set of dimension $(dim(P))"
+    @assert LazySets.dim(P) == size(M, 2) "a linear map of size $(size(M)) cannot be " *
+        "applied to a set of dimension $(LazySets.dim(P))"
 
     return _linear_map_vrep(M, P; apply_convex_hull=apply_convex_hull)
 end
@@ -324,7 +372,7 @@ A translated polyhedron in vertex/ray representation.
 See [`translate!(::VPolyhedron, ::AbstractVector)`](@ref) for the in-place version.
 """
 function LazySets.translate(P::VPolyhedron, v::AbstractVector)
-    return translate!(deepcopy(P), v)
+    return LazySets.translate!(deepcopy(P), v)
 end
 
 """
@@ -475,10 +523,50 @@ function LazySets.tovrep(P::VPolyhedron)
     return P
 end
 
-function convert(::Type{VPolyhedron}, P::HPolyhedron)
+function Base.convert(::Type{VPolyhedron}, P::HPolyhedron; 
+        backend=default_polyhedra_backend(P))
     require(@__MODULE__, :Polyhedra; fun_name="convert")
     P = polyhedron(P; backend=backend)
     return VPolyhedron(P)
+end
+
+function default_polyhedra_backend(P::LazySet{N}) where {N}
+    if LazySets.dim(P) == 1
+        return default_polyhedra_backend_1d(N)
+    else
+        return default_polyhedra_backend_nd(N)
+    end
+end
+
+function default_polyhedra_backend_1d(N::Type{<:Number}, solver=nothing)
+    return Polyhedra.IntervalLibrary{N}()
+end
+
+function default_polyhedra_backend_nd(N::Type{<:Number},
+                                      solver=default_lp_solver_polyhedra(N))
+    return Polyhedra.DefaultLibrary{N}(solver)
+end
+
+function default_lp_solver_polyhedra(N::Type{<:AbstractFloat};
+                                     presolve::Bool=false)
+    if presolve
+        return JuMP.optimizer_with_attributes(GLPK.Optimizer,
+                                              "presolve" => GLPK.GLP_ON)
+    else
+        return JuMP.optimizer_with_attributes(GLPK.Optimizer)
+    end
+end
+
+function default_lp_solver_polyhedra(N::Type{<:Rational};
+                                     presolve::Bool=false)
+    if presolve
+        return JuMP.optimizer_with_attributes(
+            () -> GLPK.Optimizer(method=GLPK.EXACT),
+            "presolve" => GLPK.GLP_ON)
+    else
+        return JuMP.optimizer_with_attributes(
+            () -> GLPK.Optimizer(method=GLPK.EXACT))
+    end
 end
 
 """
@@ -555,11 +643,13 @@ such that a line segment in two dimensions has dimension two. However,
 `Polyhedra.dim` will assign a dimension equal to one to a line segment
 because it uses a different convention.
 """
-function Polyhedron.polyhedron(P::VPolyhedron;
+function Polyhedra.polyhedron(P::VPolyhedron;
                     backend=default_polyhedra_backend(P),
                     relative_dimension=nothing)
+    require(@__MODULE__, :Polyhedra; fun_name="polyhedron")
+
     vertices = P.vertices
-    rays = map(Ray, P.rays)
+    rays::Vector{Ray{Float64, Vector{Float64}}} = map(Ray, P.rays)
     if isempty(P)
         if relative_dimension == nothing
             error("the conversion to a `Polyhedra.polyhedron` requires the " *
@@ -567,7 +657,31 @@ function Polyhedron.polyhedron(P::VPolyhedron;
                 "cannot be inferred from an empty set; use the keyword " *
                 "argument `relative_dimension`")
         end
-        return polyhedron(Polyhedra.vrep(vertices, [], rays, d=relative_dimension), backend)
+        Pv = Polyhedra.vrep(vertices, Polyhedra.Line{Float64, Vector{Float64}}[], rays, d=relative_dimension)
+    else
+        Pv = Polyhedra.vrep(vertices, Polyhedra.Line{Float64, Vector{Float64}}[], rays)
     end
-    return polyhedron(Polyhedra.vrep(vertices, [], rays), backend)
+    return Polyhedra.polyhedron(Pv, backend)
+end
+
+function LazySets.convex_hull(cup::UnionSet{N, VPolyhedron{N, VNV, VNR}, VPolyhedron{N, VNV, VNR}}; backend=nothing, prune::Bool=true) where {N, VNV, VNR}
+    P = VPolyhedron([cup.X.vertices; cup.Y.vertices], [cup.X.rays, cup.Y.rays])
+
+    if prune
+        P = remove_redundant_vertices(P, backend=backend)
+    end
+
+    return P
+end
+
+function LazySets.convex_hull(cup::UnionSetArray{N, VPolyhedron{N, VNV, VNR}}; backend=nothing, prune::Bool=true) where {N, VNV, VNR}
+    vertices = reduce(vcat, (X.vertices for X in array(cup)))
+    rays =reduce(vcat, (X.rays for X in array(cup)))
+    P = VPolyhedron(vertices, rays)
+
+    if prune
+        P = remove_redundant_vertices(P, backend=backend)
+    end
+
+    return P
 end

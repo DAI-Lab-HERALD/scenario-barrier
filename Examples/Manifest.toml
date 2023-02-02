@@ -2,7 +2,7 @@
 
 julia_version = "1.8.3"
 manifest_format = "2.0"
-project_hash = "2f1302d303be6a400d4a4bcc5827c21341d01bc1"
+project_hash = "ddd1afe2ad4bd42a3f279780535327b97e1706d0"
 
 [[deps.AbstractAlgebra]]
 deps = ["GroupsCore", "InteractiveUtils", "LinearAlgebra", "MacroTools", "Markdown", "Random", "RandomExtensions", "SparseArrays", "Test"]
@@ -69,7 +69,7 @@ uuid = "198e06fe-97b7-11e9-32a5-e1d131e6ad66"
 version = "0.3.37"
 
 [[deps.BarrierFunctions]]
-deps = ["CDDLib", "ColorSchemes", "Colors", "Distributions", "Dualization", "DynamicPolynomials", "GLPK", "InvertedIndices", "IterTools", "JuMP", "LazySets", "LinearAlgebra", "MathOptInterface", "MultivariatePolynomials", "Plots", "PolyJuMP", "Polyhedra", "QHull", "Random", "SemialgebraicSets", "Spatial", "SumOfSquares"]
+deps = ["CDDLib", "ColorSchemes", "Colors", "Distributions", "Dualization", "DynamicPolynomials", "GLPK", "InvertedIndices", "IterTools", "JuMP", "LazySets", "LinearAlgebra", "MathOptInterface", "MultivariatePolynomials", "Plots", "PolyJuMP", "Polyhedra", "QHull", "Random", "ReachabilityBase", "SemialgebraicSets", "Spatial", "SumOfSquares"]
 path = "../BarrierFunctions"
 uuid = "5dedeccf-5cb2-488c-aeb7-5be8ae7c4d1f"
 version = "0.1.0"

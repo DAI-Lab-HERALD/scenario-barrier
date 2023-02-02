@@ -170,7 +170,7 @@ function expectation_constraint!(model, system, B::PiecewiseBarrier, c, qᵢ, ex
     qᵢ_next_nom = one_step_reachable_set(qᵢ)
     qᵢ_next = custom_minkowski_sum(qᵢ_next_nom, expectation)
 
-    if LazySets.isbounded(region(qᵢ))
+    if LazySets.isbounded(qᵢ_next_nom)
         box = minkowski_sum(box_approximation(qᵢ_next_nom), expectation.data.box)
     else
         box = nothing
@@ -187,6 +187,7 @@ end
 function one_step_reachable_set(qᵢ)
     dyn = dynamics(qᵢ)
     qᵢ = convert(HPolyhedron, region(qᵢ))
+    qᵢ = convert(VPolyhedron, qᵢ)
 
     reachable_sets = [affine_map(Aᵢ, qᵢ, bᵢ) for (Aᵢ, bᵢ) in dyn]
 
@@ -194,9 +195,8 @@ function one_step_reachable_set(qᵢ)
         return reachable_sets[1]
     end
 
-    normal_vectors = [[normalize(h.a) for h in constraints_list(set)] for set in reachable_sets]
-    normal_vectors = reduce(vcat, normal_vectors)
-    reachable_set = overapproximate(UnionSetArray(reachable_sets), CustomDirections(normal_vectors); prune=false)
+    reachable_sets = UnionSetArray(reachable_sets)
+    reachable_set = convex_hull(reachable_sets, prune=true)
 
     return reachable_set
 end
