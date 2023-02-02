@@ -164,8 +164,6 @@ function expectation_constraint!(model, system, B::PiecewiseBarrier, c, qᵢ, ex
     if is_intersection_zeromeasure(Xₛ, qᵢ)
         return
     end
-
-    Bᵢ = B[qᵢ]
     
     qᵢ_next_nom = one_step_reachable_set(qᵢ)
     qᵢ_next = custom_minkowski_sum(qᵢ_next_nom, expectation)
@@ -180,7 +178,7 @@ function expectation_constraint!(model, system, B::PiecewiseBarrier, c, qᵢ, ex
     next_regions = Spatial.findall(query, regions(system))
 
     for qⱼ in next_regions
-        expectation_partition_constraint!(model, qᵢ, Bᵢ, B[qⱼ], c, expectation)
+        expectation_partition_constraint!(model, qᵢ, B[qᵢ], B[qⱼ], c, expectation)
     end
 end
 
@@ -196,13 +194,12 @@ function one_step_reachable_set(qᵢ)
     end
 
     reachable_sets = UnionSetArray(reachable_sets)
-    reachable_set = convex_hull(reachable_sets, prune=true)
+    reachable_set = convex_hull(reachable_sets, prune=false)
 
     return reachable_set
 end
 
 function custom_minkowski_sum(qᵢ_next_nom::AbstractPolyhedron{N}, expectation) where {N}
-
     hrep_qᵢ_next_nom = HPolyhedron(constraints_list(qᵢ_next_nom))
     nomial_template_dirs = CustomDirections([normalize(h.a) for h in constraints_list(hrep_qᵢ_next_nom)])
     
@@ -268,14 +265,10 @@ function expectation_set(qᵢ, qⱼ, ηs)
     end
 
     backward_reachable_sets = filter(p -> !isempty(p), backward_reachable_sets)
+    backward_reachable_sets = map(p -> convert(VPolyhedron, p), backward_reachable_sets)
 
-    normal_vectors = [hcat(Hⱼ * Aᵢ, Hⱼ) for (Aᵢ, bᵢ) in dyn]
-    normal_vectors = [Hᵢ; Hη; reduce(vcat, normal_vectors)]
-    normal_vectors = mapslices(normalize, normal_vectors, dims=2)
-            
-    template_directions = CustomDirections(collect(eachrow(normal_vectors)))
-    backward_reachable_set = overapproximate(UnionSetArray(backward_reachable_sets), template_directions; prune=false)
-    set = normalize(backward_reachable_set)
+    backward_reachable_set = convex_hull(UnionSetArray(backward_reachable_sets), prune=false)
+    set = normalize(tohrep(backward_reachable_set))
 
     return set
 end
