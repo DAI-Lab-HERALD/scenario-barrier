@@ -248,10 +248,6 @@ function expectation_partition_constraint!(model, qᵢ, Bᵢ::BarrierRegion{T, L
 end
 
 function expectation_set(qᵢ, qⱼ, expectation)
-    reachable = one_step_reachable_set(qᵢ)
-    reachable2 = custom_minkowski_sum(reachable, expectation)
-    println(("A", isdisjoint(reachable, qⱼ), isdisjoint(reachable2, qⱼ)))
-
     dyn = dynamics(qᵢ)
     qᵢ = region(qᵢ)
 
@@ -262,26 +258,22 @@ function expectation_set(qᵢ, qⱼ, expectation)
     Hᵢ = hcat(Hᵢ, zero(Hᵢ))
     Hη = hcat(zero(Hη), Hη)
 
-    backward_reachable_sets = [HPolyhedron(vcat(Hᵢ, Hη, hcat(Hⱼ * Aᵢ, Hⱼ)), vcat(hᵢ, hη, hⱼ - Hⱼ * bᵢ)) for (Aᵢ, bᵢ) in dyn]
+    input_noise_sets = HPolyhedron(vcat(Hᵢ, Hη), vcat(hᵢ, hη))
 
-    if length(backward_reachable_sets) == 1
-        return backward_reachable_sets[1]
+    if length(dyn) == 1
+        (Aᵢ, bᵢ) in dyn[1]
+        backward_reachable_set = intersection(input_noise_sets, HPolyhedron(hcat(Hⱼ * Aᵢ, Hⱼ), hⱼ - Hⱼ * bᵢ))
+        return backward_reachable_set
     end
 
-    # backward_reachable_sets = [HPolyhedron(hcat(Hⱼ * Aᵢ, Hⱼ), hⱼ - Hⱼ * bᵢ) for (Aᵢ, bᵢ) in dyn]
-    println(map(isempty, backward_reachable_sets))
-    backward_reachable_sets = map(p -> convert(VPolyhedron, p), backward_reachable_sets)
-    println(map(length ∘ vertices_list, backward_reachable_sets))
+    output_sets = [HPolyhedron(hcat(Hⱼ * Aᵢ, Hⱼ), hⱼ - Hⱼ * bᵢ) for (Aᵢ, bᵢ) in dyn]
+    output_sets = map(p -> convert(VPolyhedron, p), output_sets)
 
-    backward_reachable_sets = filter(p -> !isempty(p), backward_reachable_sets)
-    backward_reachable_sets = UnionSetArray{Float64, VPolyhedron{Float64, Vector{Float64}, Vector{Float64}}}(backward_reachable_sets)
+    output_sets = UnionSetArray{Float64, VPolyhedron{Float64, Vector{Float64}, Vector{Float64}}}(output_sets)
 
-    backward_reachable_set = convex_hull(backward_reachable_sets, prune=false)
-    println(isempty(backward_reachable_set))
+    output_set = convex_hull(output_sets, prune=false)
+    backward_reachable_set = intersection(input_noise_sets, output_set)
     backward_reachable_set = normalize(tohrep(backward_reachable_set))
-    println(isempty(backward_reachable_set))
-
-    println(length(constraints_list(backward_reachable_set)))
 
     return backward_reachable_set
 end
