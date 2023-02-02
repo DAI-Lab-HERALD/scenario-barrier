@@ -227,7 +227,7 @@ function custom_minkowski_sum(qᵢ_next_nom::AbstractPolyhedron{N}, expectation)
 end
 
 function expectation_partition_constraint!(model, qᵢ, Bᵢ::BarrierRegion{T, LinearBarrier{T1, VT1}}, Bⱼ::BarrierRegion{T, LinearBarrier{T2, VT2}}, c, expectation::ExpectationData{ScenarioApproach}) where {T, T1, VT1, T2, VT2}
-    set = expectation_set(qᵢ, region(Bⱼ), expectation.data.hrep)
+    set = expectation_set(qᵢ, region(Bⱼ), expectation)
     
     H, h = tosimplehrep(set)
 
@@ -247,13 +247,17 @@ function expectation_partition_constraint!(model, qᵢ, Bᵢ::BarrierRegion{T, L
     end
 end
 
-function expectation_set(qᵢ, qⱼ, ηs)
+function expectation_set(qᵢ, qⱼ, expectation)
+    reachable = one_step_reachable_set(qᵢ)
+    reachable2 = custom_minkowski_sum(reachable, expectation)
+    println(("A", isdisjoint(reachable, qⱼ), isdisjoint(reachable2, qⱼ)))
+
     dyn = dynamics(qᵢ)
     qᵢ = region(qᵢ)
 
     Hᵢ, hᵢ = tosimplehrep(qᵢ)
     Hⱼ, hⱼ = tosimplehrep(qⱼ)
-    Hη, hη = tosimplehrep(ηs)
+    Hη, hη = tosimplehrep(expectation.data.hrep)
     
     Hᵢ = hcat(Hᵢ, zero(Hᵢ))
     Hη = hcat(zero(Hη), Hη)
@@ -264,13 +268,22 @@ function expectation_set(qᵢ, qⱼ, ηs)
         return backward_reachable_sets[1]
     end
 
-    backward_reachable_sets = filter(p -> !isempty(p), backward_reachable_sets)
+    # backward_reachable_sets = [HPolyhedron(hcat(Hⱼ * Aᵢ, Hⱼ), hⱼ - Hⱼ * bᵢ) for (Aᵢ, bᵢ) in dyn]
+    println(map(isempty, backward_reachable_sets))
     backward_reachable_sets = map(p -> convert(VPolyhedron, p), backward_reachable_sets)
+    println(map(length ∘ vertices_list, backward_reachable_sets))
 
-    backward_reachable_set = convex_hull(UnionSetArray(backward_reachable_sets), prune=false)
-    set = normalize(tohrep(backward_reachable_set))
+    backward_reachable_sets = filter(p -> !isempty(p), backward_reachable_sets)
+    backward_reachable_sets = UnionSetArray{Float64, VPolyhedron{Float64, Vector{Float64}, Vector{Float64}}}(backward_reachable_sets)
 
-    return set
+    backward_reachable_set = convex_hull(backward_reachable_sets, prune=false)
+    println(isempty(backward_reachable_set))
+    backward_reachable_set = normalize(tohrep(backward_reachable_set))
+    println(isempty(backward_reachable_set))
+
+    println(length(constraints_list(backward_reachable_set)))
+
+    return backward_reachable_set
 end
 
 function expectation_partition_constraint!(model, Aᵢ, bᵢ, Bᵢ::BarrierRegion{T, ConstantBarrier{T1}}, Bⱼ::BarrierRegion{T, ConstantBarrier{T2}}, c, expectation::ExpectationData{ScenarioApproach}) where {T, T1, T2}
