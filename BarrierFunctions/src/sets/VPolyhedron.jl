@@ -122,7 +122,7 @@ given direction.
 The evaluation of the support function for the polyhedron.
 If a polyhedron is unbounded in the given direction, the result is `Inf`.
 """
-function ρ(d::AbstractVector{M}, P::VPolyhedron{N};
+function LazySets.ρ(d::AbstractVector{M}, P::VPolyhedron{N};
            solver=default_lp_solver(N)) where {M, N}
     res, unbounded = σ_helper(d, P, solver)
     if unbounded
