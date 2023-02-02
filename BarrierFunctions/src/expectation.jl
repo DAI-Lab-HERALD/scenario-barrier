@@ -261,7 +261,7 @@ function expectation_set(qᵢ, qⱼ, expectation)
     input_noise_sets = HPolyhedron(vcat(Hᵢ, Hη), vcat(hᵢ, hη))
 
     if length(dyn) == 1
-        (Aᵢ, bᵢ) in dyn[1]
+        (Aᵢ, bᵢ) = dyn[1]
         backward_reachable_set = intersection(input_noise_sets, HPolyhedron(hcat(Hⱼ * Aᵢ, Hⱼ), hⱼ - Hⱼ * bᵢ))
         return backward_reachable_set
     end
