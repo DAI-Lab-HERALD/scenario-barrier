@@ -4,10 +4,12 @@ module BarrierFunctions
     import MathOptInterface
     const MOI = MathOptInterface
 
-    using LazySets
+    using LazySets, ReachabilityBase.Require
     import Base.@kwdef
 
     using MultivariatePolynomials, DynamicPolynomials, SemialgebraicSets
+
+    include("sets/VPolyhedron.jl")
 
     include("utils/index.jl")
     include("utils/split.jl")
