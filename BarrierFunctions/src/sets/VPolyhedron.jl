@@ -523,11 +523,17 @@ function LazySets.tovrep(P::VPolyhedron)
     return P
 end
 
-function Base.convert(::Type{VPolyhedron}, P::HPolyhedron; 
+const HPoly = Union{HPolyhedron, HPolytope}
+
+function Base.convert(::Type{VPolyhedron}, P::HPoly; 
         backend=default_polyhedra_backend(P))
     require(@__MODULE__, :Polyhedra; fun_name="convert")
     P = polyhedron(P; backend=backend)
     return VPolyhedron(P)
+end
+
+function Base.convert(::Type{VPolyhedron}, ::EmptySet)
+    return VPolyhedron()
 end
 
 function default_polyhedra_backend(P::LazySet{N}) where {N}
@@ -676,7 +682,7 @@ end
 
 function LazySets.convex_hull(cup::UnionSetArray{N, VPolyhedron{N, VNV, VNR}}; backend=nothing, prune::Bool=true) where {N, VNV, VNR}
     vertices = reduce(vcat, (X.vertices for X in array(cup)))
-    rays =reduce(vcat, (X.rays for X in array(cup)))
+    rays = reduce(vcat, (X.rays for X in array(cup)))
     P = VPolyhedron(vertices, rays)
 
     if prune
