@@ -671,7 +671,7 @@ function Polyhedra.polyhedron(P::VPolyhedron;
 end
 
 function LazySets.convex_hull(cup::UnionSet{N, VPolyhedron{N, VNV, VNR}, VPolyhedron{N, VNV, VNR}}; backend=nothing, prune::Bool=true) where {N, VNV, VNR}
-    P = VPolyhedron([cup.X.vertices; cup.Y.vertices], [cup.X.rays, cup.Y.rays])
+    P = VPolyhedron([cup.X.vertices; cup.Y.vertices], [cup.X.rays; cup.Y.rays])
 
     if prune
         P = remove_redundant_vertices(P, backend=backend)
