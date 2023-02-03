@@ -1,3 +1,5 @@
+using Revise
+
 using LazySets, Polyhedra, JuMP
 using BarrierFunctions
 
@@ -94,12 +96,12 @@ m = [1125, 1350]
 a_lat = [0.5 * ρ[1] * v_wind[1]^2 * area[1] * Cd[1] / m[2], 0.5 * ρ[2] * v_wind[2]^2 * area[2] * Cd[2] / m[1]]
 Ab_gust = [AffineDynamics(A, [v_long, 0.5 * a_lat[1] * dt^2]), AffineDynamics(A, [v_long, 0.5 * a_lat[2] * dt^2])]
 
-X = Hyperrectangle(Float64[0, 0], Float64[0.5, 0.5])
-ηs = rand(VPolytope; num_vertices=1000)
-ηs = remove_redundant_vertices(ηs)
+# X = Hyperrectangle(Float64[0, 0], Float64[0.5, 0.5])
+# ηs = rand(VPolytope; num_vertices=1000)
+# ηs = remove_redundant_vertices(ηs)
 
-Y = one_step_reachable_set(Ab_gust, X)
-Ys = [affine_map(A, X, b) for (A, b) in Ab_gust]
+# Y = one_step_reachable_set(Ab_gust, X)
+# Ys = [affine_map(A, X, b) for (A, b) in Ab_gust]
 
 # p = plot(Y, label="One step")
 # for Y2 in Ys
@@ -113,11 +115,34 @@ Ys = [affine_map(A, X, b) for (A, b) in Ab_gust]
 # p = plot(minkowski_sum(Y, ηs))
 # display(p)
 
-difference = map(x -> x[1] .- x[2], zip(sort(vertices_list(custom_minkowski_sum(Y, ηs))), sort(vertices_list(minkowski_sum(Y, ηs)))))
-println(difference)
+# difference = map(x -> x[1] .- x[2], zip(sort(vertices_list(custom_minkowski_sum(Y, ηs))), sort(vertices_list(minkowski_sum(Y, ηs)))))
+# println(difference)
 
 # indirect_overapproximation = box_approximation(custom_minkowski_sum(Y, ηs))
 # println(low(indirect_overapproximation), high(indirect_overapproximation))
 
 # direct_overapproximation = box_approximation(MinkowskiSum(Y, ηs))
 # println(low(direct_overapproximation), high(direct_overapproximation))
+
+A₁ = [-1 -2; 0 -1]
+A₂ = [-1 0; 1 -1]
+
+Y = VPolyhedron([[1.0, 1.0], [2.0, 3.0], [-1.0, 2.0]], Vector{Float64}[])
+Y_hrep = tohrep(Y)
+
+p = plot(Y, label="Y")
+
+X₁ = HPolyhedron(constraints_list(InverseLinearMap(A₁, Y_hrep)))
+X₂ = HPolyhedron(constraints_list(InverseLinearMap(A₂, Y_hrep)))
+# plot!(p, X₁, label="X1")
+# plot!(p, X₂, label="X2")
+
+for λ in LinRange(0, 1, 100)
+    X = HPolyhedron(constraints_list(InverseLinearMap(A₁ * λ + A₂ * (1 - λ), Y_hrep)))
+    plot!(p, X)
+end
+
+X_conv = convex_hull(UnionSet(convert(VPolyhedron, X₁), convert(VPolyhedron, X₂)))
+plot!(p, X_conv, label="X convex hull")
+
+display(p)
