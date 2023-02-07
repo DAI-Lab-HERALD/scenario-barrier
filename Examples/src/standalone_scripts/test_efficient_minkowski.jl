@@ -49,38 +49,6 @@ function custom_minkowski_sum(qᵢ_next_nom::AbstractPolyhedron{N}, ηs) where {
     return qᵢ_next
 end
 
-function expectation_set(dyn, qᵢ, qⱼ, expectation)
-    Hᵢ, hᵢ = tosimplehrep(qᵢ)
-    Hⱼ, hⱼ = tosimplehrep(qⱼ)
-    Hη, hη = tosimplehrep(expectation.data.hrep)
-    
-    Hᵢ = hcat(Hᵢ, zero(Hᵢ))
-    Hη = hcat(zero(Hη), Hη)
-
-    backward_reachable_sets = [HPolyhedron(vcat(Hᵢ, Hη, hcat(Hⱼ * Aᵢ, Hⱼ)), vcat(hᵢ, hη, hⱼ - Hⱼ * bᵢ)) for (Aᵢ, bᵢ) in dyn]
-
-    if length(backward_reachable_sets) == 1
-        return backward_reachable_sets[1]
-    end
-
-    # backward_reachable_sets = [HPolyhedron(hcat(Hⱼ * Aᵢ, Hⱼ), hⱼ - Hⱼ * bᵢ) for (Aᵢ, bᵢ) in dyn]
-    println(map(isempty, backward_reachable_sets))
-    backward_reachable_sets = map(p -> convert(VPolyhedron, p), backward_reachable_sets)
-    println(map(length ∘ vertices_list, backward_reachable_sets))
-
-    backward_reachable_sets = filter(p -> !isempty(p), backward_reachable_sets)
-    backward_reachable_sets = UnionSetArray{Float64, VPolyhedron{Float64, Vector{Float64}, Vector{Float64}}}(backward_reachable_sets)
-
-    backward_reachable_set = convex_hull(backward_reachable_sets, prune=false)
-    println(isempty(backward_reachable_set))
-    backward_reachable_set = normalize(tohrep(backward_reachable_set))
-    println(isempty(backward_reachable_set))
-
-    println(length(constraints_list(backward_reachable_set)))
-
-    return backward_reachable_set
-end
-
 dt = 1
 v_long = 50 * (1000 / 3600) * dt
 inward_steering = 0.05
@@ -101,23 +69,23 @@ X = Hyperrectangle(Float64[0, 0], Float64[0.5, 0.5])
 Y = one_step_reachable_set(Ab_gust, X)
 Ys = [affine_map(A, X, b) for (A, b) in Ab_gust]
 
-# p = plot(Y, label="One step")
-# for Y2 in Ys
-#     plot!(p, Y2)
-# end
-# display(p)
+p = plot(Y, label="One step")
+for Y2 in Ys
+    plot!(p, Y2)
+end
+display(p)
 
-# p = plot(custom_minkowski_sum(Y, ηs))
-# display(p)
+p = plot(custom_minkowski_sum(Y, ηs))
+display(p)
 
-# p = plot(minkowski_sum(Y, ηs))
-# display(p)
+p = plot(minkowski_sum(Y, ηs))
+display(p)
 
 difference = map(x -> x[1] .- x[2], zip(sort(vertices_list(custom_minkowski_sum(Y, ηs))), sort(vertices_list(minkowski_sum(Y, ηs)))))
 println(difference)
 
-# indirect_overapproximation = box_approximation(custom_minkowski_sum(Y, ηs))
-# println(low(indirect_overapproximation), high(indirect_overapproximation))
+indirect_overapproximation = box_approximation(custom_minkowski_sum(Y, ηs))
+println(low(indirect_overapproximation), high(indirect_overapproximation))
 
-# direct_overapproximation = box_approximation(MinkowskiSum(Y, ηs))
-# println(low(direct_overapproximation), high(direct_overapproximation))
+direct_overapproximation = box_approximation(MinkowskiSum(Y, ηs))
+println(low(direct_overapproximation), high(direct_overapproximation))
