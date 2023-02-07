@@ -75,8 +75,12 @@ X = Hyperrectangle(Float64[0, 0], Float64[0.5, 0.5])
 Y = one_step_reachable_set(Ab_gust, X)
 Ys = [affine_map(A, X, b) for (A, b) in Ab_gust]
 
+p = plot(Y, label="Y")
+plot!(p, custom_minkowski_sum(Y, ηs), label="Z")
 display(p)
 
+p = plot(Y, label="Y")
+plot!(p, minkowski_sum(Y, ηs), label="Z")
 display(p)
 
 difference = map(x -> x[1] .- x[2], zip(sort(vertices_list(custom_minkowski_sum(Y, ηs))), sort(vertices_list(minkowski_sum(Y, ηs)))))
