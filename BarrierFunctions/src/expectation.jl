@@ -229,6 +229,10 @@ end
 function expectation_partition_constraint!(model, qᵢ, Bᵢ::BarrierRegion{T, LinearBarrier{T1, VT1}}, Bⱼ::BarrierRegion{T, LinearBarrier{T2, VT2}}, c, expectation::ExpectationData{ScenarioApproach}) where {T, T1, VT1, T2, VT2}
     set = expectation_set(qᵢ, region(Bⱼ), expectation)
     
+    if isnothing(set)
+        return
+    end
+
     H, h = tosimplehrep(set)
 
     pᵢ, vᵢ = Bᵢ.fun.p, Bᵢ.fun.v
@@ -251,28 +255,27 @@ function expectation_set(qᵢ, qⱼ, expectation)
     dyn = dynamics(qᵢ)
     qᵢ = region(qᵢ)
 
-    Hᵢ, hᵢ = tosimplehrep(qᵢ)
-    Hⱼ, hⱼ = tosimplehrep(qⱼ)
-    Hη, hη = tosimplehrep(expectation.data.hrep)
-    
-    Hᵢ = hcat(Hᵢ, zero(Hᵢ))
-    Hη = hcat(zero(Hη), Hη)
+    input_noise_sets = cartesian_product(qᵢ, expectation.data.hrep)
 
-    input_noise_sets = HPolyhedron(vcat(Hᵢ, Hη), vcat(hᵢ, hη))
+    output_set(A, b) = intersection(input_noise_sets, HPolyhedron(constraints_list(InverseLinearMap(hcat(A, I), LazySets.translate(qⱼ, -b)))), prune=false)
 
     if length(dyn) == 1
         (Aᵢ, bᵢ) = dyn[1]
-        backward_reachable_set = intersection(input_noise_sets, HPolyhedron(hcat(Hⱼ * Aᵢ, Hⱼ), hⱼ - Hⱼ * bᵢ))
+        backward_reachable_set = output_set(Aᵢ, bᵢ)
         return backward_reachable_set
     end
 
-    output_sets = [HPolyhedron(hcat(Hⱼ * Aᵢ, Hⱼ), hⱼ - Hⱼ * bᵢ) for (Aᵢ, bᵢ) in dyn]
-    output_sets = map(p -> convert(VPolyhedron, p), output_sets)
+    output_sets = [output_set(Aᵢ, bᵢ) for (Aᵢ, bᵢ) in dyn]
 
+    output_sets = map(p -> convert(VPolyhedron, p), output_sets)
     output_sets = UnionSetArray{Float64, VPolyhedron{Float64, Vector{Float64}, Vector{Float64}}}(output_sets)
 
-    output_set = convex_hull(output_sets, prune=false)
-    backward_reachable_set = intersection(input_noise_sets, output_set)
+    backward_reachable_set = convex_hull(output_sets, prune=false)
+
+    if isempty(backward_reachable_set)
+        return nothing
+    end
+
     backward_reachable_set = normalize(tohrep(backward_reachable_set))
 
     return backward_reachable_set
