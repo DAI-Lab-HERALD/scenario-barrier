@@ -178,7 +178,7 @@ function expectation_constraint!(model, system, B::PiecewiseBarrier, c, qᵢ, ex
     next_regions = Spatial.findall(query, regions(system))
 
     for qⱼ in next_regions
-        expectation_partition_constraint!(model, qᵢ, B[qᵢ], B[qⱼ], c, expectation)
+        expectation_partition_constraint!(model, qᵢ, qᵢ_next, B[qᵢ], B[qⱼ], c, expectation)
     end
 end
 
@@ -226,8 +226,8 @@ function custom_minkowski_sum(qᵢ_next_nom::AbstractPolyhedron{N}, expectation)
     return qᵢ_next
 end
 
-function expectation_partition_constraint!(model, qᵢ, Bᵢ::BarrierRegion{T, LinearBarrier{T1, VT1}}, Bⱼ::BarrierRegion{T, LinearBarrier{T2, VT2}}, c, expectation::ExpectationData{ScenarioApproach}) where {T, T1, VT1, T2, VT2}
-    set = expectation_set(qᵢ, region(Bⱼ), expectation)
+function expectation_partition_constraint!(model, qᵢ, qᵢ_next, Bᵢ::BarrierRegion{T, LinearBarrier{T1, VT1}}, Bⱼ::BarrierRegion{T, LinearBarrier{T2, VT2}}, c, expectation::ExpectationData{ScenarioApproach}) where {T, T1, VT1, T2, VT2}
+    set = expectation_set(qᵢ, intersection(region(Bⱼ), qᵢ_next), expectation)
     
     if isnothing(set)
         return
