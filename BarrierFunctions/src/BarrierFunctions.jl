@@ -8,6 +8,7 @@ module BarrierFunctions
     import Base.@kwdef
 
     using MultivariatePolynomials, DynamicPolynomials, SemialgebraicSets
+    using LinearAlgebra
 
     include("sets/VPolyhedron.jl")
     include("operations/AffineGenerator.jl")

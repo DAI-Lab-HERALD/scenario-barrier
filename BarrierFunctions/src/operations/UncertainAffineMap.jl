@@ -1,11 +1,11 @@
 export UncertainAffineMap
 
 """
-    UncertainAffineMap{N, S<:LazySet{N}, NM, GEN<:AffineGenerator{NM}} <: LazySet{N, S}
+    UncertainAffineMap{N, S<:LazySet{N}, NM, GEN<:AffineGenerator{NM}} <: LazySet{N}
 Type that represents an uncertain affine transformation ``M(\\lambda)⋅X ⊕ v`` of a set ``X``, i.e.,
 the set
 ```math
-Y = \\{ y ∈ \\mathbb{R}^n : y = M(\\lambda)x + v(\\lambda),\\qquad x ∈ X ,\\qquad M(\\lambda) = \\sum_{i=1}^m M_i \\lambda_i,\\qquad v(\\lambda) = \\sum_{i=1}^m v_i \\lambda_i, \\qquad \\lambda \\in \\mathbb{R}^m_{\geq 0}, \\qquad \\sum_{i=1}^m \\lambda_i = 1 \\}.
+Y = \\{ y ∈ \\mathbb{R}^n : y = M(\\lambda)x + v(\\lambda),\\qquad x ∈ X ,\\qquad M(\\lambda) = \\sum_{i=1}^m M_i \\lambda_i,\\qquad v(\\lambda) = \\sum_{i=1}^m v_i \\lambda_i, \\qquad \\lambda \\in \\mathbb{R}^m_{\\geq 0}, \\qquad \\sum_{i=1}^m \\lambda_i = 1 \\}.
 ```
 If ``X`` is ``n``-dimensional, then ``M(\\lambda)`` should be an ``m × n`` matrix and
 ``v`` should be an ``m``-dimensional vector.
@@ -19,7 +19,7 @@ from the numeric type of the wrapped set, `N`.
 An affine map preserves convexity: if `X` is convex, then any affine map of `X`
 is convex as well.
 """
-struct UncertainAffineMap{N, S<:LazySet{N}, NM, GEN<:AbstractAffineGenerator{NM}} <: LazySet{N, S}
+struct UncertainAffineMap{N, S<:LazySet{N}, NM, GEN<:AbstractAffineGenerator{NM}} <: LazySet{N}
     generators::Vector{GEN}
     X::S
 
