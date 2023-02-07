@@ -10,6 +10,8 @@ module BarrierFunctions
     using MultivariatePolynomials, DynamicPolynomials, SemialgebraicSets
 
     include("sets/VPolyhedron.jl")
+    include("operations/AffineGenerator.jl")
+    include("operations/UncertainAffineMap.jl")
 
     include("utils/index.jl")
     include("utils/split.jl")
