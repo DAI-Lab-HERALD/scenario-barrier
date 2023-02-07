@@ -64,23 +64,24 @@ m = [1125, 1350]
 a_lat = [0.5 * ρ[1] * v_wind[1]^2 * area[1] * Cd[1] / m[2], 0.5 * ρ[2] * v_wind[2]^2 * area[2] * Cd[2] / m[1]]
 Ab_gust = [AffineDynamics(A, [v_long, 0.5 * a_lat[1] * dt^2]), AffineDynamics(A, [v_long, 0.5 * a_lat[2] * dt^2])]
 
-X = Hyperrectangle(Float64[0, 0], Float64[0.5, 0.5])
+X = Hyperrectangle(low=[10, 0.5], high=[24, 0.6])
 
 μ = [0, 0]
 Σ = PDiagMat([0.01^2, 0.01^2])  # Square to make std.dev. to variance.
 η = DiagNormal(μ, Σ)
 ηs = VPolytope([copy(η) for η in eachcol(rand(η, 10000))])
 ηs = remove_redundant_vertices(ηs)
+println(ηs)
 
 Y = one_step_reachable_set(Ab_gust, X)
 Ys = [affine_map(A, X, b) for (A, b) in Ab_gust]
 
-p = plot(Y, label="Y")
-plot!(p, custom_minkowski_sum(Y, ηs), label="Z")
+p = plot(custom_minkowski_sum(Y, ηs), label="Z")
+plot!(p, Y, label="Y")
 display(p)
 
-p = plot(Y, label="Y")
-plot!(p, minkowski_sum(Y, ηs), label="Z")
+p = plot(minkowski_sum(Y, ηs), label="Z")
+plot!(p, Y, label="Y")
 display(p)
 
 difference = map(x -> x[1] .- x[2], zip(sort(vertices_list(custom_minkowski_sum(Y, ηs))), sort(vertices_list(minkowski_sum(Y, ηs)))))
