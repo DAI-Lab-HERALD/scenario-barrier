@@ -22,67 +22,127 @@ function one_step_reachable_set(dyn, qᵢ)
     return reachable_set
 end
 
-function tighten_dynamics(dyn, qᵢ, qⱼ)
-    dyn_polytope = VPolytope([vec(A) for A in dyn])
-    dyn_polytope_hrep = tohrep(dyn_polytope)
+function single_entry_vector(i, n)
+    v = zeros(n)
+    v[i] = 1.0
 
-    println(constraints_list(dyn_polytope_hrep))
+    return v
+end
+
+dynamics_vertices(dyn, lambda_polytope) = [sum(x -> x[1] * x[2], zip(dyn, vertex)) for vertex in vertices_list(lambda_polytope)]
+
+function tighten_dynamics(dyn, qᵢ, qⱼ)
+    n = length(dyn)
+    if n == 1
+        return dyn
+    end
+
+    lambda_polytope = VPolytope([single_entry_vector(i, n) for i in 1:n])
+
+    # For each lambda_i
+    for i in 1:n
+        normal_vector = fill(1/n, n)
+        normal_vector[i] = -1.0
+
+        excluded_vertex = σ(-normal_vector, lambda_polytope)
+
+        vertices = vertices_list(lambda_polytope)
+        vertices = filter(vertex -> !all(isapprox.(vertex, excluded_vertex)), vertices)
+
+        plane_polytope = VPolytope(vertices)
+        plane_dyn = dynamics_vertices(dyn, plane_polytope)
+
+        if isdisjoint(one_step_reachable_set(plane_dyn, qᵢ), qⱼ)
+            lambda_polytope = binary_search_tighten_dynamics(i, dyn, qᵢ, qⱼ, lambda_polytope, normal_vector, excluded_vertex, first(vertices))
+
+            if isnothing(lambda_polytope)
+                return nothing
+            end
+        end
+    end
+
+    dyn = dynamics_vertices(dyn, lambda_polytope)
 
     return dyn
 end
 
-A₁ = [1 -1; 0 1]
-A₂ = [1 2; -1 0]
+function binary_search_tighten_dynamics(i, dyn, qᵢ, qⱼ, lambda_polytope, normal_vector, min_vertex, max_vertex; max_steps=5)
+    min = dot(normal_vector, min_vertex)
+    max = dot(normal_vector, max_vertex)
 
+    step = 1
+
+    # Perform binary search
+    while step <= max_steps
+        mid = (min + max) / 2.0
+
+        halfspace = LazySets.HalfSpace(-normal_vector, -mid)
+        prune_polytope = intersection(lambda_polytope, halfspace)
+        prune_dyn = dynamics_vertices(dyn, prune_polytope)
+
+        forward_set = one_step_reachable_set(prune_dyn, qᵢ)
+        if isdisjoint(forward_set, qⱼ)
+            halfspace = complement(halfspace)
+            keep_polytope = intersection(lambda_polytope, halfspace)
+            keep_dyn = dynamics_vertices(dyn, keep_polytope)
+
+            forward_set = one_step_reachable_set(keep_dyn, qᵢ)
+            if isdisjoint(forward_set, qⱼ)
+                return nothing
+            end
+
+            lambda_polytope = keep_polytope
+            max = mid
+        else
+            min = mid
+        end
+
+        step += 1
+    end
+
+    return lambda_polytope
+end
+
+N = Float64
+A₁ = N[1 -1; 0 1]
+A₂ = N[1 2; -1 0]
+
+println((A₁, A₂))
 println((opnorm(A₁), opnorm(A₂)))
 println((det(A₁), det(A₂)))
 
-qᵢ = LazySets.Hyperrectangle(low=Float64[-5, 7], high=Float64[-4, 8])
+qᵢ = LazySets.Hyperrectangle(low=N[-5, 7], high=N[-4, 8])
 qᵢ_next = one_step_reachable_set([A₁, A₂], qᵢ)
-qⱼ = LazySets.translate(rand(HPolytope; seed=42, num_vertices=20), [5, 7])
+qⱼ = LazySets.translate(rand(HPolytope; seed=42, num_vertices=20), N[5, 7])
 
 dyn = tighten_dynamics([A₁, A₂], qᵢ, qⱼ)
-qᵢ_next2 = one_step_reachable_set([A₁, A₂], qᵢ)
+qᵢ_next2 = one_step_reachable_set(dyn, qᵢ)
 
 qⱼ_intersect_fqᵢ = intersection(qᵢ_next, qⱼ)
+qⱼ_intersect_fqᵢ2 = intersection(qᵢ_next2, qⱼ)
 
 vs = vertices_list(qⱼ_intersect_fqᵢ)
 vs_x = first.(vs)
 vs_y = last.(vs)
 
-Ys = [InverseLinearMap(A₁ * λ + A₂ * (1 - λ), qⱼ_intersect_fqᵢ) for λ in LinRange(0, 1, 100)]
+vs2 = vertices_list(qⱼ_intersect_fqᵢ2)
+vs_x2 = first.(vs2)
+vs_y2 = last.(vs2)
 
-convex_avg_vs = [inv(A₁ * 0.5 + A₂ * 0.5) * v for v in vs]
-convex_avg_x = first.(convex_avg_vs)
-convex_avg_y = last.(convex_avg_vs)
-# smallest_eigval = eigvals(A₁ * 0.5 + A₂ * 0.5)[1]
-# smallest_eigval = eigvals(A₂)[1]
-# l2_ball_vs = [Ball2(v, 1/real(smallest_eigval)) for v in convex_avg_vs]
+Ys = [InverseLinearMap(dyn[1] * λ + dyn[2] * (1 - λ), qⱼ_intersect_fqᵢ2) for λ in LinRange(0, 1, 10)]
 
-p = plot(qᵢ, label="qi")
+p = plot(qᵢ, label="qi", legend = :bottomleft)
 plot!(p, qᵢ_next, label="f(qi) = A(λ)q_i")
+plot!(p, qᵢ_next2, label="f(qi) = A(λ_pruned)q_i")
 plot!(p, qⱼ, label="qj")
-plot!(p, vs_x, vs_y, seriestype=:scatter, label="qj ∩ f(qi) vertices")
-# plot!(p, convex_avg_x, convex_avg_y, seriestype=:scatter, label="vertices back")
-# for ball in l2_ball_vs
-#     plot!(p, ball, fillalpha=0.0)
-# end
+plot!(p, vs_x, vs_y, seriestype=:scatter, label="(qj ∩ f(qi)) vertices")
+plot!(p, vs_x2, vs_y2, seriestype=:scatter, label="(qj ∩ f(qi) pruned) vertices")
+
 for Y in Ys
-    # if !isdisjoint(Y, qᵢ)
     plot!(p, Y, fillalpha=0.0)
-    # end
 end
 
 for Y in [linear_map(A₁ * λ + A₂ * (1 - λ), qᵢ) for λ in LinRange(0, 1, 20)]
     plot!(p, Y, fillalpha=0.0)
 end
 display(p)
-
-# p = plot(qⱼ, label="Next set")
-# plot!(p, convex_avg_x, convex_avg_y, seriestype=:scatter)
-# for ball in l2_ball_vs
-#     plot!(p, ball, fillalpha=0.0)
-# end
-# plot!(p, Ys[1], fillalpha=0.0)
-# plot!(p, Ys[end], fillalpha=0.0)
-# display(p)
