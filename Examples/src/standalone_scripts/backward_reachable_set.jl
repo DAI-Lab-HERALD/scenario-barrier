@@ -22,14 +22,28 @@ function one_step_reachable_set(dyn, qᵢ)
     return reachable_set
 end
 
+function tighten_dynamics(dyn, qᵢ, qⱼ)
+    dyn_polytope = VPolytope([vec(A) for A in dyn])
+    dyn_polytope_hrep = tohrep(dyn_polytope)
+
+    println(constraints_list(dyn_polytope_hrep))
+
+    return dyn
+end
+
 A₁ = [1 -1; 0 1]
 A₂ = [1 2; -1 0]
 
 println((opnorm(A₁), opnorm(A₂)))
+println((det(A₁), det(A₂)))
 
-qᵢ = LazySets.Hyperrectangle(low=[-5, 7], high=[-4, 8])
+qᵢ = LazySets.Hyperrectangle(low=Float64[-5, 7], high=Float64[-4, 8])
 qᵢ_next = one_step_reachable_set([A₁, A₂], qᵢ)
 qⱼ = LazySets.translate(rand(HPolytope; seed=42, num_vertices=20), [5, 7])
+
+dyn = tighten_dynamics([A₁, A₂], qᵢ, qⱼ)
+qᵢ_next2 = one_step_reachable_set([A₁, A₂], qᵢ)
+
 qⱼ_intersect_fqᵢ = intersection(qᵢ_next, qⱼ)
 
 vs = vertices_list(qⱼ_intersect_fqᵢ)
