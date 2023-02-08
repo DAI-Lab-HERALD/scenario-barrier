@@ -28,17 +28,15 @@ function counterexample_barrier(solver, w, b)
     return objective_value(model)
 end
 
-function run_example()
-    ws = LinRange(-1, 1, 100)
-    bs = LinRange(0.5, 1.5, 100)
+ws = LinRange(-1, 1, 100)
+bs = LinRange(0.5, 1.5, 100)
 
-    product = [(w, b) for w in ws, b in bs]
-    ws = [w for (w, b) in product]
-    bs = [b for (w, b) in product]
+product = [(w, b) for w in ws, b in bs]
+ws = [w for (w, b) in product]
+bs = [b for (w, b) in product]
 
-    solver = optimizer_with_attributes(Mosek.Optimizer, "QUIET" => true)
-    fw = [counterexample_barrier(solver, w, b) for (w, b) in product]
+solver = optimizer_with_attributes(Mosek.Optimizer, "QUIET" => true)
+fw = [counterexample_barrier(solver, w, b) for (w, b) in product]
 
-    p = surface(ws, bs, fw, xlabel = "w", ylabel = "b")
-    display(p)
-end
+p = surface(ws, bs, fw, xlabel = "w", ylabel = "b")
+display(p)
