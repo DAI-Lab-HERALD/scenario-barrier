@@ -233,9 +233,8 @@ function expectation_partition_constraint!(model, dyn, Bᵢ::BarrierRegion{T, Li
         @debug "Tightening shows non-overlap"
         return
     end
-
-    input_noise_sets = cartesian_product(region(Bᵢ), expectation.data.hrep)
-    H, h = tosimplehrep(input_noise_sets)
+    
+    H, h = tosimplehrep(region(Bᵢ))
 
     pᵢ, vᵢ = Bᵢ.fun.p, Bᵢ.fun.v
     pⱼ, vⱼ = Bⱼ.fun.p, Bⱼ.fun.v
@@ -246,10 +245,12 @@ function expectation_partition_constraint!(model, dyn, Bᵢ::BarrierRegion{T, Li
     d = M * ϵ
 
     for (Aᵢ, bᵢ) in dyn
-        a = vcat(Aᵢ' * pⱼ .- (pᵢ / (1 - ϵ)), pⱼ)
-        rhs = (vᵢ + c - d) / (1 - ϵ) - vⱼ - pⱼ ⋅ bᵢ
+        for η in vertices_list(expectation.data.vrep)
+            a = Aᵢ' * pⱼ .- (pᵢ / (1 - ϵ))
+            rhs = (vᵢ + c - d) / (1 - ϵ) - vⱼ - pⱼ ⋅ (bᵢ .+ η)
 
-        assymetric_dual_constraint!(model, a, rhs, H, h)
+            assymetric_dual_constraint!(model, a, rhs, H, h)
+        end
     end
 end
 
