@@ -323,14 +323,14 @@ function binary_search_tighten_dynamics(dyn, qᵢ, qⱼ, expectation, lambda_pol
         mid = (min + max) / 2.0
 
         halfspace = LazySets.HalfSpace(-normal_vector, -mid)
-        prune_polytope = intersection(lambda_polytope, halfspace)
+        prune_polytope = intersection(lambda_polytope, halfspace, prune=false)
         prune_dyn = dynamics_vertices(dyn, prune_polytope)
 
         qᵢ_next_nom = one_step_reachable_set(prune_dyn, qᵢ)
         qᵢ_next = custom_minkowski_sum(qᵢ_next_nom, expectation)
 
         if isdisjoint(qᵢ_next, qⱼ)
-            lambda_polytope = intersection(lambda_polytope, complement(halfspace))
+            lambda_polytope = intersection(lambda_polytope, complement(halfspace), prune=false)
             max = mid
         else
             min = mid
@@ -373,13 +373,13 @@ function binary_search_tighten_region(dyn, qᵢ, qⱼ, expectation, normal_vecto
         mid = (min + max) / 2.0
 
         halfspace = LazySets.HalfSpace(-normal_vector, -mid)
-        prune_polytope = intersection(qᵢ, halfspace)
+        prune_polytope = intersection(qᵢ, halfspace, prune=false)
 
         qᵢ_next_nom = one_step_reachable_set(dyn, prune_polytope)
         qᵢ_next = custom_minkowski_sum(qᵢ_next_nom, expectation)
 
         if isdisjoint(qᵢ_next, qⱼ)
-            qᵢ = intersection(qᵢ, complement(halfspace))
+            qᵢ = intersection(qᵢ, complement(halfspace), prune=false)
             max = mid
         else
             min = mid
