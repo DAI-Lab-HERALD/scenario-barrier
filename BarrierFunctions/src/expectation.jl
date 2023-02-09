@@ -230,11 +230,17 @@ end
 function expectation_partition_constraint!(model, dyn, Bᵢ::BarrierRegion{T, LinearBarrier{T1, VT1}}, Bⱼ::BarrierRegion{T, LinearBarrier{T2, VT2}}, c, expectation::ExpectationData{ScenarioApproach}) where {T, T1, VT1, T2, VT2}
     dyn = tighten_dynamics(dyn, region(Bᵢ), region(Bⱼ), expectation)
     if isnothing(dyn)
-        @debug "Tightening shows non-overlap"
+        @debug "Tightening dynamics shows non-overlap"
+        return
+    end
+
+    qᵢ = tighten_region(dyn, region(Bᵢ), region(Bⱼ), expectation)
+    if isnothing(qᵢ)
+        @debug "Tightening region non-overlap"
         return
     end
     
-    H, h = tosimplehrep(region(Bᵢ))
+    H, h = tosimplehrep(qᵢ)
 
     pᵢ, vᵢ = Bᵢ.fun.p, Bᵢ.fun.v
     pⱼ, vⱼ = Bⱼ.fun.p, Bⱼ.fun.v
@@ -334,6 +340,55 @@ function binary_search_tighten_dynamics(dyn, qᵢ, qⱼ, expectation, lambda_pol
     end
 
     return lambda_polytope
+end
+
+function tighten_region(dyn, qᵢ, qⱼ, expectation)
+    constraints = constraints_list(qᵢ)
+    # For each halfspace constraint
+    for h in constraints
+        normal_vector = h.a
+        max = h.b
+        min = -ρ(-normal_vector, qᵢ)
+
+        if !isinf(min)
+            qᵢ = binary_search_tighten_region(dyn, qᵢ, qⱼ, expectation, normal_vector, max, min)
+        end
+    end
+
+    qᵢ_next_nom = one_step_reachable_set(dyn, qᵢ)
+    qᵢ_next = custom_minkowski_sum(qᵢ_next_nom, expectation)
+
+    if isdisjoint(qᵢ_next, qⱼ)
+        return nothing
+    end
+
+    return qᵢ
+end
+
+function binary_search_tighten_region(dyn, qᵢ, qⱼ, expectation, normal_vector, max, min; max_steps=5)
+    step = 1
+
+    # Perform binary search
+    while step <= max_steps
+        mid = (min + max) / 2.0
+
+        halfspace = LazySets.HalfSpace(-normal_vector, -mid)
+        prune_polytope = intersection(qᵢ, halfspace)
+
+        qᵢ_next_nom = one_step_reachable_set(dyn, prune_polytope)
+        qᵢ_next = custom_minkowski_sum(qᵢ_next_nom, expectation)
+
+        if isdisjoint(qᵢ_next, qⱼ)
+            qᵢ = intersection(qᵢ, complement(halfspace))
+            max = mid
+        else
+            min = mid
+        end
+
+        step += 1
+    end
+
+    return qᵢ
 end
 
 function expectation_partition_constraint!(model, Aᵢ, bᵢ, Bᵢ::BarrierRegion{T, ConstantBarrier{T1}}, Bⱼ::BarrierRegion{T, ConstantBarrier{T2}}, c, expectation::ExpectationData{ScenarioApproach}) where {T, T1, T2}
