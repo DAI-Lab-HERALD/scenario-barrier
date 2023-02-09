@@ -165,7 +165,7 @@ function expectation_constraint!(model, system, B::PiecewiseBarrier, c, qᵢ, ex
         return
     end
     
-    qᵢ_next_nom = one_step_reachable_set(qᵢ)
+    qᵢ_next_nom = one_step_reachable_set(dynamics(qᵢ), region(qᵢ))
     qᵢ_next = custom_minkowski_sum(qᵢ_next_nom, expectation)
 
     if LazySets.isbounded(qᵢ_next_nom)
@@ -178,13 +178,12 @@ function expectation_constraint!(model, system, B::PiecewiseBarrier, c, qᵢ, ex
     next_regions = Spatial.findall(query, regions(system))
 
     for qⱼ in next_regions
-        expectation_partition_constraint!(model, qᵢ, qᵢ_next, B[qᵢ], B[qⱼ], c, expectation)
+        expectation_partition_constraint!(model, dynamics(qᵢ), B[qᵢ], B[qⱼ], c, expectation)
     end
 end
 
-function one_step_reachable_set(qᵢ)
-    dyn = dynamics(qᵢ)
-    qᵢ = convert(HPolyhedron, region(qᵢ))
+function one_step_reachable_set(dyn, qᵢ)
+    qᵢ = convert(HPolyhedron, qᵢ)
     qᵢ = convert(VPolyhedron, qᵢ)
 
     reachable_sets = [affine_map(Aᵢ, qᵢ, bᵢ) for (Aᵢ, bᵢ) in dyn]
@@ -226,14 +225,14 @@ function custom_minkowski_sum(qᵢ_next_nom::AbstractPolyhedron{N}, expectation)
     return qᵢ_next
 end
 
-function expectation_partition_constraint!(model, qᵢ, qᵢ_next, Bᵢ::BarrierRegion{T, LinearBarrier{T1, VT1}}, Bⱼ::BarrierRegion{T, LinearBarrier{T2, VT2}}, c, expectation::ExpectationData{ScenarioApproach}) where {T, T1, VT1, T2, VT2}
-    set = expectation_set(qᵢ, intersection(region(Bⱼ), qᵢ_next), expectation)
-    
-    if isnothing(set)
+function expectation_partition_constraint!(model, dyn, Bᵢ::BarrierRegion{T, LinearBarrier{T1, VT1}}, Bⱼ::BarrierRegion{T, LinearBarrier{T2, VT2}}, c, expectation::ExpectationData{ScenarioApproach}) where {T, T1, VT1, T2, VT2}
+    dyn = tighten_dynamics(dyn, region(Bᵢ), region(Bⱼ), expectation)
+    if isnothing(dyn)
         return
     end
 
-    H, h = tosimplehrep(set)
+    input_noise_sets = cartesian_product(region(Bᵢ), expectation.data.hrep)
+    H, h = tosimplehrep(input_noise_sets)
 
     pᵢ, vᵢ = Bᵢ.fun.p, Bᵢ.fun.v
     pⱼ, vⱼ = Bⱼ.fun.p, Bⱼ.fun.v
@@ -243,7 +242,7 @@ function expectation_partition_constraint!(model, qᵢ, qᵢ_next, Bᵢ::Barrier
     M = 1
     d = M * ϵ
 
-    for (Aᵢ, bᵢ) in dynamics(qᵢ)
+    for (Aᵢ, bᵢ) in dyn
         a = vcat(Aᵢ' * pⱼ .- (pᵢ / (1 - ϵ)), pⱼ)
         rhs = (vᵢ + c - d) / (1 - ϵ) - vⱼ - pⱼ ⋅ bᵢ
 
@@ -251,34 +250,86 @@ function expectation_partition_constraint!(model, qᵢ, qᵢ_next, Bᵢ::Barrier
     end
 end
 
-function expectation_set(qᵢ, qⱼ, expectation)
-    dyn = dynamics(qᵢ)
-    qᵢ = region(qᵢ)
+function single_entry_vector(i, n)
+    v = zeros(n)
+    v[i] = 1.0
 
-    input_noise_sets = cartesian_product(qᵢ, expectation.data.hrep)
+    return v
+end
 
-    output_set(A, b) = intersection(input_noise_sets, HPolyhedron(constraints_list(InverseLinearMap(hcat(A, I), LazySets.translate(qⱼ, -b)))), prune=false)
+dynamics_vertices(dyn, lambda_polytope) = [AffineDynamics(
+    sum(x -> x[1].A * x[2], zip(dyn, vertex)),
+    sum(x -> x[1].b * x[2], zip(dyn, vertex))) for vertex in vertices_list(lambda_polytope)]
 
-    if length(dyn) == 1
-        (Aᵢ, bᵢ) = dyn[1]
-        backward_reachable_set = output_set(Aᵢ, bᵢ)
-        return backward_reachable_set
+function tighten_dynamics(dyn, qᵢ, qⱼ, expectation)
+    n = length(dyn)
+    if n == 1
+        return dyn
     end
 
-    output_sets = [output_set(Aᵢ, bᵢ) for (Aᵢ, bᵢ) in dyn]
+    lambda_polytope = VPolytope([single_entry_vector(i, n) for i in 1:n])
 
-    output_sets = map(p -> convert(VPolyhedron, p), output_sets)
-    output_sets = UnionSetArray{Float64, VPolyhedron{Float64, Vector{Float64}, Vector{Float64}}}(output_sets)
+    # For each lambda_i
+    for i in 1:n
+        normal_vector = fill(1/n, n)
+        normal_vector[i] = -1.0
 
-    backward_reachable_set = convex_hull(output_sets, prune=false)
+        excluded_vertex = σ(-normal_vector, lambda_polytope)
 
-    if isempty(backward_reachable_set)
+        vertices = vertices_list(lambda_polytope)
+        vertices = filter(vertex -> !all(isapprox.(vertex, excluded_vertex)), vertices)
+
+        plane_polytope = VPolytope(vertices)
+        plane_dyn = dynamics_vertices(dyn, plane_polytope)
+
+        qᵢ_next_nom = one_step_reachable_set(plane_dyn, qᵢ)
+        qᵢ_next = custom_minkowski_sum(qᵢ_next_nom, expectation)
+
+        if isdisjoint(qᵢ_next, qⱼ)
+            lambda_polytope = binary_search_tighten_dynamics(dyn, qᵢ, qⱼ, expectation, lambda_polytope, normal_vector, excluded_vertex, first(vertices))
+        end
+    end
+
+    dyn = dynamics_vertices(dyn, lambda_polytope)
+
+    qᵢ_next_nom = one_step_reachable_set(dyn, qᵢ)
+    qᵢ_next = custom_minkowski_sum(qᵢ_next_nom, expectation)
+
+    if isdisjoint(qᵢ_next, qⱼ)
         return nothing
     end
 
-    backward_reachable_set = normalize(tohrep(backward_reachable_set))
+    return dyn
+end
 
-    return backward_reachable_set
+function binary_search_tighten_dynamics(dyn, qᵢ, qⱼ, expectation, lambda_polytope, normal_vector, min_vertex, max_vertex; max_steps=5)
+    min = dot(normal_vector, min_vertex)
+    max = dot(normal_vector, max_vertex)
+
+    step = 1
+
+    # Perform binary search
+    while step <= max_steps
+        mid = (min + max) / 2.0
+
+        halfspace = LazySets.HalfSpace(-normal_vector, -mid)
+        prune_polytope = intersection(lambda_polytope, halfspace)
+        prune_dyn = dynamics_vertices(dyn, prune_polytope)
+
+        qᵢ_next_nom = one_step_reachable_set(prune_dyn, qᵢ)
+        qᵢ_next = custom_minkowski_sum(qᵢ_next_nom, expectation)
+
+        if isdisjoint(qᵢ_next, qⱼ)
+            lambda_polytope = intersection(lambda_polytope, complement(halfspace))
+            max = mid
+        else
+            min = mid
+        end
+
+        step += 1
+    end
+
+    return lambda_polytope
 end
 
 function expectation_partition_constraint!(model, Aᵢ, bᵢ, Bᵢ::BarrierRegion{T, ConstantBarrier{T1}}, Bⱼ::BarrierRegion{T, ConstantBarrier{T2}}, c, expectation::ExpectationData{ScenarioApproach}) where {T, T1, T2}
