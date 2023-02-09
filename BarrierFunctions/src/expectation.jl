@@ -202,7 +202,7 @@ end
 
 function custom_minkowski_sum(qᵢ_next_nom::AbstractPolyhedron{N}, expectation) where {N}
     hrep_qᵢ_next_nom = HPolyhedron(constraints_list(qᵢ_next_nom))
-    nomial_template_dirs = CustomDirections([normalize(h.a) for h in constraints_list(hrep_qᵢ_next_nom)])
+    nomial_template_dirs = [normalize(h.a) for h in constraints_list(hrep_qᵢ_next_nom)]
     
     H = Vector{LazySets.HalfSpace{N, Vector{N}}}()
     sizehint!(H, length(nomial_template_dirs) + length(expectation.data.template_dirs))
