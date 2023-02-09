@@ -201,7 +201,8 @@ function one_step_reachable_set(dyn, qᵢ)
 end
 
 function custom_minkowski_sum(qᵢ_next_nom::AbstractPolyhedron{N}, expectation) where {N}
-    hrep_qᵢ_next_nom = HPolyhedron(constraints_list(qᵢ_next_nom))
+    n = LazySets.dim(qᵢ_next_nom)
+    hrep_qᵢ_next_nom = linear_map(Matrix(0.01I, n, n), tohrep(linear_map(Matrix(100.0I, n, n), qᵢ_next_nom)))
     nomial_template_dirs = [normalize(h.a) for h in constraints_list(hrep_qᵢ_next_nom)]
     
     H = Vector{LazySets.HalfSpace{N, Vector{N}}}()
