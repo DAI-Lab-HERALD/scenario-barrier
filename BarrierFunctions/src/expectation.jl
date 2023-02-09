@@ -177,6 +177,8 @@ function expectation_constraint!(model, system, B::PiecewiseBarrier, c, qᵢ, ex
     query = RegionIntersectsQuery(qᵢ_next, box)
     next_regions = Spatial.findall(query, regions(system))
 
+    @debug "Number of next regions is $(length(next_regions))"
+
     for qⱼ in next_regions
         expectation_partition_constraint!(model, dynamics(qᵢ), B[qᵢ], B[qⱼ], c, expectation)
     end
@@ -228,6 +230,7 @@ end
 function expectation_partition_constraint!(model, dyn, Bᵢ::BarrierRegion{T, LinearBarrier{T1, VT1}}, Bⱼ::BarrierRegion{T, LinearBarrier{T2, VT2}}, c, expectation::ExpectationData{ScenarioApproach}) where {T, T1, VT1, T2, VT2}
     dyn = tighten_dynamics(dyn, region(Bᵢ), region(Bⱼ), expectation)
     if isnothing(dyn)
+        @debug "Tightening shows non-overlap"
         return
     end
 
