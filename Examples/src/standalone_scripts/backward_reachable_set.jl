@@ -103,6 +103,51 @@ function binary_search_tighten_dynamics(i, dyn, qᵢ, qⱼ, lambda_polytope, nor
     return lambda_polytope
 end
 
+function tighten_region(dyn, qᵢ, qⱼ)
+    constraints = constraints_list(qᵢ)
+    # For each halfspace constraint
+    for h in constraints
+        normal_vector = h.a
+        max = h.b
+        min = -ρ(-normal_vector, qᵢ)
+
+        if !isinf(min)
+            qᵢ = binary_search_tighten_region(dyn, qᵢ, qⱼ, normal_vector, max, min)
+        end
+    end
+
+    forward_set = one_step_reachable_set(dyn, qᵢ)
+    if isdisjoint(forward_set, qⱼ)
+        return nothing
+    end
+
+    return qᵢ
+end
+
+function binary_search_tighten_region(dyn, qᵢ, qⱼ, normal_vector, max, min; max_steps=5)
+    step = 1
+
+    # Perform binary search
+    while step <= max_steps
+        mid = (min + max) / 2.0
+
+        halfspace = LazySets.HalfSpace(-normal_vector, -mid)
+        prune_polytope = intersection(qᵢ, halfspace, prune=false)
+
+        forward_set = one_step_reachable_set(dyn, prune_polytope)
+        if isdisjoint(forward_set, qⱼ)
+            qᵢ = intersection(qᵢ, complement(halfspace), prune=false)
+            max = mid
+        else
+            min = mid
+        end
+
+        step += 1
+    end
+
+    return qᵢ
+end
+
 N = Float64
 A₁ = N[1 -1; 0 1]
 A₂ = N[1 2; -1 0]
@@ -121,6 +166,8 @@ qᵢ_next2 = one_step_reachable_set(dyn, qᵢ)
 qⱼ_intersect_fqᵢ = intersection(qᵢ_next, qⱼ)
 qⱼ_intersect_fqᵢ2 = intersection(qᵢ_next2, qⱼ)
 
+qᵢ_tightened = tighten_region(dyn, qᵢ, qⱼ)
+
 vs = vertices_list(qⱼ_intersect_fqᵢ)
 vs_x = first.(vs)
 vs_y = last.(vs)
@@ -131,7 +178,8 @@ vs_y2 = last.(vs2)
 
 Ys = [InverseLinearMap(dyn[1] * λ + dyn[2] * (1 - λ), qⱼ_intersect_fqᵢ2) for λ in LinRange(0, 1, 10)]
 
-p = plot(qᵢ, label="qi", legend = :bottomleft)
+p = plot(qᵢ, label="qi", legend=:bottomleft)
+plot!(p, qᵢ_tightened, label="qi tightened")
 plot!(p, qᵢ_next, label="f(qi) = A(λ)q_i")
 plot!(p, qᵢ_next2, label="f(qi) = A(λ_pruned)q_i")
 plot!(p, qⱼ, label="qj")
@@ -143,6 +191,10 @@ for Y in Ys
 end
 
 for Y in [linear_map(A₁ * λ + A₂ * (1 - λ), qᵢ) for λ in LinRange(0, 1, 20)]
+    plot!(p, Y, fillalpha=0.0)
+end
+
+for Y in [linear_map(dyn[1] * λ + dyn[2] * (1 - λ), qᵢ_tightened) for λ in LinRange(0, 1, 20)]
     plot!(p, Y, fillalpha=0.0)
 end
 display(p)
