@@ -208,10 +208,10 @@ function custom_minkowski_sum(qᵢ_next_nom::AbstractPolyhedron{N}, expectation)
     # we can do this without risk.
     v = vertices_list(qᵢ_next_nom)
     center = reduce((.*), v) ./ length(v)
-    centered_qᵢ_next_nom = translate(qᵢ_next_nom, -center)
+    centered_qᵢ_next_nom = LazySets.translate(qᵢ_next_nom, -center)
     max_norm = maximum(norm, vertices_list(centered_qᵢ_next_nom))
     δ = inv(prevfloat(typemax(max_norm)))
-    if nrm ≥ δ # Safe to multiply with inverse
+    if max_norm ≥ δ # Safe to multiply with inverse
         invnrm = inv(max_norm)
         centered_rescaled_qᵢ_next_nom = linear_map(Matrix(I * invnrm, n, n), centered_qᵢ_next_nom)
     else # scale elements to avoid overflow
