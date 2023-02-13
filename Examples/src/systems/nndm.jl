@@ -89,30 +89,30 @@ function nndm_system(system_name, num_layers, num_regions; download_models=false
 
     if system_name == "pendulum"
         # θ × θ̇
-        # noise = [deg2rad(12) / 100, 1 / 100]
-        noise = [0.01, 0.01]
+        noise = [deg2rad(12) / 100, 1 / 100]
+        # noise = [0.01, 0.01]
         return load_mat_system("pendulum", "alpha", num_layers, num_regions, initial_region_pendulum, noise; eps=eps)
     elseif system_name == "cartpole"
         # x × ẋ × θ × θ̇
-        # noise = [1 / 100, 0.6 / 100, deg2rad(12) / 100, 0.6 / 100]
-        noise = [0.01, 0.01, 0.01, 0.01]
+        noise = [1 / 100, 0.6 / 100, deg2rad(12) / 100, 0.6 / 100]
+        # noise = [0.01, 0.01, 0.01, 0.01]
         return load_mat_system("cartpole", "alpha", num_layers, num_regions, initial_region_cartpole, noise; eps=eps)
     elseif system_name == "husky4d"
         # x × y × θ × v
-        # noise = [1.25 / 100, 1 / 100, deg2rad(15) / 100, 0.5 / 100]
-        noise = [0.01, 0.01, 0.01, 0.01]
+        noise = [1.25 / 100, 1 / 100, deg2rad(15) / 100, 0.5 / 100]
+        # noise = [0.01, 0.01, 0.01, 0.01]
         return load_mat_system("husky4d", "alpha", num_layers, num_regions, initial_region_husky4d, noise; eps=eps)
     elseif system_name == "husky5d"
         # x × y × θ × v × θ̇
         # Unsure about the order of variables (some places in the paper angular velocity is 4th and other places the 5th position).
         # However, it doesn't matter because v and θ̇ have the interval (and thus I apply the same noise).
-        # noise = [1.25 / 100, 1 / 100, deg2rad(15) / 100, 0.5 / 100, 0.5 / 100]
-        noise = [0.01, 0.01, 0.01, 0.01, 0.01]
+        noise = [1.25 / 100, 1 / 100, deg2rad(15) / 100, 0.5 / 100, 0.5 / 100]
+        # noise = [0.01, 0.01, 0.01, 0.01, 0.01]
         return load_mat_system("husky5d", "alpha", num_layers, num_regions, initial_region_husky5d, noise; eps=eps)
     elseif system_name == "acrobot"
         # cos(θ₁) × sin(θ₁) × cos(θ₂) × sin(θ₂) × θ̇₁ × θ̇₂ 
-        # noise = [0.1 / 100, 0.6 / 100, 0.1 / 100, 0.6 / 100, 0.25 / 100, 0.25 / 100]
-        noise = [0.01, 0.01, 0.01, 0.01, 0.01, 0.01]
+        noise = [0.1 / 100, 0.6 / 100, 0.1 / 100, 0.6 / 100, 0.25 / 100, 0.25 / 100]
+        # noise = [0.01, 0.01, 0.01, 0.01, 0.01, 0.01]
         return load_mat_system("acrobot", "alpha", num_layers, num_regions, initial_region_acrobot, noise; eps=eps)
     else
         throw("NNDM system not available")
