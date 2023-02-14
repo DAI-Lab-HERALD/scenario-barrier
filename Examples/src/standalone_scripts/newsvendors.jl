@@ -1,5 +1,5 @@
 using LinearAlgebra
-using Distributions, Random
+using Distributions, Random, HypothesisTests
 
 using JuMP, MosekTools, Mosek
 
@@ -9,7 +9,7 @@ newsvendor_optimal_inventory(solver, demand_dist, cost, sales_price, salavage_va
 function newsvendor_optimal_inventory(solver, demand_dist, profit, loss, ϵ, β)
     # In the original problem, we only have a single variable
     # All others are purely to implement a max into LP and turn the problem into epigraph from
-    num_samples = required_samples(1, ϵ, β)
+    num_samples = required_samples(2, ϵ, β)
 
     model = Model(solver)
 
@@ -35,7 +35,7 @@ function newsvendor_optimal_inventory(solver, demand_dist, profit, loss, ϵ, β)
 
     optimize!(model)
 
-    return value(x), objective_value(model), mean(demand_realizations)
+    return value(x), objective_value(model)
 end
 
 
@@ -61,7 +61,8 @@ end
 
 
 solver = optimizer_with_attributes(Mosek.Optimizer, "INTPNT_BASIS" => MSK_BI_NEVER, "QUIET" => true)
-demand_dist = truncated(Normal(1000.0, 100.0), lower = 0.0, upper = 1500.0)
+# demand_dist = truncated(Normal(1000.0, 100.0), lower = 0.0, upper = 1500.0)
+demand_dist = Poisson(1000.0)
 cost = 0.005
 sales_price = 0.08
 salavage_value = 0.003
@@ -76,4 +77,28 @@ for i in 1:100
     push!(results, res)
 end
 
-println(results)
+# println(results)
+
+t = OneSampleTTest(map(first, results))
+lower, upper = confint(t)
+μₛ, wₛ = (lower + upper) / 2, (upper - lower) / 2
+println(("x", μₛ, wₛ))
+
+t = OneSampleTTest(map(last, results))
+lower, upper = confint(t)
+μₛ, wₛ = (lower + upper) / 2, (upper - lower) / 2
+println(("loss", μₛ, wₛ))
+
+# Find the optimal x that minimizes the loss for a  for a discrete distribution
+profit = sales_price - cost
+loss = cost - salavage_value
+optimal_p = loss / (profit + loss)
+
+cumulative_p = pdf(demand_dist, 0)
+optimal_x = 0
+
+while cumulative_p < optimal_p
+    global optimal_x += 1
+    global cumulative_p += pdf(demand_dist, optimal_x)
+end
+println((optimal_x, loss * max(0, optimal_x - mean(demand_dist)) + profit * max(0, mean(demand_dist) - optimal_x)))
