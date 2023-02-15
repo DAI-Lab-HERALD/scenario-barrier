@@ -70,7 +70,7 @@ salavage_value = 0.003
 β = 1e-6
 
 results = []
-for i in 1:100
+for i in 1:1000
     println("Iteration $i")
 
     res = newsvendor_optimal_inventory(solver, demand_dist, cost, sales_price, salavage_value, ϵ, β)
