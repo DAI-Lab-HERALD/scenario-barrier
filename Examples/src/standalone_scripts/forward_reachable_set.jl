@@ -22,17 +22,15 @@ end
 dt = 1
 v_long = 50 * (1000 / 3600) * dt
 inward_steering = 0.05
-A = Float64[1 0.2; 0 1-inward_steering]
-Ab = [AffineDynamics(A, [v_long, 0])]
 ρ = [1.204, 1.342]
 v_wind = [8, 10]
 area = [4, 5.79865]
 Cd = [0.8, 1.05]
 m = [1125, 1350]
 a_lat = [0.5 * ρ[1] * v_wind[1]^2 * area[1] * Cd[1] / m[2], 0.5 * ρ[2] * v_wind[2]^2 * area[2] * Cd[2] / m[1]]
-Ab_gust = [AffineDynamics(A, [v_long, 0.5 * a_lat[1] * dt^2]), AffineDynamics(A, [v_long, 0.5 * a_lat[2] * dt^2])]
+Ab_gust = [AffineDynamics(Float64[1 0.2; -0.1 1-inward_steering], [v_long, 0.5 * a_lat[1] * dt^2]), AffineDynamics(Float64[1 0.2; 0.1 1-inward_steering], [v_long, 0.5 * a_lat[2] * dt^2])]
 
-X = Hyperrectangle(Float64[0, 0], Float64[0.5, 0.5])
+X = Hyperrectangle(Float64[0, 0], Float64[0.2, 0.2])
 ηs = rand(VPolytope; num_vertices=1000)
 ηs = remove_redundant_vertices(ηs)
 
@@ -48,7 +46,8 @@ for Y2 in Ys
 end
 display(p)
 
-p = plot(Y, label="One step")
-plot!(p, Ys[1])
-plot!(p, Ys[end])
+p = plot(Y, label="One step forward reachable set")
+plot!(p, Ys[1], label="λ₁ = 0")
+plot!(p, Ys[end], label="λ₁ = 1")
+savefig(p, "figures/forward_reachable_set.pdf")
 display(p)

@@ -4,15 +4,17 @@ using HypothesisTests
 function analyze_problem_data(problem_name)
     df = DataFrame(CSV.File("results/$problem_name.csv"))
 
-    t = OneSampleTTest(df[!, "probability"])
-    lower, upper = confint(t)
-    μₛ, wₛ = (lower + upper) / 2, (upper - lower) / 2
+    succes_ratio = nrow(subset(df, :success => success -> success)) / nrow(df)
 
     t = OneSampleTTest(df[!, "computation_time"])
     lower, upper = confint(t)
     μₜ, wₜ = (lower + upper) / 2, (upper - lower) / 2
 
-    succes_ratio = nrow(subset(df, :success => success -> success)) / nrow(df)
+    df = filter(:success => s -> s, df)
+
+    t = OneSampleTTest(df[!, "probability"])
+    lower, upper = confint(t)
+    μₛ, wₛ = (lower + upper) / 2, (upper - lower) / 2
 
     println((problem_name, succes_ratio, (μₛ, wₛ), (μₜ, wₜ)))
 end

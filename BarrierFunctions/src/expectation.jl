@@ -202,9 +202,27 @@ end
 
 function custom_minkowski_sum(qᵢ_next_nom::AbstractPolyhedron{N}, expectation) where {N}
     n = LazySets.dim(qᵢ_next_nom)
-    hrep_qᵢ_next_nom = linear_map(Matrix(0.01I, n, n), tohrep(linear_map(Matrix(100.0I, n, n), qᵢ_next_nom)))
-    nomial_template_dirs = [normalize(h.a) for h in constraints_list(hrep_qᵢ_next_nom)]
+
+    # Center and rescale qᵢ_next_nom for finding the normal vectors, to ameliorate numerical issues.
+    # Centering and rescaling does not impact the direction of the normal vectors, so
+    # we can do this without risk.
+    v = vertices_list(qᵢ_next_nom)
+    center = reduce((.*), v) ./ length(v)
+    centered_qᵢ_next_nom = LazySets.translate(qᵢ_next_nom, -center)
+    max_norm = maximum(norm, vertices_list(centered_qᵢ_next_nom))
+    δ = inv(prevfloat(typemax(max_norm)))
+    if max_norm ≥ δ # Safe to multiply with inverse
+        invnrm = inv(max_norm)
+        centered_rescaled_qᵢ_next_nom = linear_map(Matrix(I * invnrm, n, n), centered_qᵢ_next_nom)
+    else # scale elements to avoid overflow
+        εδ = eps(one(max_norm))/δ
+        centered_rescaled_qᵢ_next_nom = linear_map(Matrix(I * εδ, n, n), centered_qᵢ_next_nom)
+        centered_rescaled_qᵢ_next_nom = linear_map(Matrix(I * inv(max_norm*εδ), n, n), centered_rescaled_qᵢ_next_nom)
+    end
+    centered_rescaled_hrep_qᵢ_next_nom = tohrep(centered_rescaled_qᵢ_next_nom)
+    nomial_template_dirs = [normalize(h.a) for h in constraints_list(centered_rescaled_hrep_qᵢ_next_nom)]
     
+    # Use support vectors to find halfspace constant term. 
     H = Vector{LazySets.HalfSpace{N, Vector{N}}}()
     sizehint!(H, length(nomial_template_dirs) + length(expectation.data.template_dirs))
 
@@ -241,7 +259,8 @@ function expectation_partition_constraint!(model, dyn, Bᵢ::BarrierRegion{T, Li
         return
     end
     
-    H, h = tosimplehrep(qᵢ)
+    input_noise_sets = cartesian_product(qᵢ, expectation.data.hrep)
+    H, h = tosimplehrep(input_noise_sets)
 
     pᵢ, vᵢ = Bᵢ.fun.p, Bᵢ.fun.v
     pⱼ, vⱼ = Bⱼ.fun.p, Bⱼ.fun.v
@@ -252,12 +271,10 @@ function expectation_partition_constraint!(model, dyn, Bᵢ::BarrierRegion{T, Li
     d = M * ϵ
 
     for (Aᵢ, bᵢ) in dyn
-        for η in vertices_list(expectation.data.vrep)
-            a = Aᵢ' * pⱼ .- (pᵢ / (1 - ϵ))
-            rhs = (vᵢ + c - d) / (1 - ϵ) - vⱼ - pⱼ ⋅ (bᵢ .+ η)
+        a = vcat(Aᵢ' * pⱼ .- (pᵢ / (1 - ϵ)), pⱼ)
+        rhs = (vᵢ + c - d) / (1 - ϵ) - vⱼ - pⱼ ⋅ bᵢ
 
-            assymetric_dual_constraint!(model, a, rhs, H, h)
-        end
+        assymetric_dual_constraint!(model, a, rhs, H, h)
     end
 end
 

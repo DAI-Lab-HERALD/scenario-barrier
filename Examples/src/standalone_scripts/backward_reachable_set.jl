@@ -103,6 +103,51 @@ function binary_search_tighten_dynamics(i, dyn, qᵢ, qⱼ, lambda_polytope, nor
     return lambda_polytope
 end
 
+function tighten_region(dyn, qᵢ, qⱼ)
+    constraints = constraints_list(qᵢ)
+    # For each halfspace constraint
+    for h in constraints
+        normal_vector = h.a
+        max = h.b
+        min = -ρ(-normal_vector, qᵢ)
+
+        if !isinf(min)
+            qᵢ = binary_search_tighten_region(dyn, qᵢ, qⱼ, normal_vector, max, min)
+        end
+    end
+
+    forward_set = one_step_reachable_set(dyn, qᵢ)
+    if isdisjoint(forward_set, qⱼ)
+        return nothing
+    end
+
+    return qᵢ
+end
+
+function binary_search_tighten_region(dyn, qᵢ, qⱼ, normal_vector, max, min; max_steps=5)
+    step = 1
+
+    # Perform binary search
+    while step <= max_steps
+        mid = (min + max) / 2.0
+
+        halfspace = LazySets.HalfSpace(-normal_vector, -mid)
+        prune_polytope = intersection(qᵢ, halfspace, prune=false)
+
+        forward_set = one_step_reachable_set(dyn, prune_polytope)
+        if isdisjoint(forward_set, qⱼ)
+            qᵢ = intersection(qᵢ, complement(halfspace), prune=false)
+            max = mid
+        else
+            min = mid
+        end
+
+        step += 1
+    end
+
+    return qᵢ
+end
+
 N = Float64
 A₁ = N[1 0.5; 0 1]
 A₂ = N[1 2; -1 0]
@@ -121,9 +166,7 @@ qⱼ = LazySets.translate(rand(HPolytope; seed=42, num_vertices=20), N[5, 7])
 qⱼ_intersect_fqᵢ = intersection(qᵢ_next, qⱼ)
 # qⱼ_intersect_fqᵢ2 = intersection(qᵢ_next2, qⱼ)
 
-vs = vertices_list(qⱼ_intersect_fqᵢ)
-vs_x = first.(vs)
-vs_y = last.(vs)
+# qᵢ_tightened = tighten_region(dyn, qᵢ, qⱼ)
 
 # vs2 = vertices_list(qⱼ_intersect_fqᵢ2)
 # vs_x2 = first.(vs2)
