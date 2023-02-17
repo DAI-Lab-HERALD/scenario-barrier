@@ -173,6 +173,7 @@ qⱼ_intersect_fqᵢ = intersection(qᵢ_next, qⱼ)
 # vs_y2 = last.(vs2)
 
 Ys = [InverseLinearMap(A₁ * λ + A₂ * (1 - λ), qⱼ_intersect_fqᵢ) for λ in LinRange(0.0, 1.0, 20)]
+Ys_vertex = ConvexHull(Ys[1], Ys[end])
 
 # p = plot(qᵢ, label="qi", legend = :bottomleft)
 # plot!(p, qᵢ_next, label="f(qi) = A(λ)q_i")
@@ -183,6 +184,7 @@ Ys = [InverseLinearMap(A₁ * λ + A₂ * (1 - λ), qⱼ_intersect_fqᵢ) for λ
 
 p = plot()
 plot!(p, qⱼ_intersect_fqᵢ, label="Pⱼ") #, xlims=(x_min, x_max), ylims=(y_min, y_max))
+plot!(p, Ys_vertex, label="conv(∪ A(λ)⁻¹(Pⱼ - b(λ)))") #, xlims=(x_min, x_max), ylims=(y_min, y_max))
 
 for Y in Ys
     plot!(p, Y, fillalpha=0.0)
