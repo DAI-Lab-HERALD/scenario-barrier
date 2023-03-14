@@ -1,5 +1,7 @@
 using BarrierFunctions
 using LazySets, Symbolics
+using Spatial
+using MultivariatePolynomials, DynamicPolynomials, SemialgebraicSets
 
 using Distributions, PDMats, Random
 
@@ -61,3 +63,65 @@ function sanity_check()
 
     println("Found safety probabilities $convhull_prob / $no_convhull_prob, difference: $(convhull_prob - no_convhull_prob)")
 end
+
+function cdc_martingale1d()
+    vars = Symbolics.@variables x
+
+    Q = [
+        HPolyhedron([x ≥ 2.5], vars),
+        HPolyhedron([x ≤ -2.5], vars),
+        LazySets.Interval(0.5, 2.5),
+        LazySets.Interval(-0.5, 0.5),
+        LazySets.Interval(-2.5, 0.5)
+    ]
+
+    Ab = singleton_dynamics(Float64[1][:,:], [0.0])
+    dyn = [Ab, Ab, Ab, Ab, Ab]
+
+    μ = [0]
+    Σ = PDiagMat([0.01^2])  # Square to make std.dev. to variance.
+    η = DiagNormal(μ, Σ)
+
+    # Start in a box [-0.5, 0.5]
+    X0 = LazySets.Interval(-0.5, 0.5)
+
+    # Center is safe
+    Xs = LazySets.Interval(-2.5, 2.5)
+
+    # Outside the center is dangerous
+    Xu = [
+        HPolyhedron([x ≥ 2.5], vars),
+        HPolyhedron([x ≤ -2.5], vars)
+    ]
+
+    elems = [DynamicsRegion(i, qi, dyni) for (i, (qi, dyni)) in enumerate(zip(Q, dyn))]
+
+    Q = LinearIndex{Float64, DynamicsRegion{Float64}}()
+    bulk_load!(Q, elems)
+
+    return PiecewiseSystem{1, Float64}(Q, η, X0, Xs, Xu)
+end
+
+cdc_prob_linear1d = Problem("cdc_linear1d", cdc_martingale1d(), 10, ScenarioApproach(0.005/10, 1e-9, false))
+cdc_prob_linear1d_scenario = Problem("cdc_linear1d_scenario", cdc_martingale1d(), 10, ScenarioApproach(0.005/10, 0.01, false))
+
+function cdc_martingale1d_polynomial()
+    @polyvar x
+
+    f = [x + 0.0]  # Add 0 to ensure that f is interpreted as a polynomial
+
+    μ = [0]
+    Σ = PDiagMat([0.01^2])  # Square to make std.dev. to variance.
+    η = DiagNormal(μ, Σ)
+
+    X0 = @set x^2 ≤ 0.5^2
+    Xs = @set x^2 ≤ 2.5^2
+
+    Xu = [
+        @set x^2 ≥ 2.5^2
+    ]
+
+    return PolynomialSystem{1, Float64}(f, η, X0, Xs, Xu)
+end
+
+cdc_prob_linear1d_ssa = Problem("cdc_linear1d_ssa", cdc_martingale1d_polynomial(), 10, SampleAverage(0.015, 0.01))
