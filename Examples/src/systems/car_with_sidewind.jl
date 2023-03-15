@@ -1,5 +1,6 @@
 using BarrierFunctions
 using LazySets, Symbolics
+using Spatial
 
 using Distributions, PDMats
 
@@ -88,3 +89,70 @@ probs_car_with_sidewind = [
     prob_car_with_sidewind_lon_partitioning,
     prob_car_with_sidewind_latlon_partitioning
 ];
+
+function cdc_car_with_sidewind()
+    # x[1] = longitudinal coordinate in meters
+    # x[2] = lateral coordinate in meters
+    vars = Symbolics.@variables x[1:2]
+
+    dt = 1.0
+
+    Q = [
+        HPolyhedron([x[2] ≥ 2.5], vars),
+        HPolyhedron([x[2] ≤ -2.5], vars),
+        HPolyhedron([x[2] ≤ 2.5, x[2] ≥ -2.5, x[1] ≤ 0], vars),
+        Hyperrectangle(low=[0, 0.5], high=[10, 2.5]),
+        Hyperrectangle(low=[0, -0.5], high=[10, 0.5]),
+        Hyperrectangle(low=[0, -2.5], high=[10, -0.5]),
+        Hyperrectangle(low=[10, 0.5], high=[80, 2.5]),
+        Hyperrectangle(low=[10, -0.5], high=[80, 0.5]),
+        Hyperrectangle(low=[10, -2.5], high=[80, -0.5]),
+        Hyperrectangle(low=[80, 0.5], high=[120, 2.5]),
+        Hyperrectangle(low=[80, -0.5], high=[120, 0.5]),
+        Hyperrectangle(low=[80, -2.5], high=[120, -0.5]),
+        Hyperrectangle(low=[120, 0.5], high=[150, 2.5]),
+        Hyperrectangle(low=[120, -0.5], high=[150, 0.5]),
+        Hyperrectangle(low=[120, -2.5], high=[150, -0.5]),
+        HPolyhedron([x[2] ≤ 2.5, x[2] ≥ 0.5, x[1] ≥ 150], vars),
+        HPolyhedron([x[2] ≤ 0.5, x[2] ≥ -0.5, x[1] ≥ 150], vars),
+        HPolyhedron([x[2] ≤ -0.5, x[2] ≥ -2.5, x[1] ≥ 150], vars),
+    ]
+
+    v_long = 50 * (1000 / 3600) * dt
+    inward_steering = 0.05
+    A = Float64[1 0; 0 1-inward_steering]
+    Ab = [AffineDynamics(A, [v_long, 0])]
+    ρ = 1.342
+    v_wind = 10
+    area = 5.79865
+    Cd = 1.05
+    m = 1125
+    a_lat = 0.5 * ρ * v_wind^2 * area * Cd / m
+    Ab_gust = [AffineDynamics(A, [v_long, 0.5 * a_lat * dt^2])]
+    dyn = [Ab, Ab, Ab, Ab, Ab, Ab, Ab, Ab, Ab, Ab_gust, Ab_gust, Ab_gust, Ab, Ab, Ab, Ab, Ab, Ab]
+
+    μ = [0, 0]
+    Σ = PDiagMat([0.01^2, 0.01^2])  # Square to make std.dev. to variance.
+    η = DiagNormal(μ, Σ)
+
+    # Start in a box [5m, 10m] × [-0.5m, 0.5m]
+    X0 = Hyperrectangle(low=[5, -0.5], high=[10, 0.5])
+
+    # On the road is safe
+    Xs = HPolyhedron([x[2] ≤ 2.5, x[2] ≥ -2.5], vars)
+
+    # Outside the road is dangerous
+    Xu = [
+        HPolyhedron([x[2] ≥ 2.5], vars),
+        HPolyhedron([x[2] ≤ -2.5], vars)
+    ]
+
+    elems = [DynamicsRegion(i, qi, dyni) for (i, (qi, dyni)) in enumerate(zip(Q, dyn))]
+
+    Q = LinearIndex{Float64, DynamicsRegion{Float64}}()
+    bulk_load!(Q, elems)
+
+    return PiecewiseSystem{2, Float64}(Q, η, X0, Xs, Xu)
+end
+
+cdc_prob_car_with_sidewind_no_partitioning = Problem("cdc_car_with_sidewind_no_partitioning", cdc_car_with_sidewind(), 10, ScenarioApproach(0.005/10, 1e-9, false))

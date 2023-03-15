@@ -163,20 +163,17 @@ qⱼ = LazySets.translate(rand(HPolytope; seed=42, num_vertices=20), N[5, 7])
 # dyn = tighten_dynamics([A₁, A₂], qᵢ, qⱼ)
 # qᵢ_next2 = one_step_reachable_set(dyn, qᵢ)
 
-# qⱼ_intersect_fqᵢ = intersection(qᵢ_next, qⱼ)
+qⱼ_intersect_fqᵢ = intersection(qᵢ_next, qⱼ)
 # qⱼ_intersect_fqᵢ2 = intersection(qᵢ_next2, qⱼ)
 
 # qᵢ_tightened = tighten_region(dyn, qᵢ, qⱼ)
-
-# vs = vertices_list(qⱼ_intersect_fqᵢ)
-# vs_x = first.(vs)
-# vs_y = last.(vs)
 
 # vs2 = vertices_list(qⱼ_intersect_fqᵢ2)
 # vs_x2 = first.(vs2)
 # vs_y2 = last.(vs2)
 
-# Ys = [InverseLinearMap(dyn[1] * λ + dyn[2] * (1 - λ), qⱼ_intersect_fqᵢ2) for λ in LinRange(0, 1, 10)]
+Ys = [InverseLinearMap(A₁ * λ + A₂ * (1 - λ), qⱼ_intersect_fqᵢ) for λ in LinRange(0.0, 1.0, 20)]
+Ys_vertex = ConvexHull(Ys[1], Ys[end])
 
 p = plot(qᵢ, label="X", legend=:bottomleft)
 # plot!(p, qᵢ_tightened, label="qi tightened")
@@ -186,15 +183,17 @@ plot!(p, qᵢ_next, label="conv(A(λ)X + b(λ))")
 # plot!(p, vs_x, vs_y, seriestype=:scatter, label="(qj ∩ f(qi)) vertices")
 # plot!(p, vs_x2, vs_y2, seriestype=:scatter, label="(qj ∩ f(qi) pruned) vertices")
 
-# for Y in Ys
-#     plot!(p, Y, fillalpha=0.0)
-# end
+p = plot()
+plot!(p, qⱼ_intersect_fqᵢ, label="Pⱼ") #, xlims=(x_min, x_max), ylims=(y_min, y_max))
+plot!(p, Ys_vertex, label="conv(∪ A(λ)⁻¹(Pⱼ - b(λ)))") #, xlims=(x_min, x_max), ylims=(y_min, y_max))
 
 for Y in [linear_map(A₁ * λ + A₂ * (1 - λ), qᵢ) for λ in LinRange(0, 1, 15)]
     plot!(p, Y, fillalpha=0.0)
 end
+# plot!(p, vs_x, vs_y, seriestype=:scatter, label="(qj ∩ f(qi)) vertices")
+# plot!(p, vs_x2, vs_y2, seriestype=:scatter, label="(qj ∩ f(qi) pruned) vertices")
 
-# for Y in [linear_map(dyn[1] * λ + dyn[2] * (1 - λ), qᵢ_tightened) for λ in LinRange(0, 1, 20)]
+# for Y in [linear_map(A₁ * λ + A₂ * (1 - λ), qᵢ) for λ in LinRange(0, 1, 20)]
 #     plot!(p, Y, fillalpha=0.0)
 # end
 savefig(p, "figures/non_convex_uncertain_affine_transformation.pdf")
