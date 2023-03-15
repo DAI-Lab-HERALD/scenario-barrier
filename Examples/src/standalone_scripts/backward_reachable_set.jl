@@ -150,7 +150,7 @@ end
 
 N = Float64
 A₁ = N[1 -1; 0 1]
-A₂ = N[1 2; -1 0]
+A₂ = N[1 1; -1 0]
 
 println((A₁, A₂))
 println((opnorm(A₁), opnorm(A₂)))
@@ -178,9 +178,9 @@ qⱼ = LazySets.translate(rand(HPolytope; seed=42, num_vertices=20), N[5, 7])
 
 # Ys = [InverseLinearMap(dyn[1] * λ + dyn[2] * (1 - λ), qⱼ_intersect_fqᵢ2) for λ in LinRange(0, 1, 10)]
 
-p = plot(qᵢ, label="Pᵢ", legend=:bottomleft)
+p = plot(qᵢ, label="X", legend=:bottomleft)
 # plot!(p, qᵢ_tightened, label="qi tightened")
-plot!(p, qᵢ_next, label="F(Pᵢ, λ) = A(λ)Pᵢ")
+plot!(p, qᵢ_next, label="conv(A(λ)X + b(λ))")
 # plot!(p, qᵢ_next2, label="f(qi) = A(λ_pruned)q_i")
 # plot!(p, qⱼ, label="qj")
 # plot!(p, vs_x, vs_y, seriestype=:scatter, label="(qj ∩ f(qi)) vertices")
@@ -190,12 +190,12 @@ plot!(p, qᵢ_next, label="F(Pᵢ, λ) = A(λ)Pᵢ")
 #     plot!(p, Y, fillalpha=0.0)
 # end
 
-for Y in [linear_map(A₁ * λ + A₂ * (1 - λ), qᵢ) for λ in LinRange(0, 1, 20)]
+for Y in [linear_map(A₁ * λ + A₂ * (1 - λ), qᵢ) for λ in LinRange(0, 1, 15)]
     plot!(p, Y, fillalpha=0.0)
 end
 
 # for Y in [linear_map(dyn[1] * λ + dyn[2] * (1 - λ), qᵢ_tightened) for λ in LinRange(0, 1, 20)]
 #     plot!(p, Y, fillalpha=0.0)
 # end
-savefig(p, "figures/non_convex_forward_reachable_set.pdf")
+savefig(p, "figures/non_convex_uncertain_affine_transformation.pdf")
 display(p)
