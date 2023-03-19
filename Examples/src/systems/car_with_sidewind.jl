@@ -90,7 +90,7 @@ probs_car_with_sidewind = [
     prob_car_with_sidewind_latlon_partitioning
 ];
 
-function cdc_car_with_sidewind()
+function cdc_car_with_sidewind(;split="none")
     # x[1] = longitudinal coordinate in meters
     # x[2] = lateral coordinate in meters
     vars = Symbolics.@variables x[1:2]
@@ -147,6 +147,20 @@ function cdc_car_with_sidewind()
         HPolyhedron([x[2] ≤ -2.5], vars)
     ]
 
+    split_spec = Int64[
+        [1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1]
+        [1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1]
+    ]
+
+    if endswith(split, "lon")
+        split_spec[1, :] .= [1, 1, 1, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 1, 1, 1]
+    end
+
+    if startswith(split, "lat")
+        split_spec[2, :] .= [1, 1, 1, 4, 2, 4, 4, 2, 4, 4, 2, 4, 4, 2, 4, 1, 1, 1]
+    end
+    Q, dyn = grid_split(Q, dyn, split_spec)
+
     elems = [DynamicsRegion(i, qi, dyni) for (i, (qi, dyni)) in enumerate(zip(Q, dyn))]
 
     Q = LinearIndex{Float64, DynamicsRegion{Float64}}()
@@ -155,4 +169,7 @@ function cdc_car_with_sidewind()
     return PiecewiseSystem{2, Float64}(Q, η, X0, Xs, Xu)
 end
 
-cdc_prob_car_with_sidewind_no_partitioning = Problem("cdc_car_with_sidewind_no_partitioning", cdc_car_with_sidewind(), 10, ScenarioApproach(0.005/10, 1e-9, false))
+cdc_prob_car_with_sidewind_no_partitioning = Problem("cdc_car_with_sidewind_no_partitioning", cdc_car_with_sidewind(split="none"), 10, ScenarioApproach(0.005/10, 1e-9, false))
+cdc_prob_car_with_sidewind_lat_partitioning = Problem("cdc_car_with_sidewind_lat_partitioning", cdc_car_with_sidewind(split="lat"), 10, ScenarioApproach(0.005/10, 1e-9, false))
+cdc_prob_car_with_sidewind_lon_partitioning = Problem("cdc_car_with_sidewind_lon_partitioning", cdc_car_with_sidewind(split="lon"), 10, ScenarioApproach(0.005/10, 1e-9, false))
+cdc_prob_car_with_sidewind_latlon_partitioning = Problem("cdc_car_with_sidewind_latlon_partitioning", cdc_car_with_sidewind(split="latlon"), 10, ScenarioApproach(0.005/10, 1e-9, false))
