@@ -33,7 +33,6 @@ function monte_carlo(system, steps, initial_conditions, particles)
     end
 
     unsafety_prob = map(unsafe_particles -> count(unsafe_particles) / particles, eachcol(unsafe))
-    println(unsafety_prob)
     unsafety_prob = maximum(unsafety_prob)
     
     println("Estimated safety prob: $(1 - unsafety_prob)")
