@@ -41,6 +41,9 @@ end
 
 probs_to_analyze = [
     "cdc_car_with_sidewind_no_partitioning",
+    "cdc_car_with_sidewind_lat_partitioning",
+    "cdc_car_with_sidewind_lon_partitioning",
+    "cdc_car_with_sidewind_latlon_partitioning",
     "cdc_drone_exact",
     "cdc_linear1d",
     "cdc_linear1d_scenario",
