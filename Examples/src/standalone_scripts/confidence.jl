@@ -39,11 +39,11 @@ println(βs)
 println(ssa_num_samples)
 println(scenario_approach_num_samples)
 
-plot(βs, ssa_num_samples, label="Sample average approximation", xscale=:log10, xflip=true, ylabel="Number of samples", xlabel="β", minorgrid=true)
-plot!(βs, scenario_approach_num_samples, label="Scenario approach")
+plot(βs, ssa_num_samples, linewidth=3, label="Sample average approximation", xscale=:log10, xflip=true, ylabel="Number of samples", xlabel="β", minorgrid=true, xtickfontsize=12, ytickfontsize=12, xguidefontsize=12, yguidefontsize=12, legendfontsize=12)
+plot!(βs, scenario_approach_num_samples, linewidth=3, label="Scenario approach")
 
 
-plot!(βs, ssa_num_samples, inset=(1, bbox(0.2, 0.25, 0.5, 0.4, :top)), ylim=(20000, 100000), label=nothing, xscale=:log10, xflip=true, minorgrid=true, framestyle=:box, subplot=2)
-plot!(βs, scenario_approach_num_samples, label=nothing, subplot=2)
+plot!(βs, ssa_num_samples, linewidth=3, inset=(1, bbox(0.25, 0.3, 0.5, 0.4, :top)), ylim=(20000, 100000), label=nothing, xscale=:log10, xflip=true, minorgrid=true, framestyle=:box, subplot=2, xtickfontsize=12, ytickfontsize=12)
+plot!(βs, scenario_approach_num_samples, linewidth=3, label=nothing, subplot=2)
 
 savefig("figures/number_of_samples.pdf")
