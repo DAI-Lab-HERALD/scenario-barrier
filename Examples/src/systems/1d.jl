@@ -13,7 +13,7 @@ function martingale1d(uncertain=true)
         HPolyhedron([x ≤ -2.5], vars),
         LazySets.Interval(0.5, 2.5),
         LazySets.Interval(-0.5, 0.5),
-        LazySets.Interval(-2.5, 0.5)
+        LazySets.Interval(-2.5, -0.5)
     ]
 
     if uncertain
@@ -72,7 +72,7 @@ function cdc_martingale1d()
         HPolyhedron([x ≤ -2.5], vars),
         LazySets.Interval(0.5, 2.5),
         LazySets.Interval(-0.5, 0.5),
-        LazySets.Interval(-2.5, 0.5)
+        LazySets.Interval(-2.5, -0.5)
     ]
 
     Ab = singleton_dynamics(Float64[1][:,:], [0.0])
