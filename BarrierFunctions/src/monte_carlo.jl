@@ -2,32 +2,41 @@ export monte_carlo, step
 
 # TODO: Distinguish between initial conditions and particles,
 # and take the max over initials of the average over particles.
-function monte_carlo(system, steps, particles)
+function monte_carlo(system, steps, initial_conditions, particles)
     X0 = initial_set(system)
     η = noise(system)
 
-    x0 = LazySets.sample(X0, particles)
+    x0 = LazySets.sample(X0, initial_conditions)
+    x0 = reshape(x0, initial_conditions, 1, :)
+    x0 = repeat(x0, 1, particles, 1)
+
     traj = [copy(x0)]
-    unsafe = falses(size(x0))
+    unsafe = falses((initial_conditions, particles))
 
     for t in 1:steps
-        ηs = rand(η, particles)
+        ηs = rand(η, (initial_conditions, particles))
 
-        next_step = [step(system, x, η) for (x, η) in zip(x0, eachcol(ηs))]
-        x1 = [x for (x, _) in next_step]
+        x1 = copy(x0)
+        for j = axes(x0, 2)
+            for i = axes(x0, 1)
+                if !unsafe[i, j]
+                    x, u = step(system, x0[i, j], ηs[i, j])
+
+                    x1[i, j] = x
+                    unsafe[i, j] = u
+                end
+            end
+        end
+
         push!(traj, x1)
-
-        u = [u for (_, u) in next_step]
-        unsafe = unsafe .| u
-
         x0 = x1
     end
-    
-    println("Estimated safety prob: $(1 - count(unsafe) / particles)")
 
-    traj = map(row -> reduce(hcat, row), traj)
-    traj = reduce((a, b) -> cat(a, b, dims=3), traj)
-    traj = permutedims(traj, (1, 3, 2))
+    unsafety_prob = map(unsafe_particles -> count(unsafe_particles) / particles, eachcol(unsafe))
+    unsafety_prob = maximum(unsafety_prob)
+    
+    println("Estimated safety prob: $(1 - unsafety_prob)")
+
     return traj
 end
 
