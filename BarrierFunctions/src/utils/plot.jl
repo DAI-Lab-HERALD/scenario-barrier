@@ -1,21 +1,21 @@
-using Plots
+using Plots, GLMakie
 import ColorSchemes
 
-export plot_monte_carlo_2d, plot_forward_reachable_set_2d, plot_barrier
+export plot_monte_carlo_2d, plot_forward_reachable_set_2d, plot_barrier, plot_barrier_heatmap
 
 
 function plot_monte_carlo_2d(system, traj; plot_safe=true, plot_regions=false, xlims=:auto, ylims=:auto)
-    p = plot(traj[1, :, :], traj[2, :, :], label=false, xlims=xlims, ylims=ylims)
+    p = Plots.plot(traj[1, :, :], traj[2, :, :], label=false, xlims=xlims, ylims=ylims)
 
-    plot!(p, initial_set(system), label="X0", fillcolor=:blue)
+    Plots.plot!(p, initial_set(system), label="X0", fillcolor=:blue)
     if plot_safe
-        plot!(p, safe_set(system), label="Xs", fillcolor=:green)
+        Plots.plot!(p, safe_set(system), label="Xs", fillcolor=:green)
     else
-        plot!(p, unsafe_set(system), label="Xu", fillcolor=:red)
+        Plots.plot!(p, unsafe_set(system), label="Xu", fillcolor=:red)
     end
 
     if plot_regions
-        plot!([region(q) for q in regions(system)])
+        Plots.plot!([region(q) for q in regions(system)])
     end
 
     display(p)
@@ -72,10 +72,10 @@ function plot_forward_reachable_set_2d(system, num_samples; plot_safe=true, xlim
             # else
             #     plot!(p, unsafe_set(system), label="Xu", fillcolor=:red)
             # end
-            plot!(p, region(q), label="q", fillcolor=:goldenrod)
-            plot!(p, q_next, label="noisy x(k+1) for q", fillcolor=:red)
-            plot!(p, concretize(Aᵢ * region(q) + bᵢ), label="nominal x(k+1) for q", fillcolor=:orange)
-            plot!(p, region(qⱼ), label="overlapping", fillcolor=:yellow)
+            Plots.plot!(p, region(q), label="q", fillcolor=:goldenrod)
+            Plots.plot!(p, q_next, label="noisy x(k+1) for q", fillcolor=:red)
+            Plots.plot!(p, concretize(Aᵢ * region(q) + bᵢ), label="nominal x(k+1) for q", fillcolor=:orange)
+            Plots.plot!(p, region(qⱼ), label="overlapping", fillcolor=:yellow)
 
             # Hⱼ, hⱼ = tosimplehrep(region(qⱼ))
             # input_set = HPolyhedron(Hⱼ * Aᵢ, hⱼ - Hⱼ * (bᵢ + η))
@@ -95,11 +95,11 @@ function plot_barrier(system::PiecewiseSystem{1, T}, B; xlims=nothing, plot_safe
     end
     ylims = (-0.05, 1.2)
 
-    p = plot(initial_set(system), label="X0", color=ColorSchemes.tab10[1], xlims=xlims, ylims=ylims, linewidth=4)
+    p = Plots.plot(initial_set(system), label="X0", color=ColorSchemes.tab10[1], xlims=xlims, ylims=ylims, linewidth=4)
     if plot_safe
-        plot!(p, safe_set(system), label="Xs", color=ColorSchemes.tab10[3], linewidth=4)
+        Plots.plot!(p, safe_set(system), label="Xs", color=ColorSchemes.tab10[3], linewidth=4)
     else
-        plot!(p, unsafe_set(system), label="Xu", color=ColorSchemes.tab10[4], linewidth=4)
+        Plots.plot!(p, unsafe_set(system), label="Xu", color=ColorSchemes.tab10[4], linewidth=4)
     end
 
     # Iterate over barrier regions, as the barrier is continuous for each region, but discontinuous across
@@ -109,7 +109,7 @@ function plot_barrier(system::PiecewiseSystem{1, T}, B; xlims=nothing, plot_safe
         x = LinRange(low(q, 1), high(q, 1), 2)
         label = i == 1 ? "B" : nothing          # Only attach label to first region for legend
 
-        plot!(p, x, z -> Bᵢ(z), label=label, color=ColorSchemes.tab10[2], ylims=ylims)
+        Plots.plot!(p, x, z -> Bᵢ(z), label=label, color=ColorSchemes.tab10[2], ylims=ylims)
     end
     return p
 end
@@ -131,7 +131,7 @@ function plot_barrier(system::PiecewiseSystem{2, T}, B; xylims=nothing, plot_saf
     #     plot!(p, unsafe_set(system), z=0, st=:surface, label="Xu", color=ColorSchemes.tab10[4], linewidth=4)
     # end
 
-    p = plot()
+    p = Plots.plot()
     f(z) = B(z)
 
     # Iterate over barrier regions, as the barrier is continuous for each region, but discontinuous across
@@ -155,9 +155,41 @@ function plot_barrier(system::PiecewiseSystem{2, T}, B; xylims=nothing, plot_saf
 
         label = i == 1 ? "B" : nothing           # Only attach label to first region for legend
 
-        plot!(p, xs, ys, (x, y) -> Bᵢ([x, y]), st=:surface, label=label, xlims=xlims, ylims=ylims, zlims=zlims, clims=(0, 1))
+        Plots.plot!(p, xs, ys, (x, y) -> Bᵢ([x, y]), st=:surface, label=label, xlims=xlims, ylims=ylims, zlims=zlims, clims=(0, 1))
     end
     return p
+end
+
+function plot_barrier_heatmap(system::PiecewiseSystem{2, T}, B; xylims=nothing) where {T}
+    if isnothing(xylims)
+        xybounds = bounded_region_lims(system)
+        xyext = 0.2 .* radius_hyperrectangle(xybounds)  # Add a little space on either side of the MBR
+        xylims = (low(xybounds) .- xyext, high(xybounds) .+ xyext)
+    end
+    # xlims = (xylims[1][1], xylims[2][1])
+    # ylims = (xylims[1][2], xylims[2][2])
+    
+    f = Figure()
+    Axis(f[1, 1])
+
+    # Iterate over barrier regions, as the barrier is continuous for each region, but discontinuous across
+    xybounds = Hyperrectangle(low=xylims[1], high=xylims[2])
+    for (i, Bᵢ) in enumerate(B)
+        q = intersection(region(Bᵢ), xybounds)   # Intersection with plotting box to account for unbounded regions
+
+        verts = vertices_list(q)
+
+        zs = map(v -> clamp(Bᵢ(v), 0.0, 1.0), verts)
+        # println(zs)
+        colors = map(z -> get(ColorSchemes.magma, z), zs)
+        # println(colors)
+        println(verts)
+
+        points = Point2f[(v[1], v[2]) for v in verts]
+        poly!(f[1, 1], points, color=colors)
+    end
+
+    return f
 end
 
 function bounded_region_lims(system)
