@@ -265,11 +265,11 @@ function expectation_partition_constraint!(model, dyn, Bᵢ::BarrierRegion{T, Li
     # We can let M = 1 [max B(x)] as B(x) can be modified aposterori to be capped at 1 without violating the theory
     ϵ = expectation.method.ϵ
     M = 1
-    d = M * ϵ
+    ν = M * ϵ / (1 - ϵ)
 
     for (Aᵢ, bᵢ) in dyn
-        a = vcat(Aᵢ' * pⱼ .- (pᵢ / (1 - ϵ)), pⱼ)
-        rhs = (vᵢ + c - d) / (1 - ϵ) - vⱼ - pⱼ ⋅ bᵢ
+        a = vcat(Aᵢ' * pⱼ .- pᵢ, pⱼ)
+        rhs = vᵢ + c - ν - vⱼ - pⱼ ⋅ bᵢ
 
         assymetric_dual_constraint!(model, a, rhs, H, h)
     end
