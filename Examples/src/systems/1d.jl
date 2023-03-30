@@ -70,9 +70,11 @@ function cdc_martingale1d()
     Q = [
         HPolyhedron([x ≥ 2.5], vars),
         HPolyhedron([x ≤ -2.5], vars),
-        LazySets.Interval(0.5, 2.5),
+        LazySets.Interval(1.5, 2.5),
+        LazySets.Interval(0.5, 1.5),
         LazySets.Interval(-0.5, 0.5),
-        LazySets.Interval(-2.5, -0.5)
+        LazySets.Interval(-1.5, -0.5),
+        LazySets.Interval(-2.5, -1.5)
     ]
 
     Ab = singleton_dynamics(Float64[1][:,:], [0.0])
