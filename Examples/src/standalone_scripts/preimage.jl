@@ -2,7 +2,7 @@ using LazySets, Polyhedra, JuMP
 
 using LinearAlgebra
 
-using Plots, ColorSchemes
+using Plots, ColorSchemes, LaTeXStrings
 pgfplotsx()
 
 N = Float64
@@ -18,11 +18,11 @@ forward = A * preimage
 
 colors = ColorSchemes.seaborn_colorblind6
 
-p = plot(qᵢ, label="P̄ᵢ", xlabel="x₁", ylabel="x₂", fillcolor=colors[1], legend=:bottom, xtickfontsize=14, ytickfontsize=14, xguidefontsize=14, yguidefontsize=14, legendfontsize=14)
-plot!(p, qⱼ, label="P̄ⱼ", fillcolor=colors[2])
-plot!(p, qᵢ_next, label="f(P̄ᵢ) + η(ω)", fillcolor=colors[3])
-plot!(p, preimage, label="Qᵢⱼ(ω)", fillcolor=colors[4])
-plot!(p, forward, label="f(Qᵢⱼ(ω)) + η(ω)", fillcolor=colors[5])
+p = plot(qᵢ, label=L"$\bar{P}_i$", xlabel=L"$x_1$", ylabel=L"$x_2$", fillcolor=colors[1], legend=:bottom, xtickfontsize=14, ytickfontsize=14, xguidefontsize=14, yguidefontsize=14, legendfontsize=14)
+plot!(p, qⱼ, label=L"$\bar{P}_j$", fillcolor=colors[2])
+plot!(p, qᵢ_next, label=L"$f(\bar{P}_i) + \eta(\omega)$", fillcolor=colors[3])
+plot!(p, preimage, label=L"$Q_{ij}(\omega)$", fillcolor=colors[4])
+plot!(p, forward, label=L"$f(Q_{ij}(\omega)) + \eta(\omega)$", fillcolor=colors[5])
 
 savefig(p, "figures/preimage.pdf")
 display(p)
