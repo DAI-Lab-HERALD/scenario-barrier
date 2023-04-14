@@ -2,6 +2,7 @@ using BarrierFunctions
 using LazySets, Symbolics
 
 using Distributions, PDMats
+using MultivariatePolynomials, DynamicPolynomials, SemialgebraicSets
 
 function drone(uncertain=true)
     # Only modeling longitudinal dynamics
@@ -54,10 +55,10 @@ function drone(uncertain=true)
     # Start in a box [0.5m, 1.0m] × [-0.5m/s, 0.5m/s]
     X0 = Hyperrectangle(low=[0.5, -0.5], high=[1.0, 0.5])
 
-    # On the road is safe
+    # Low velocity is safe
     Xs = HPolyhedron([x[2] ≤ 10, x[2] ≥ -10], vars)
 
-    # Outside the road is dangerous
+    # High velocity is dangerous
     Xu = [
         HPolyhedron([x[2] ≥ 10], vars),
         HPolyhedron([x[2] ≤ -10], vars)
@@ -120,10 +121,10 @@ function cdc_drone()
     # Start in a box [0.5m, 1.0m] × [-0.5m/s, 0.5m/s]
     X0 = Hyperrectangle(low=[0.5, -0.5], high=[1.0, 0.5])
 
-    # On the road is safe
+    # Low velocity is safe
     Xs = HPolyhedron([x[2] ≤ 10, x[2] ≥ -10], vars)
 
-    # Outside the road is dangerous
+    # High velocity is dangerous
     Xu = [
         HPolyhedron([x[2] ≥ 10], vars),
         HPolyhedron([x[2] ≤ -10], vars)
@@ -144,3 +145,39 @@ function cdc_drone()
 end
 
 cdc_prob_drone_exact = Problem("cdc_drone_exact", cdc_drone(), 10, ScenarioApproach(0.005/10, 1e-9, false))
+
+function cdc_drone_saa()
+    # Only modeling longitudinal dynamics
+    # x[1] = position
+    # x[2] = velocity
+    @polyvar x[1:2]
+
+    m₋, m₊ = 0.75, 1.25
+    m = (m₋ + m₊) / 2
+    τ = 1.0
+
+    A = [
+            1 τ;
+            0 (m - 0.1 * τ) / m
+        ]
+    f = A * x
+
+    μ = [0, 0]
+    Σ = PDiagMat([0.1^2, 0.1^2])  # Square to make std.dev. to variance.
+    η = DiagNormal(μ, Σ)
+
+    # Start in a box [0.5m, 1.0m] × [-0.5m/s, 0.5m/s]
+    X0 = @set (x[1] - 0.75)^2 ≤ 0.25^2 && x[2]^2 ≤ 0.5^2
+
+    # Low velocity is safe
+    Xs = @set x[2]^2 ≤ 10^2
+
+    # High velocity is dangerous
+    Xu = [
+        @set x[2]^2 ≥ 10^2
+    ]
+
+    return PolynomialSystem{2, Float64}(f, η, X0, Xs, Xu)
+end
+
+cdc_prob_drone_exact_saa = Problem("cdc_drone_exact_saa", cdc_drone_saa(), 10, SampleAverage(0.015, 0.01))
