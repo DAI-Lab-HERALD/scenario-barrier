@@ -13,11 +13,11 @@ function newsvendor_optimal_inventory(solver, demand_dist, profit, loss, ϵ, β)
 
     model = Model(solver)
 
-    @variable(model, x, lower_bound = 0.0, upper_bound = 1500.0)
+    @variable(model, z, lower_bound = 0.0, upper_bound = 1500.0)
     @variable(model, t)
 
     M = 1500.0 * max(loss, profit)
-    δ = M * ϵ
+    ν = (M * ϵ) / (1 - ϵ)
 
     demand_realizations = rand(demand_dist, num_samples)
 
@@ -25,17 +25,17 @@ function newsvendor_optimal_inventory(solver, demand_dist, profit, loss, ϵ, β)
         units_unsold = @variable(model, lower_bound = 0.0)
         demand_unmet = @variable(model, lower_bound = 0.0)
 
-        @constraint(model, units_unsold ≥ x - demand)
-        @constraint(model, demand_unmet ≥ demand - x)
+        @constraint(model, units_unsold ≥ z - demand)
+        @constraint(model, demand_unmet ≥ demand - z)
 
-        @constraint(model, loss * units_unsold + profit * demand_unmet + (δ - t) / (1 - ϵ) ≤ 0)
+        @constraint(model, loss * units_unsold + profit * demand_unmet + ν ≤ t)
     end
 
     @objective(model, Min, t)
 
     optimize!(model)
 
-    return value(x), objective_value(model)
+    return value(z), objective_value(model)
 end
 
 
