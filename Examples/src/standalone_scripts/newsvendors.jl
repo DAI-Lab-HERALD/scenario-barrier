@@ -92,7 +92,7 @@ println(("loss", μₛ, wₛ))
 # Find the optimal x that minimizes the loss for a  for a discrete distribution
 profit = sales_price - cost
 loss = cost - salavage_value
-optimal_p = loss / (profit + loss)
+optimal_p = profit / (profit + loss)
 
 cumulative_p = pdf(demand_dist, 0)
 optimal_x = 0
