@@ -9,14 +9,14 @@ newsvendor_optimal_inventory(solver, demand_dist, cost, sales_price, salavage_va
 function newsvendor_optimal_inventory(solver, demand_dist, profit, loss, ϵ, β)
     # In the original problem, we only have a single variable
     # All others are purely to implement a max into LP and turn the problem into epigraph from
-    num_samples = required_samples(2, ϵ, β)
+    num_samples = required_samples(1, ϵ, β)
 
     model = Model(solver)
 
     @variable(model, z, lower_bound = 0.0, upper_bound = 1500.0)
     @variable(model, t)
 
-    M = 1500.0 * max(loss, profit)
+    M = upper_bound(z) * max(loss, profit)
     ν = (M * ϵ) / (1 - ϵ)
 
     demand_realizations = rand(demand_dist, num_samples)
