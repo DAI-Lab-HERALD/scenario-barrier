@@ -204,7 +204,7 @@ function custom_minkowski_sum(qᵢ_next_nom::AbstractPolyhedron{N}, expectation)
     # Centering and rescaling does not impact the direction of the normal vectors, so
     # we can do this without risk.
     v = vertices_list(qᵢ_next_nom)
-    center = reduce((.*), v) ./ length(v)
+    center = reduce((.+), v) ./ length(v)
     centered_qᵢ_next_nom = LazySets.translate(qᵢ_next_nom, -center)
     max_norm = maximum(norm, vertices_list(centered_qᵢ_next_nom))
     δ = inv(prevfloat(typemax(max_norm)))
