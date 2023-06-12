@@ -618,7 +618,8 @@ end
 # VPolyhedron from a VRep
 function VPolyhedron(P::VRep{N}) where {N}
     vertices = collect(Polyhedra.points(P))
-    rays = map(ray -> ray.a, Polyhedra.allrays(P))
+    rays = collect(Polyhedra.allrays(P))
+    rays = map(ray -> ray.a, rays)
     return VPolyhedron(vertices, rays)
 end
 

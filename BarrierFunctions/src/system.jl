@@ -31,7 +31,7 @@ function PiecewiseSystem(Q, dyn, η, X0::AbstractPolyhedron{T}, Xs::AbstractPoly
     elems = [DynamicsRegion(i, qi, dyni) for (i, (qi, dyni)) in enumerate(zip(Q, dyn))]
 
     N = LazySets.dim(X0)
-    Q = UnboundedIndex{T, N, DynamicsRegion{T}}()
+    Q = UnboundedIndex{T, DynamicsRegion{T}}()
     bulk_load!(Q, elems)
 
     return PiecewiseSystem{N, T}(Q, η, X0, Xs, Xu)
