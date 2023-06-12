@@ -244,15 +244,15 @@ function custom_minkowski_sum(qᵢ_next_nom::AbstractPolyhedron{N}, expectation)
 end
 
 function expectation_partition_constraint!(model, dyn, Bᵢ::BarrierRegion{T, LinearBarrier{T1, VT1}}, Bⱼ::BarrierRegion{T, LinearBarrier{T2, VT2}}, c, expectation::ExpectationData{ScenarioApproach}) where {T, T1, VT1, T2, VT2}
-    dyn = tighten_dynamics(dyn, region(Bᵢ), region(Bⱼ), expectation)
-    if isnothing(dyn)
-        @debug "Tightening dynamics shows non-overlap"
-        return
-    end
-
     qᵢ = tighten_region(dyn, region(Bᵢ), region(Bⱼ), expectation)
     if isnothing(qᵢ)
         @debug "Tightening region non-overlap"
+        return
+    end
+    
+    dyn = tighten_dynamics(dyn, qᵢ, region(Bⱼ), expectation)
+    if isnothing(dyn)
+        @debug "Tightening dynamics shows non-overlap"
         return
     end
     
