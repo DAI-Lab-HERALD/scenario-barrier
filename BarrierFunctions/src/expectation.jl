@@ -1,4 +1,4 @@
-using Polyhedra, LinearAlgebra
+using Polyhedra, QHull, LinearAlgebra
 
 export ExpectationMethod, SampleAverage, ScenarioApproach, OverrideNumSamples
 export ExpectationData
@@ -206,7 +206,7 @@ function custom_minkowski_sum(qᵢ_next_nom::AbstractPolyhedron{N}, expectation)
     v = vertices_list(qᵢ_next_nom)
     center = reduce((+), v) ./ length(v)
     centered_qᵢ_next_nom = LazySets.translate(qᵢ_next_nom, -center)
-    min_norm = minimum(norm, vertices_list(centered_qᵢ_next_nom))
+    min_norm = maximum(norm, vertices_list(centered_qᵢ_next_nom))
     δ = inv(prevfloat(typemax(min_norm)))
     if min_norm ≥ δ # Safe to multiply with inverse
         invnrm = inv(min_norm)
@@ -216,7 +216,7 @@ function custom_minkowski_sum(qᵢ_next_nom::AbstractPolyhedron{N}, expectation)
         centered_rescaled_qᵢ_next_nom = linear_map(Matrix(I * εδ, n, n), centered_qᵢ_next_nom)
         centered_rescaled_qᵢ_next_nom = linear_map(Matrix(I * inv(min_norm*εδ), n, n), centered_rescaled_qᵢ_next_nom)
     end
-    centered_rescaled_hrep_qᵢ_next_nom = tohrep(centered_rescaled_qᵢ_next_nom)
+    centered_rescaled_hrep_qᵢ_next_nom = tohrep(centered_rescaled_qᵢ_next_nom; backend=QHull.Library())
     nomial_template_dirs = [normalize(h.a) for h in constraints_list(centered_rescaled_hrep_qᵢ_next_nom)]
     
     # Use support vectors to find halfspace constant term. 
