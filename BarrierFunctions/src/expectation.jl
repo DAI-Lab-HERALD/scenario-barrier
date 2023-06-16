@@ -406,7 +406,7 @@ function binary_search_tighten_region(dyn, qᵢ, qⱼ, expectation, normal_vecto
     return qᵢ
 end
 
-function expectation_partition_constraint!(model, Aᵢ, bᵢ, Bᵢ::BarrierRegion{T, ConstantBarrier{T1}}, Bⱼ::BarrierRegion{T, ConstantBarrier{T2}}, c, expectation::ExpectationData{ScenarioApproach}) where {T, T1, T2}
+function expectation_partition_constraint!(model, Aᵢ, bᵢ, Bᵢ::BarrierRegion{T, <:ConstantBarrier}, Bⱼ::BarrierRegion{T, <:ConstantBarrier}, c, expectation::ExpectationData{ScenarioApproach}) where {T}
     qᵢ_next = Aᵢ * region(Bᵢ) + bᵢ
 
     vᵢ = Bᵢ.fun.v
@@ -426,7 +426,7 @@ function expectation_partition_constraint!(model, Aᵢ, bᵢ, Bᵢ::BarrierRegio
     end
 end
 
-function expectation_partition_constraint!(model, Aᵢ, bᵢ, Bᵢ::BarrierRegion{T, QuadraticBarrier{T1, VT1, VVT1}}, Bⱼ::BarrierRegion{T, QuadraticBarrier{T2, VT2, VVT2}}, c, expectation::ExpectationData{ScenarioApproach}) where {T, T1, VT1, VVT1, T2, VT2, VVT2}
+function expectation_partition_constraint!(model, Aᵢ, bᵢ, Bᵢ::BarrierRegion{T, <:QuadraticBarrier}, Bⱼ::BarrierRegion{T, <:QuadraticBarrier}, c, expectation::ExpectationData{ScenarioApproach}) where {T}
     Pᵢ, pᵢ, vᵢ = Bᵢ.fun.P, Bᵢ.fun.p, Bᵢ.fun.v
     Pⱼ, pⱼ, vⱼ = Bⱼ.fun.P, Bⱼ.fun.p, Bⱼ.fun.v
 
