@@ -21,7 +21,10 @@ function martingale1d(uncertain=true)
     else
         Ab = singleton_dynamics(Float64[1][:,:], [0.0])
     end
-    dyn = [Ab, Ab, Ab, Ab, Ab]
+    dyn = [Ab for _ in 1:length(Q)]
+
+    split_spec = Int64[1 1 1 1 1][:,:]
+    Q, dyn = grid_split(Q, dyn, split_spec)
 
     μ = [0]
     Σ = PDiagMat([0.01^2])  # Square to make std.dev. to variance.
@@ -41,7 +44,6 @@ function martingale1d(uncertain=true)
 
     return PiecewiseSystem(Q, dyn, η, X0, Xs, Xu)
 end
-
 
 prob_linear1d_uncertain = Problem("linear1d_uncertain", martingale1d(true), 10, ScenarioApproach(0.005/10, 1e-9))
 prob_linear1d_exact = Problem("linear1d_exact", martingale1d(false), 10, ScenarioApproach(0.005/10, 1e-9))
@@ -78,7 +80,7 @@ function cdc_martingale1d()
     ]
 
     Ab = singleton_dynamics(Float64[1][:,:], [0.0])
-    dyn = [Ab, Ab, Ab, Ab, Ab]
+    dyn = [Ab, Ab, Ab, Ab, Ab, Ab, Ab]
 
     μ = [0]
     Σ = PDiagMat([0.01^2])  # Square to make std.dev. to variance.
