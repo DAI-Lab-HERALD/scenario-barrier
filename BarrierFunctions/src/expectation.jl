@@ -216,7 +216,11 @@ function custom_minkowski_sum(qᵢ_next_nom::AbstractPolyhedron{N}, expectation)
         centered_rescaled_qᵢ_next_nom = linear_map(Matrix(I * εδ, n, n), centered_qᵢ_next_nom)
         centered_rescaled_qᵢ_next_nom = linear_map(Matrix(I * inv(min_norm*εδ), n, n), centered_rescaled_qᵢ_next_nom)
     end
-    centered_rescaled_hrep_qᵢ_next_nom = tohrep(centered_rescaled_qᵢ_next_nom; backend=QHull.Library())
+    if LazySets.dim(qᵢ_next_nom) < 2
+        centered_rescaled_hrep_qᵢ_next_nom = tohrep(centered_rescaled_qᵢ_next_nom)
+    else
+        centered_rescaled_hrep_qᵢ_next_nom = tohrep(centered_rescaled_qᵢ_next_nom; backend=QHull.Library())
+    end
     nomial_template_dirs = [normalize(h.a) for h in constraints_list(centered_rescaled_hrep_qᵢ_next_nom)]
     
     # Use support vectors to find halfspace constant term. 
@@ -243,7 +247,7 @@ function custom_minkowski_sum(qᵢ_next_nom::AbstractPolyhedron{N}, expectation)
     return qᵢ_next
 end
 
-function expectation_partition_constraint!(model, dyn, Bᵢ::BarrierRegion{T, LinearBarrier{T1, VT1}}, Bⱼ::BarrierRegion{T, LinearBarrier{T2, VT2}}, c, expectation::ExpectationData{ScenarioApproach}) where {T, T1, VT1, T2, VT2}
+function expectation_partition_constraint!(model, dyn, Bᵢ::BarrierRegion{T, <:LinearBarrier}, Bⱼ::BarrierRegion{T, <:LinearBarrier}, c, expectation::ExpectationData{ScenarioApproach}) where {T}
     qᵢ = tighten_region(dyn, region(Bᵢ), region(Bⱼ), expectation)
     if isnothing(qᵢ)
         @debug "Tightening region non-overlap"
@@ -327,7 +331,7 @@ function tighten_dynamics(dyn, qᵢ, qⱼ, expectation)
     return dyn
 end
 
-function binary_search_tighten_dynamics(dyn, qᵢ, qⱼ, expectation, lambda_polytope, normal_vector, min_vertex, max_vertex; max_steps=5)
+function binary_search_tighten_dynamics(dyn, qᵢ, qⱼ, expectation, lambda_polytope, normal_vector, min_vertex, max_vertex; max_steps=10)
     min = dot(normal_vector, min_vertex)
     max = dot(normal_vector, max_vertex)
 
@@ -380,7 +384,7 @@ function tighten_region(dyn, qᵢ, qⱼ, expectation)
     return qᵢ
 end
 
-function binary_search_tighten_region(dyn, qᵢ, qⱼ, expectation, normal_vector, max, min; max_steps=5)
+function binary_search_tighten_region(dyn, qᵢ, qⱼ, expectation, normal_vector, max, min; max_steps=10)
     step = 1
 
     # Perform binary search
