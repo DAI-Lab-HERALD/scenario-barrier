@@ -1,4 +1,4 @@
-using Polyhedra, QHull, LinearAlgebra
+using Polyhedra, LinearAlgebra, StaticArrays
 
 export ExpectationMethod, SampleAverage, ScenarioApproach, OverrideNumSamples
 export ExpectationData
@@ -93,7 +93,6 @@ function prepare(system::PiecewiseSystem, method::ScenarioApproach, solver, d, n
         @debug "Using the convex hull, we reduce the number of samples from $old_length to $new_length"
     end
 
-    ηs = [copy(η) for η in eachcol(ηs)]
     ηs = VPolytope(ηs)
     box_ηs = box_approximation(ηs)
 
@@ -216,11 +215,7 @@ function custom_minkowski_sum(qᵢ_next_nom::AbstractPolyhedron{N}, expectation)
         centered_rescaled_qᵢ_next_nom = linear_map(Matrix(I * εδ, n, n), centered_qᵢ_next_nom)
         centered_rescaled_qᵢ_next_nom = linear_map(Matrix(I * inv(min_norm*εδ), n, n), centered_rescaled_qᵢ_next_nom)
     end
-    if LazySets.dim(qᵢ_next_nom) < 2
-        centered_rescaled_hrep_qᵢ_next_nom = tohrep(centered_rescaled_qᵢ_next_nom)
-    else
-        centered_rescaled_hrep_qᵢ_next_nom = tohrep(centered_rescaled_qᵢ_next_nom; backend=QHull.Library())
-    end
+    centered_rescaled_hrep_qᵢ_next_nom = tohrep(centered_rescaled_qᵢ_next_nom)
     nomial_template_dirs = [normalize(h.a) for h in constraints_list(centered_rescaled_hrep_qᵢ_next_nom)]
     
     # Use support vectors to find halfspace constant term. 
@@ -408,51 +403,6 @@ function binary_search_tighten_region(dyn, qᵢ, qⱼ, expectation, normal_vecto
     end
 
     return qᵢ
-end
-
-function expectation_partition_constraint!(model, Aᵢ, bᵢ, Bᵢ::BarrierRegion{T, <:ConstantBarrier}, Bⱼ::BarrierRegion{T, <:ConstantBarrier}, c, expectation::ExpectationData{ScenarioApproach}) where {T}
-    qᵢ_next = Aᵢ * region(Bᵢ) + bᵢ
-
-    vᵢ = Bᵢ.fun.v
-    vⱼ = Bⱼ.fun.v
-
-    # We can let M = 1 [max B(x)] as B(x) can be modified aposterori to be capped at 1 without violating the theory
-    ϵ = expectation.method.ϵ
-    M = 5
-    d = M * ϵ / (1 - ϵ)
-
-    for η in vertices_list(expectation.data[1])
-        if is_intersection_zeromeasure(region(Bⱼ), qᵢ_next + η)
-            continue
-        end
-
-        @constraint(model, vⱼ - vᵢ - c + d ≤ 0.0)
-    end
-end
-
-function expectation_partition_constraint!(model, Aᵢ, bᵢ, Bᵢ::BarrierRegion{T, <:QuadraticBarrier}, Bⱼ::BarrierRegion{T, <:QuadraticBarrier}, c, expectation::ExpectationData{ScenarioApproach}) where {T}
-    Pᵢ, pᵢ, vᵢ = Bᵢ.fun.P, Bᵢ.fun.p, Bᵢ.fun.v
-    Pⱼ, pⱼ, vⱼ = Bⱼ.fun.P, Bⱼ.fun.p, Bⱼ.fun.v
-
-    # We can let M = 1 [max B(x)] as B(x) can be modified aposterori to be capped at 1 without violating the theory
-    ϵ = expectation.method.ϵ
-    M = 1
-    d = M * ϵ / (1 - ϵ)
-
-    for η in vertices_list(expectation.data[1])
-        bᵢη = bᵢ + η
-        quadratic = Aᵢ' * Pⱼ * Aᵢ - Pᵢ
-        linear = Aᵢ' * Pⱼ * bᵢη + 0.5 * Aᵢ' * pⱼ - 0.5 * pᵢ 
-        constant = bᵢη' * Pⱼ * bᵢη + bᵢη' * pⱼ + vⱼ - vᵢ - c + d
-
-        mat = vcat(
-            hcat(quadratic, linear),
-            hcat(linear', constant)
-        )
-
-        s_mat = s_procedure(model, qi)
-        @constraint(model, mat - s_mat ≤ 0, PSDCone())
-    end
 end
 
 function expectation_constraint!(model, system, B::PolynomialBarrier, c, expectation::ExpectationData{ScenarioApproach})

@@ -106,35 +106,28 @@ function region_constraints!(model, system, B, c, γ, qᵢ, expectation)
     Bᵢ = B[qᵢ]
 
     non_negativity_constraint!(model, Bᵢ)
+    upper_bound_constraint!(model, Bᵢ)
     initial_constraint!(model, system, Bᵢ, γ)
     unsafe_constraint!(model, system, Bᵢ)
     expectation_constraint!(model, system, B, c, qᵢ, expectation)
 end
 
-function overlaps_unsafe(system, q)
-    Xᵤ = unsafe_set(system)
-    # Note the unsafe set can consist of multiple disjoint components
-    for Xᵤ_subset in Xᵤ
-        if !is_intersection_zeromeasure(Xᵤ_subset, q)
-            return true
-        end
-    end
-
-    return false
-end
-
 # Piece-wise linear barrier
-function non_negativity_constraint!(model, B::BarrierRegion{T, LinearBarrier{T1, VT1}}) where {T, T1, VT1}
+function non_negativity_constraint!(model, B::BarrierRegion{T, <:LinearBarrier}) where {T}
     H, h = tosimplehrep(region(B))
     p, v = B.fun.p, B.fun.v
     assymetric_dual_constraint!(model, -p, v, H, h)
+end
 
-    # Upper bound by M for more robust solving
+function upper_bound_constraint!(model, B::BarrierRegion{T, <:LinearBarrier}; M = 5) where {T}
+    H, h = tosimplehrep(region(B))
+    p, v = B.fun.p, B.fun.v
+
     M = 5
     assymetric_dual_constraint!(model, p, M - v, H, h)
 end
 
-function initial_constraint!(model, system, B::BarrierRegion{T, LinearBarrier{T1, VT1}}, γ) where {T, T1, VT1}
+function initial_constraint!(model, system, B::BarrierRegion{T, <:LinearBarrier}, γ) where {T}
     X₀ = initial_set(system)
 
     if isdisjoint(X₀, region(B))  # Must be strictly disjoint, as this constraint does not involve dynamics
@@ -146,12 +139,27 @@ function initial_constraint!(model, system, B::BarrierRegion{T, LinearBarrier{T1
     assymetric_dual_constraint!(model, p, γ - v, H₀, h₀)
 end
 
-function unsafe_constraint!(model, system, B::BarrierRegion{T, LinearBarrier{T1, VT1}}) where {T, T1, VT1}
-    if overlaps_unsafe(system, region(B))
-        H, h = tosimplehrep(region(B))
-        p, v = B.fun.p, B.fun.v
-        assymetric_dual_constraint!(model, -p, v - 1.0, H, h)
+function overlaps_unsafe(system, q)
+    Xᵤ = unsafe_set(system)
+    
+    # Note the unsafe set can consist of multiple disjoint components
+    for Xᵤ_subset in Xᵤ
+        if !is_intersection_zeromeasure(Xᵤ_subset, q)
+            return true
+        end
     end
+
+    return false
+end
+
+function unsafe_constraint!(model, system, B::BarrierRegion{T, LinearBarrier{T1, VT1}}) where {T, T1, VT1}
+    if !overlaps_unsafe(system, region(B))
+        return
+    end
+
+    H, h = tosimplehrep(region(B))
+    p, v = B.fun.p, B.fun.v
+    assymetric_dual_constraint!(model, -p, v - 1.0, H, h)
 end
 
 function assymetric_dual_constraint!(model, c, rhs, H, h)
@@ -169,81 +177,6 @@ function assymetric_dual_constraint!(model, c, rhs, H, h)
 
     @constraint(model, y ⋅ h ≤ rhs)
     @constraint(model, H' * y .== c)
-end
-
-# Piece-wise constant barrier
-function non_negativity_constraint!(model, B::BarrierRegion{T, ConstantBarrier{T1}}) where {T, T1}
-    @constraint(model, B.fun.v ≥ 0.0)
-end
-
-function initial_constraint!(model, system, B::BarrierRegion{T, ConstantBarrier{T1}}, γ) where {T, T1}
-    X₀ = initial_set(system)
-
-    if is_intersection_zeromeasure(X₀, region(B))
-        return
-    end
-
-    @constraint(model, γ ≥ B.fun.v)
-end
-
-function unsafe_constraint!(model, system, B::BarrierRegion{T, ConstantBarrier{T1}}) where {T, T1}
-    if overlaps_unsafe(system, region(B))
-        @constraint(model, B.fun.v ≥ 1.0)
-    end
-end
-
-# Piece-wise quadratic barrier
-function non_negativity_constraint!(model, B::BarrierRegion{T, QuadraticBarrier{T1, VT1, VVT1}}) where {T, T1, VT1, VVT1}
-    q = region(B)
-    s_mat = s_procedure(model, q)
-
-    @constraint(model, -matrix(B) - s_mat ≤ 0, PSDCone())
-end
-
-function initial_constraint!(model, system, B::BarrierRegion{T, QuadraticBarrier{T1, VT1, VVT1}}, γ) where {T, T1, VT1, VVT1}
-    X₀ = initial_set(system)
-    q = region(B)
-
-    if is_intersection_zeromeasure(X₀, q)
-        return
-    end
-
-    s_mat = s_procedure(model, intersection(X₀, q))
-
-    γ_mat = zero(s_mat)
-    γ_mat[end, end] = γ
-
-    @constraint(model, matrix(B) - γ_mat - s_mat ≤ 0, PSDCone())
-end
-
-function unsafe_constraint!(model, system, B::BarrierRegion{T, QuadraticBarrier{T1, VT1, VVT1}}) where {T, T1, VT1, VVT1}
-    q = region(B)
-    if overlaps_unsafe(system, q)
-        # We may need to refine partitions if a partition cover too large part of the safe set
-
-        s_mat = s_procedure(model, q)
-
-        one_mat = zero(s_mat)
-        one_mat[end, end] = 1
-
-        @constraint(model, -matrix(B) + one_mat - s_mat ≤ 0, PSDCone())
-    end
-end
-
-function s_procedure(model, p)
-    H, h = tosimplehrep(p)
-    m, n = size(H)
-    τ = @variable(model, [1:m], lower_bound = 0)
-
-    Hτ = H' * τ
-    hτ = -2 * h' * τ
-
-    mat = vcat(
-        hcat(zeros(n, n), Hτ),
-        hcat(Hτ', hτ)
-    )
-
-    return mat
 end
 
 # Polynomial constraints
