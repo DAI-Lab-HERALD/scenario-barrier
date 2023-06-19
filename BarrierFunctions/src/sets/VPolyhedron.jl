@@ -198,7 +198,7 @@ function σ_helper(d, P, solver)
         @inbounds return vertices[max_idx], false
     end
 
-    model = Model(solver)
+    model = Model(solver; add_bridges = false)
     n = LazySets.dim(P)
 
     @variable(model, x[1:n])
@@ -269,7 +269,7 @@ function ∈(x::AbstractVector{N}, P::VPolyhedron{N};
     @assert n == LazySets.dim(P) "a vector of length $(length(x)) cannot be " *
         "contained in a polyhedron of dimension $(LazySets.dim(P))"
 
-    model = Model(solver)
+    model = Model(solver; add_bridges = false)
 
     @variable(model, λ[1:m] ≥ 0)
     @variable(model, μ[1:o] ≥ 0)
