@@ -3,7 +3,7 @@ using BarrierFunctions
 using Gurobi, MosekTools, Mosek, GLPK, JuMP
 
 using Plots
-import PythonPlot: pygui
+# import PythonPlot: pygui
 
 using Logging
 using TerminalLoggers: TerminalLoggers, TerminalLogger
@@ -12,8 +12,8 @@ using ProgressLogging
 
 using CSV, DataFrames
 
-pythonplot()
-pygui(true)
+# pythonplot()
+# pygui(true)
 
 include("problem.jl")
 include("systems/systems.jl")
@@ -37,7 +37,9 @@ function run_experiment(problem::Problem)
 
     # Warmup
     @info "Warmup" name=problem.name
-    @time verify(solver, problem.system, problem.horizon, problem.expectation_method)
+    succ, B, prob = @time verify(solver, problem.system, problem.horizon, problem.expectation_method)
+    println((succ, prob))
+    println(B)
 
     # Experiment run
     for i in 1:100
