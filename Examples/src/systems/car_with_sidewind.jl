@@ -67,11 +67,11 @@ function car_with_sidewind(;split="none")
     ]
 
     if endswith(split, "lon")
-        split_spec[1, :] .= [1, 1, 1, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 1, 1, 1]
+        split_spec[1, :] .= [1, 1, 1, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 1, 1, 1]
     end
 
     if startswith(split, "lat")
-        split_spec[2, :] .= [1, 1, 1, 20, 10, 20, 20, 10, 20, 20, 10, 20, 20, 10, 20, 1, 1, 1]
+        split_spec[2, :] .= [1, 1, 1, 5, 2, 5, 5, 2, 5, 5, 2, 5, 5, 2, 5, 1, 1, 1]
     end
     Q, dyn = grid_split(Q, dyn, split_spec)
 
