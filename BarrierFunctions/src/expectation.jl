@@ -158,7 +158,7 @@ end
 function expectation_constraint!(model, system, B::PiecewiseBarrier, c, qᵢ, expectation::ExpectationData{ScenarioApproach})
     Xₛ = safe_set(system)
     if is_intersection_zeromeasure(Xₛ, qᵢ)
-        return
+        return nothing
     end
     
     qᵢ_next_nom = one_step_reachable_set(dynamics(qᵢ), region(qᵢ))
@@ -246,13 +246,13 @@ function expectation_partition_constraint!(model, dyn, Bᵢ::BarrierRegion{T, <:
     qᵢ = tighten_region(dyn, region(Bᵢ), region(Bⱼ), expectation)
     if isnothing(qᵢ)
         @debug "Tightening region non-overlap"
-        return
+        return nothing
     end
     
     dyn = tighten_dynamics(dyn, qᵢ, region(Bⱼ), expectation)
     if isnothing(dyn)
         @debug "Tightening dynamics shows non-overlap"
-        return
+        return nothing
     end
     
     input_noise_sets = cartesian_product(qᵢ, expectation.data.hrep)

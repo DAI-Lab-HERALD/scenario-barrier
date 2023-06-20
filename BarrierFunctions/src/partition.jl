@@ -30,12 +30,14 @@ Spatial.region(region::DynamicsRegion) = region.polytope
 Base.hash(p::DynamicsRegion, h::UInt) = hash(p.index, h)
 Base.:(==)(p1::DynamicsRegion, p2::DynamicsRegion) = p1.index == p2.index
 
-is_intersection_zeromeasure(p::DynamicsRegion, q::DynamicsRegion; kwargs...) = is_intersection_zeromeasure(region(p), region(q); kwargs...)
-is_intersection_zeromeasure(p::DynamicsRegion, q::LazySet; kwargs...) = is_intersection_zeromeasure(region(p), q; kwargs...)
-is_intersection_zeromeasure(p::LazySet, q::DynamicsRegion; kwargs...) = is_intersection_zeromeasure(q, p; kwargs...)
+is_intersection_zeromeasure(p::DynamicsRegion, q::DynamicsRegion; solver=nothing)::Bool = is_intersection_zeromeasure(region(p), region(q); solver=solver)
+is_intersection_zeromeasure(p::DynamicsRegion, q::AbstractPolyhedron; solver=nothing)::Bool = is_intersection_zeromeasure(region(p), q; solver=solver)
+is_intersection_zeromeasure(p::AbstractPolyhedron, q::DynamicsRegion; solver=nothing)::Bool = is_intersection_zeromeasure(q, p; solver=solver)
 
-function is_intersection_zeromeasure(p::LazySet{N}, q::LazySet{N}, solver=nothing) where {N}
-    z = HPolyhedron([constraints_list(p); constraints_list(q)])
+function is_intersection_zeromeasure(p::AbstractPolyhedron, q::AbstractPolyhedron; solver=nothing)::Bool
+    N = promote_type(eltype(p), eltype(q))
+
+    z = [constraints_list(p); constraints_list(q)]
 
     A, b = tosimplehrep(z)
     n = size(A, 2)
@@ -44,11 +46,13 @@ function is_intersection_zeromeasure(p::LazySet{N}, q::LazySet{N}, solver=nothin
         solver = default_lp_solver(N)
     end
 
-    model = Model(solver)
-    @variable(model, x[i=1:n])
+    model = Model(solver; add_bridges = false)
+    set_string_names_on_creation(model, false)
+
+    @variable(model, x[1:n])
     @variable(model, x₀, upper_bound=1.0)
 
-    @objective(model, Max, x₀)
+    @objective(model, Max, 1.0 * x₀)
 
     # Intuitively, if x₀ > 0 then the intersection is full-dimensional.
     @constraint(model, A * x .+ x₀ .≤ b)

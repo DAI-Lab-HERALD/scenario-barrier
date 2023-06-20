@@ -19,7 +19,7 @@ function verify(solver, system::AbstractSystem, H::Int, expectation_method::Expe
     B = barrier_variable!(model, system)
 
     # Constraints
-    constraints!(model, system, B, c, γ, expectation_method, solver)
+    constraints!(model, system, B, γ, c, expectation_method, solver)
 
     # Objective
     @objective(model, Min, γ + c * H)
@@ -66,7 +66,7 @@ function region_barrier_variable!(model, system, qᵢ)
     n = dimensionality(system)
 
     Xₛ = safe_set(system)
-    if is_intersection_zeromeasure(Xₛ, qᵢ)
+    if is_intersection_zeromeasure(Xₛ, region(qᵢ))
         p = zeros(n)
         v = 1.0
     else
@@ -131,7 +131,7 @@ function initial_constraint!(model, system, B::BarrierRegion{T, <:LinearBarrier}
     X₀ = initial_set(system)
 
     if isdisjoint(X₀, region(B))  # Must be strictly disjoint, as this constraint does not involve dynamics
-        return
+        return nothing
     end
 
     H₀, h₀ = tosimplehrep(intersection(X₀, region(B)))
@@ -152,9 +152,9 @@ function overlaps_unsafe(system, q)
     return false
 end
 
-function unsafe_constraint!(model, system, B::BarrierRegion{T, LinearBarrier{T1, VT1}}) where {T, T1, VT1}
+function unsafe_constraint!(model, system, B::BarrierRegion{T, <:LinearBarrier}) where {T}
     if !overlaps_unsafe(system, region(B))
-        return
+        return nothing
     end
 
     H, h = tosimplehrep(region(B))
