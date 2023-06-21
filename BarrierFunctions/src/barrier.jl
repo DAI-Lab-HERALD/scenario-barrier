@@ -4,14 +4,7 @@ export BarrierFunction, ConstantBarrier, LinearBarrier, QuadraticBarrier, Barrie
 abstract type BarrierFunction end
 
 # Simple barriers
-@kwdef struct ConstantBarrier{T} <: BarrierFunction
-    v::T
-end
-function (B::ConstantBarrier)(x)
-    return B.v
-end
-
-@kwdef struct LinearBarrier{T, VT<:AbstractVector{T}} <: BarrierFunction
+struct LinearBarrier{T, VT<:AbstractVector{T}} <: BarrierFunction
     p::VT
     v::T
 end
@@ -19,17 +12,7 @@ function (B::LinearBarrier)(x)
     return B.p' * x + B.v
 end
 
-@kwdef struct QuadraticBarrier{T, VT<:AbstractVector{T}, VVT<:AbstractMatrix{T}} <: BarrierFunction
-    P::VVT
-    p::VT
-    v::T
-end
-function (B::QuadraticBarrier)(x)
-    return x' * B.P * x + B.p' * x + B.v
-end
-matrix(B::QuadraticBarrier) = vcat(hcat(B.P, B.p), hcat(B.p', B.v))
-
-@kwdef struct PolynomialBarrier{T} <: BarrierFunction
+struct PolynomialBarrier{T} <: BarrierFunction
     p::AbstractPolynomialLike{T}
 end
 function (B::PolynomialBarrier)(x)
@@ -37,7 +20,7 @@ function (B::PolynomialBarrier)(x)
 end
 
 # Piece-wise barrier
-@kwdef struct BarrierRegion{T<:Real, B<:BarrierFunction}
+struct BarrierRegion{T<:Real, B<:BarrierFunction}
     index::Int
     polytope::AbstractPolyhedron{T}
     fun::B
@@ -59,15 +42,7 @@ struct PiecewiseBarrier <: BarrierFunction
     end
 end
 
-function (B::PiecewiseBarrier)(x::T) where {T<:Real}
-    for (_, Bᵢ) in B.regions
-        if [x] ∈ region(Bᵢ)
-            return Bᵢ.fun([x])
-        end
-    end
-
-    error("x not in supp(B)")
-end
+(B::PiecewiseBarrier)(x::T) where {T<:Real} = B([x])
 
 function (B::PiecewiseBarrier)(x::VT) where {VT<:AbstractVector{<:Real}}
     for (_, Bᵢ) in B.regions

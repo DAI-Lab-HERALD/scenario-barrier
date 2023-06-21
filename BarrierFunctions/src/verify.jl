@@ -80,15 +80,12 @@ end
 barrier_value(B::PiecewiseBarrier) = PiecewiseBarrier(index(Bᵢ) => barrier_value(Bᵢ) for Bᵢ in B)
 barrier_value(B::BarrierRegion) = BarrierRegion(index(B), region(B), barrier_value(B.fun))
 barrier_value(B::LinearBarrier) = LinearBarrier(value.(B.p), value(B.v))
-barrier_value(B::ConstantBarrier) = ConstantBarrier(value(B.v))
 barrier_value(B::PolynomialBarrier) = PolynomialBarrier(value(B.p))
 
 count_variables(B::PiecewiseBarrier) = sum(Bᵢ -> count_variables(Bᵢ), B)
 count_variables(B::BarrierRegion) = count_variables(B.fun)
 count_variables(B::LinearBarrier{T, VT}) where {T<:AbstractVariableRef, VT} = length(B.p) + 1
 count_variables(B::LinearBarrier{T, VT}) where {T<:Number, VT} = 0
-count_variables(B::ConstantBarrier{T}) where {T<:AbstractVariableRef} = 1
-count_variables(B::ConstantBarrier{T}) where {T<:Number} = 0
 count_variables(B::PolynomialBarrier) = length(monomials(B.p))
 
 # Piece-wise constraints
