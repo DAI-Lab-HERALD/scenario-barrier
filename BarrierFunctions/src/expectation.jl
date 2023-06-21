@@ -22,15 +22,15 @@ struct ExpectationData{T <: ExpectationMethod}
 end
 
 ### Sample avergae
-struct SampleAverage <: DataDrivenExpectationMethod
-    ϵ
-    β
+struct SampleAverage{T<:Real} <: DataDrivenExpectationMethod
+    ϵ::T
+    β::T
 
-    function SampleAverage(ϵ, β)
+    function SampleAverage(ϵ::T, β::T) where {T}
         @assert(0 < ϵ < 1, "Epsilon must be in range (0, 1) (is $ϵ)")
         @assert(0 < β < 1, "Beta must be in range (0, 1) (is $β)")
 
-        return new(ϵ, β)
+        return new{T}(ϵ, β)
     end
 end
 confidence(method::SampleAverage) = method.β
@@ -48,29 +48,40 @@ function prepare(system, method::SampleAverage, solver, d, num_samples)
 end
 
 ### The scenario approach
-struct ScenarioApproach <: DataDrivenExpectationMethod
-    ϵ
-    β
-    conv_hull
+struct ScenarioApproach{T<:Real} <: DataDrivenExpectationMethod
+    ϵ::T
+    β::T
+    conv_hull::Bool
 
-    function ScenarioApproach(ϵ, β, conv_hull=true)
+    function ScenarioApproach(ϵ::T, β::T, conv_hull=true) where {T}
         @assert(0 < ϵ < 1, "Epsilon must be in range (0, 1) (is $ϵ)")
         @assert(0 < β < 1, "Beta must be in range (0, 1) (is $β)")
 
-        return new(ϵ, β, conv_hull)
+        return new{T}(ϵ, β, conv_hull)
     end
 end
 confidence(method::ScenarioApproach) = method.β
 
-function required_samples(method::ScenarioApproach, d)
-    lower_bound = d + 1
-    upper_bound = ceil(Int, (ℯ / (ℯ - 1)) * (1 / method.ϵ) * (d + log(1 / method.β)))  # The funny ℯ is Euler's constant
+function beta(N, ϵ, d)
+    β = (1 - ϵ)^N
+    acc = log(one(ϵ))
 
-    beta(N) = sum(i -> binomial(big(N), i) * method.ϵ^i * (1 - method.ϵ)^(N - i), 0:(d - 1))
+    for i in 1:(d - 1)
+        acc += log(N) + log(ϵ) - log(i)
+
+        β += exp(acc + log(1 - ϵ) * (N - i))
+    end
+    
+    return β
+end
+
+function required_samples(method::ScenarioApproach, d::T) where {T<:Int}
+    lower_bound = d + 1
+    upper_bound = ceil(T, (2 / method.ϵ) * log(1 / method.β) + 2 * d + (2 * d / method.ϵ) * log(2 / method.ϵ))
 
     while lower_bound + 1 < upper_bound
-        mid = floor(Int, (lower_bound + upper_bound) / 2)
-        b = beta(mid)
+        mid = floor(T, (lower_bound + upper_bound) / 2)
+        b = beta(mid, method.ϵ, d)
 
         if b > method.β
             lower_bound = mid
@@ -140,7 +151,7 @@ function prepare(system, method::OverrideNumSamples, d)
 end
 
 ### Sample average expecation
-function expectation_constraint!(model, system, B::PolynomialBarrier, c, expectation::ExpectationData{SampleAverage})
+function expectation_constraint!(model, system, B::PolynomialBarrier, c, expectation::ExpectationData{<:SampleAverage})
     Xₛ = safe_set(system)
     f = dynamics(system)
 
@@ -155,7 +166,7 @@ function expectation_constraint!(model, system, B::PolynomialBarrier, c, expecta
 end
 
 ### Scenario approach expectation for different families of barriers
-function expectation_constraint!(model, system, B::PiecewiseBarrier, c, qᵢ, expectation::ExpectationData{ScenarioApproach})
+function expectation_constraint!(model, system, B::PiecewiseBarrier, c, qᵢ, expectation::ExpectationData{<:ScenarioApproach})
     Xₛ = safe_set(system)
     if is_intersection_zeromeasure(Xₛ, qᵢ)
         return nothing
@@ -242,7 +253,7 @@ function custom_minkowski_sum(qᵢ_next_nom::AbstractPolyhedron{N}, expectation)
     return qᵢ_next
 end
 
-function expectation_partition_constraint!(model, dyn, Bᵢ::BarrierRegion{T, <:LinearBarrier}, Bⱼ::BarrierRegion{T, <:LinearBarrier}, c, expectation::ExpectationData{ScenarioApproach}) where {T}
+function expectation_partition_constraint!(model, dyn, Bᵢ::BarrierRegion{T, <:LinearBarrier}, Bⱼ::BarrierRegion{T, <:LinearBarrier}, c, expectation::ExpectationData{<:ScenarioApproach}) where {T}
     qᵢ = tighten_region(dyn, region(Bᵢ), region(Bⱼ), expectation)
     if isnothing(qᵢ)
         @debug "Tightening region non-overlap"
