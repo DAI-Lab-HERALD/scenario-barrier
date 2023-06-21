@@ -4,7 +4,7 @@ using Distributions
 using Dualization
 
 export verify, barrier_variable!, partition_barrier_variable!, barrier_value, count_variables, overlaps_unsafe
-export constraints!, assymetric_dual_constraint!, unsafe_constraint!, initial_constraint!
+export constraints!, asymmetric_dual_constraint!, unsafe_constraint!, initial_constraint!
 export region_constraints!, non_negativity_constraint!
 
 function verify(solver, system::AbstractSystem, H::Int, expectation_method::ExpectationMethod)
@@ -113,7 +113,7 @@ end
 function non_negativity_constraint!(model, B::BarrierRegion{T, <:LinearBarrier}) where {T}
     H, h = tosimplehrep(region(B))
     p, v = B.fun.p, B.fun.v
-    assymetric_dual_constraint!(model, -p, v, H, h)
+    asymmetric_dual_constraint!(model, @expression(model, -p), v, H, h)
 end
 
 function upper_bound_constraint!(model, B::BarrierRegion{T, <:LinearBarrier}; M = 5) where {T}
@@ -121,7 +121,7 @@ function upper_bound_constraint!(model, B::BarrierRegion{T, <:LinearBarrier}; M 
     p, v = B.fun.p, B.fun.v
 
     M = 5
-    assymetric_dual_constraint!(model, p, M - v, H, h)
+    asymmetric_dual_constraint!(model, p, @expression(model, M - v), H, h)
 end
 
 function initial_constraint!(model, system, B::BarrierRegion{T, <:LinearBarrier}, γ) where {T}
@@ -133,7 +133,7 @@ function initial_constraint!(model, system, B::BarrierRegion{T, <:LinearBarrier}
 
     H₀, h₀ = tosimplehrep(intersection(X₀, region(B)))
     p, v = B.fun.p, B.fun.v
-    assymetric_dual_constraint!(model, p, γ - v, H₀, h₀)
+    asymmetric_dual_constraint!(model, p, @expression(model, γ - v), H₀, h₀)
 end
 
 function overlaps_unsafe(system, q)
@@ -156,10 +156,10 @@ function unsafe_constraint!(model, system, B::BarrierRegion{T, <:LinearBarrier})
 
     H, h = tosimplehrep(region(B))
     p, v = B.fun.p, B.fun.v
-    assymetric_dual_constraint!(model, -p, v - 1.0, H, h)
+    asymmetric_dual_constraint!(model, @expression(model, -p), @expression(model, v - 1.0), H, h)
 end
 
-function assymetric_dual_constraint!(model, c, rhs, H, h)
+function asymmetric_dual_constraint!(model, c, rhs, H, h)
     # Constraints of the form              [max_x  cᵀx, s.t. Hx ≤ h] ≤ rhs
     # reformulated to the asymmetric dual  [min_{y ≥ 0} yᵀh, s.t. Hᵀx = c] ≤ rhs
     # and lifted to the outer minimization.
@@ -172,8 +172,10 @@ function assymetric_dual_constraint!(model, c, rhs, H, h)
 
     H, h = tosimplehrep(normalize(HPolyhedron(H, h)))
 
-    @constraint(model, y ⋅ h ≤ rhs)
-    @constraint(model, H' * y .== c)
+    @constraints(model, begin
+        y' * h ≤ rhs
+        H' * y .== c
+    end)
 end
 
 # Polynomial constraints

@@ -267,10 +267,10 @@ function expectation_partition_constraint!(model, dyn, Bᵢ::BarrierRegion{T, <:
     ν = M * ϵ / (1 - ϵ)
 
     for (Aᵢ, bᵢ) in dyn
-        a = vcat(Aᵢ' * pⱼ .- pᵢ, pⱼ)
-        rhs = vᵢ + c - ν - vⱼ - pⱼ ⋅ bᵢ
+        a = vcat(@expression(model, Aᵢ' * pⱼ .- pᵢ), pⱼ)
+        rhs = @expression(model, vᵢ + c - ν - vⱼ - pⱼ ⋅ bᵢ)
 
-        assymetric_dual_constraint!(model, a, rhs, H, h)
+        asymmetric_dual_constraint!(model, a, rhs, H, h)
     end
 end
 
