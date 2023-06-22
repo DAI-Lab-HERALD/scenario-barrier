@@ -62,26 +62,15 @@ struct ScenarioApproach{T<:Real} <: DataDrivenExpectationMethod
 end
 confidence(method::ScenarioApproach) = method.β
 
-function beta(N, ϵ, d)
-    β = (1 - ϵ)^N
-    acc = log(one(ϵ))
-
-    for i in 1:(d - 1)
-        acc += log(N) + log(ϵ) - log(i)
-
-        β += exp(acc + log(1 - ϵ) * (N - i))
-    end
-    
-    return β
-end
-
 function required_samples(method::ScenarioApproach, d::T) where {T<:Int}
     lower_bound = d + 1
     upper_bound = ceil(T, (2 / method.ϵ) * log(1 / method.β) + 2 * d + (2 * d / method.ϵ) * log(2 / method.ϵ))
 
     while lower_bound + 1 < upper_bound
         mid = floor(T, (lower_bound + upper_bound) / 2)
-        b = beta(mid, method.ϵ, d)
+
+        η = Binomial(mid, method.ϵ)
+        b = cdf(η, d - 1)
 
         if b > method.β
             lower_bound = mid
