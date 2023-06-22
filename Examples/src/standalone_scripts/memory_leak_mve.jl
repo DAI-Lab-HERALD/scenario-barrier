@@ -107,6 +107,8 @@ function iterate_over_problem(H=5)
         problem(solver, system, H, expectation_method)
         # problem(solver)
 
+        GC.gc(true)
+
         # out = read(`top -bn1 -p $(getpid())`, String)
         # println("after $(split(split(out,  "\n")[end-1])[6])")
     end

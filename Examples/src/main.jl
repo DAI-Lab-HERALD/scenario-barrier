@@ -40,6 +40,7 @@ function run_experiment(problem::Problem)
     succ, B, prob = @time verify(solver, problem.system, problem.horizon, problem.expectation_method)
     println((succ, prob))
     println(B)
+    GC.gc(true)
 
     # Experiment run
     for i in 1:100
@@ -50,6 +51,8 @@ function run_experiment(problem::Problem)
             exec_time = time() - start_time
             push!(res, (success=succ, probability=prob, computation_time=exec_time))
         end
+
+        GC.gc(true)
     end
 
     @info "Done running" name=problem.name
