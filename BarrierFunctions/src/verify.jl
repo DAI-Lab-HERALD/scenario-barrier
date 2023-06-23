@@ -19,7 +19,7 @@ function verify(solver, system::AbstractSystem, H::Int, expectation_method::Expe
     B = barrier_variable!(model, system)
 
     # Constraints
-    constraints!(model, system, B, γ, c, expectation_method, solver)
+    constraints!(model, system, B, c, γ, expectation_method, solver)
 
     # Objective
     @objective(model, Min, γ + c * H)
