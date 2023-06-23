@@ -5,7 +5,7 @@ using MultivariatePolynomials, DynamicPolynomials, SemialgebraicSets
 
 using Distributions, PDMats, Random
 
-function martingale1d(uncertain=true)
+function martingale1d(uncertain=true, gaussian=true)
     vars = Symbolics.@variables x
 
     Q = [
@@ -26,9 +26,15 @@ function martingale1d(uncertain=true)
     split_spec = Int64[1 1 1 1 1][:,:]
     Q, dyn = grid_split(Q, dyn, split_spec)
 
-    μ = [0]
-    Σ = PDiagMat([0.01^2])  # Square to make std.dev. to variance.
-    η = DiagNormal(μ, Σ)
+    if gaussian
+        μ = [0]
+        Σ = PDiagMat([0.01^2])  # Square to make std.dev. to variance.
+        η = DiagNormal(μ, Σ)
+    else
+        μ = [-5.0]
+        Σ = PDiagMat([0.1^2])  # Square to make std.dev. to variance.
+        η = MvLogNormal(DiagNormal(μ, Σ))
+    end
 
     # Start in a box [-0.5, 0.5]
     X0 = LazySets.Interval(-0.5, 0.5)
@@ -45,12 +51,25 @@ function martingale1d(uncertain=true)
     return PiecewiseSystem(Q, dyn, η, X0, Xs, Xu)
 end
 
-prob_linear1d_uncertain = Problem("linear1d_uncertain", martingale1d(true), 10, ScenarioApproach(0.005/10, 1e-9))
-prob_linear1d_exact = Problem("linear1d_exact", martingale1d(false), 10, ScenarioApproach(0.005/10, 1e-9))
+prob_linear1d_uncertain = Problem("linear1d_uncertain", martingale1d(true, true), 10, ScenarioApproach(0.005/10, 1e-9))
+prob_linear1d_exact = Problem("linear1d_exact", martingale1d(false, true), 10, ScenarioApproach(0.005/10, 1e-9))
 
-probs_linear1d = [
+probs_linear1d_gaussian = [
     prob_linear1d_uncertain,
     prob_linear1d_exact
+]
+
+prob_linear1d_lognormal_uncertain = Problem("linear1d_lognormal_uncertain", martingale1d(true, false), 10, ScenarioApproach(0.005/10, 1e-9))
+prob_linear1d_lognormal_exact = Problem("linear1d_lognormal_exact", martingale1d(false, false), 10, ScenarioApproach(0.005/10, 1e-9))
+
+probs_linear1d_lognormal = [
+    prob_linear1d_lognormal_uncertain,
+    prob_linear1d_lognormal_exact
+];
+
+probs_linear1d = [
+    probs_linear1d_gaussian;
+    probs_linear1d_lognormal
 ];
 
 function sanity_check()
