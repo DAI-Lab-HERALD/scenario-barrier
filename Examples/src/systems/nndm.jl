@@ -36,7 +36,7 @@ function load_mat_system(path, initial_region_cb, stddev; eps=1e-12)
         Mₗᵢ = transpose(Mₗᵢ)  # Why is the transpose necessary?
         Mₕᵢ = transpose(Mₕᵢ)
 
-        dyn_i = [AffineDynamics(copy(Mₗᵢ), copy(Bₗᵢ[:, 1]) .- eps), AffineDynamics(copy(Mₕᵢ), copy(Bₕᵢ[:, 1]))]
+        dyn_i = [AffineDynamics(copy(Mₗᵢ), copy(Bₗᵢ[:, 1]) .- eps), AffineDynamics(copy(Mₕᵢ), copy(Bₕᵢ[:, 1]) .+ eps)]
         push!(dyn, dyn_i)
     end
 
@@ -191,6 +191,8 @@ probs_nndm_pendulum_1layer = [
     prob_nndm_pendulum_1layer_240regions,
     prob_nndm_pendulum_1layer_480regions
 ]
+
+prob_nndm_pendulum_1layer_120regions_sample_average = () -> Problem("nndm_pendulum_1layer_120regions_sample_average", nndm_system("pendulum", 1, 120), H, PolynomialBarrier, SampleAverage(0.005/H, 1e-4))
 
 prob_nndm_pendulum_2layer_120regions = () -> Problem("nndm_pendulum_2layer_120regions", nndm_system("pendulum", 2, 120), H, PiecewiseBarrier, ScenarioApproach(0.005/H, 1e-9))
 prob_nndm_pendulum_2layer_240regions = () -> Problem("nndm_pendulum_2layer_240regions", nndm_system("pendulum", 2, 240), H, PiecewiseBarrier, ScenarioApproach(0.005/H, 1e-9))
