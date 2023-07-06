@@ -51,16 +51,16 @@ function martingale1d(uncertain=true, gaussian=true)
     return PiecewiseSystem(Q, dyn, η, X0, Xs, Xu)
 end
 
-prob_linear1d_uncertain = Problem("linear1d_uncertain", martingale1d(true, true), 10, ScenarioApproach(0.005/10, 1e-9))
-prob_linear1d_exact = Problem("linear1d_exact", martingale1d(false, true), 10, ScenarioApproach(0.005/10, 1e-9))
+prob_linear1d_uncertain = Problem("linear1d_uncertain", martingale1d(true, true), 10, PiecewiseBarrier, ScenarioApproach(0.005/10, 1e-9))
+prob_linear1d_exact = Problem("linear1d_exact", martingale1d(false, true), 10, PiecewiseBarrier, ScenarioApproach(0.005/10, 1e-9))
 
 probs_linear1d_gaussian = [
     prob_linear1d_uncertain,
     prob_linear1d_exact
 ]
 
-prob_linear1d_lognormal_uncertain = Problem("linear1d_lognormal_uncertain", martingale1d(true, false), 10, ScenarioApproach(0.005/10, 1e-9))
-prob_linear1d_lognormal_exact = Problem("linear1d_lognormal_exact", martingale1d(false, false), 10, ScenarioApproach(0.005/10, 1e-9))
+prob_linear1d_lognormal_uncertain = Problem("linear1d_lognormal_uncertain", martingale1d(true, false), 10, PiecewiseBarrier, ScenarioApproach(0.005/10, 1e-9))
+prob_linear1d_lognormal_exact = Problem("linear1d_lognormal_exact", martingale1d(false, false), 10, PiecewiseBarrier, ScenarioApproach(0.005/10, 1e-9))
 
 probs_linear1d_lognormal = [
     prob_linear1d_lognormal_uncertain,
@@ -125,8 +125,8 @@ function cdc_martingale1d()
     return PiecewiseSystem{1, Float64}(Q, η, X0, Xs, Xu)
 end
 
-cdc_prob_linear1d = Problem("cdc_linear1d", cdc_martingale1d(), 10, ScenarioApproach(0.005/10, 1e-9, false))
-cdc_prob_linear1d_scenario = Problem("cdc_linear1d_scenario", cdc_martingale1d(), 10, ScenarioApproach(0.005/10, 0.01, false))
+cdc_prob_linear1d = Problem("cdc_linear1d", cdc_martingale1d(), 10, PiecewiseBarrier, ScenarioApproach(0.005/10, 1e-9, false))
+cdc_prob_linear1d_scenario = Problem("cdc_linear1d_scenario", cdc_martingale1d(), 10, PiecewiseBarrier, ScenarioApproach(0.005/10, 0.01, false))
 
 function cdc_martingale1d_polynomial()
     @polyvar x
@@ -147,4 +147,4 @@ function cdc_martingale1d_polynomial()
     return PolynomialSystem{1, Float64}(f, η, X0, Xs, Xu)
 end
 
-cdc_prob_linear1d_ssa = Problem("cdc_linear1d_ssa", cdc_martingale1d_polynomial(), 10, SampleAverage(0.015, 0.01))
+cdc_prob_linear1d_ssa = Problem("cdc_linear1d_ssa", cdc_martingale1d_polynomial(), 10, PolynomialBarrier, SampleAverage(0.015, 0.01))

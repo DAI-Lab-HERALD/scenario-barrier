@@ -78,10 +78,10 @@ function car_with_sidewind(;split="none")
     return PiecewiseSystem(Q, dyn, η, X0, Xs, Xu)
 end
 
-prob_car_with_sidewind_no_partitioning = Problem("car_with_sidewind_no_partitioning", car_with_sidewind(split="none"), 10, ScenarioApproach(0.005/10, 1e-9))
-prob_car_with_sidewind_lat_partitioning = Problem("car_with_sidewind_lat_partitioning", car_with_sidewind(split="lat"), 10, ScenarioApproach(0.005/10, 1e-9))
-prob_car_with_sidewind_lon_partitioning = Problem("car_with_sidewind_lon_partitioning", car_with_sidewind(split="lon"), 10, ScenarioApproach(0.005/10, 1e-9))
-prob_car_with_sidewind_latlon_partitioning = Problem("car_with_sidewind_latlon_partitioning", car_with_sidewind(split="latlon"), 10, ScenarioApproach(0.005/10, 1e-9))
+prob_car_with_sidewind_no_partitioning = Problem("car_with_sidewind_no_partitioning", car_with_sidewind(split="none"), 10, PiecewiseBarrier, ScenarioApproach(0.005/10, 1e-9))
+prob_car_with_sidewind_lat_partitioning = Problem("car_with_sidewind_lat_partitioning", car_with_sidewind(split="lat"), 10, PiecewiseBarrier, ScenarioApproach(0.005/10, 1e-9))
+prob_car_with_sidewind_lon_partitioning = Problem("car_with_sidewind_lon_partitioning", car_with_sidewind(split="lon"), 10, PiecewiseBarrier, ScenarioApproach(0.005/10, 1e-9))
+prob_car_with_sidewind_latlon_partitioning = Problem("car_with_sidewind_latlon_partitioning", car_with_sidewind(split="latlon"), 10, PiecewiseBarrier, ScenarioApproach(0.005/10, 1e-9))
 
 probs_car_with_sidewind = [
     prob_car_with_sidewind_no_partitioning,
@@ -169,7 +169,7 @@ function cdc_car_with_sidewind(;split="none")
     return PiecewiseSystem{2, Float64}(Q, η, X0, Xs, Xu)
 end
 
-cdc_prob_car_with_sidewind_no_partitioning = Problem("cdc_car_with_sidewind_no_partitioning", cdc_car_with_sidewind(split="none"), 10, ScenarioApproach(0.005/10, 1e-9, false))
-cdc_prob_car_with_sidewind_lat_partitioning = Problem("cdc_car_with_sidewind_lat_partitioning", cdc_car_with_sidewind(split="lat"), 10, ScenarioApproach(0.005/10, 1e-9, false))
-cdc_prob_car_with_sidewind_lon_partitioning = Problem("cdc_car_with_sidewind_lon_partitioning", cdc_car_with_sidewind(split="lon"), 10, ScenarioApproach(0.005/10, 1e-9, false))
-cdc_prob_car_with_sidewind_latlon_partitioning = Problem("cdc_car_with_sidewind_latlon_partitioning", cdc_car_with_sidewind(split="latlon"), 10, ScenarioApproach(0.005/10, 1e-9, false))
+cdc_prob_car_with_sidewind_no_partitioning = Problem("cdc_car_with_sidewind_no_partitioning", cdc_car_with_sidewind(split="none"), 10, PiecewiseBarrier, ScenarioApproach(0.005/10, 1e-9, false))
+cdc_prob_car_with_sidewind_lat_partitioning = Problem("cdc_car_with_sidewind_lat_partitioning", cdc_car_with_sidewind(split="lat"), 10, PiecewiseBarrier, ScenarioApproach(0.005/10, 1e-9, false))
+cdc_prob_car_with_sidewind_lon_partitioning = Problem("cdc_car_with_sidewind_lon_partitioning", cdc_car_with_sidewind(split="lon"), 10, PiecewiseBarrier, ScenarioApproach(0.005/10, 1e-9, false))
+cdc_prob_car_with_sidewind_latlon_partitioning = Problem("cdc_car_with_sidewind_latlon_partitioning", cdc_car_with_sidewind(split="latlon"), 10, PiecewiseBarrier, ScenarioApproach(0.005/10, 1e-9, false))

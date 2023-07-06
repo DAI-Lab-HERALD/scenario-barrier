@@ -7,7 +7,7 @@ export verify, barrier_variable!, partition_barrier_variable!, barrier_value, co
 export constraints!, asymmetric_dual_constraint!, unsafe_constraint!, initial_constraint!
 export region_constraints!, non_negativity_constraint!
 
-function verify(solver, system::AbstractSystem, H::Int, expectation_method::ExpectationMethod)
+function verify(solver, barrier_type::Type{<:BarrierFunction}, system::AbstractSystem, H::Int, expectation_method::ExpectationMethod)
     @assert(H >= 1, "Horizon H must be greater than or equal to one (is $H)")
 
     # solver = dual_optimizer(solver)
@@ -16,7 +16,7 @@ function verify(solver, system::AbstractSystem, H::Int, expectation_method::Expe
     # Decision variables
     @variable(model, γ, lower_bound = 0)
     @variable(model, c, lower_bound = 0)
-    B = barrier_variable!(model, system)
+    B = barrier_variable!(model, barrier_type, system)
 
     # Constraints
     constraints!(model, system, B, c, γ, expectation_method, solver)
@@ -43,7 +43,7 @@ function verify(solver, system::AbstractSystem, H::Int, expectation_method::Expe
     return succ, B, prob
 end
 
-function barrier_variable!(model, system::PiecewiseSystem)
+function barrier_variable!(model, ::Type{<:PiecewiseBarrier}, system::PiecewiseSystem)
     B = PiecewiseBarrier(
            qᵢ => region_barrier_variable!(model, system, qᵢ)
            for qᵢ in regions(system)
@@ -52,7 +52,7 @@ function barrier_variable!(model, system::PiecewiseSystem)
     return B
 end
 
-function barrier_variable!(model, system::PolynomialSystem)
+function barrier_variable!(model, ::Type{<:PolynomialBarrier}, system)
     vars = variables(system)
     monos = monomials(vars, 0:4)
     # Use SOSPoly to enforce non-negativity
@@ -89,7 +89,7 @@ count_variables(B::LinearBarrier{T, VT}) where {T<:Number, VT} = 0
 count_variables(B::PolynomialBarrier) = length(monomials(B.p))
 
 # Piece-wise constraints
-function constraints!(model, system::PiecewiseSystem, B, c, γ, expectation_method, solver)
+function constraints!(model, system, B::PiecewiseBarrier, c, γ, expectation_method, solver)
     n_variables = count_variables(B) + 2
     expectation = prepare(system, expectation_method, solver, n_variables)
 
@@ -179,7 +179,7 @@ function asymmetric_dual_constraint!(model, c, rhs, H, h)
 end
 
 # Polynomial constraints
-function constraints!(model, system::PolynomialSystem, B, c, γ, expectation_method, solver)
+function constraints!(model, system, B::PolynomialBarrier, c, γ, expectation_method, solver)
     n_variables = count_variables(B) + 2
     expectation = prepare(system, expectation_method, solver, n_variables)
 
