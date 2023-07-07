@@ -54,22 +54,18 @@ end
 
 function barrier_variable!(model, ::Type{<:PolynomialBarrier}, system::PolynomialSystem)
     vars = variables(system)
-    monos = monomials(vars, 0:4)
-    # This is ugly, but apparently, it is faster than using SOSPoly
-    B = @variable(model, [1:length(monos)])
-    B = dot(B, vars)
-    @constraint(model, B in SOSCone())
+    monos = monomials(vars, 0:2)
+    # Encode non-negativity with SOSPoly
+    @variable(model, B, variable_type=SOSPoly(monos))
 
     return PolynomialBarrier(B, vars)
 end
 
 function barrier_variable!(model, ::Type{<:PolynomialBarrier}, system::PiecewiseSystem)
     @polyvar x[1:dimensionality(system)]
-    monos = monomials(x, 0:4)
-    # This is ugly, but apparently, it is faster than using SOSPoly
-    B = @variable(model, [1:length(monos)])
-    B = dot(B, monos)
-    @constraint(model, B in SOSCone())
+    monos = monomials(x, 0:2)
+    # Encode non-negativity with SOSPoly
+    @variable(model, B, variable_type=SOSPoly(monos))
 
     return PolynomialBarrier(B, x)
 end
