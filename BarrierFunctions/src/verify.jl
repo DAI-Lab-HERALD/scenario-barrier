@@ -192,9 +192,17 @@ function constraints!(model, system, B::PolynomialBarrier, c, γ, expectation_me
     n_variables = count_variables(B) + 2
     expectation = prepare(system, expectation_method, solver, n_variables)
 
+    upper_bound_constraint!(model, system, B)
     initial_constraint!(model, system, B, γ)
     unsafe_constraint!(model, system, B)
     expectation_constraint!(model, system, B, c, expectation)
+end
+
+function upper_bound_constraint!(model, ::PolynomialSystem, B::BarrierRegion{T, <:LinearBarrier}; M = 5) where {T}
+    X = state_space(system)
+    M = 2.0
+
+    @constraint(model, M - B.p in SOSCone(), domain=X)
 end
 
 function initial_constraint!(model, system::PolynomialSystem, B::PolynomialBarrier, γ)

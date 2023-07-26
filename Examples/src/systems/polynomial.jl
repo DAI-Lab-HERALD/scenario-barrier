@@ -14,14 +14,15 @@ function polynomial()
     Σ = PDiagMat([0.1^2, 0.1^2])  # Square to make std.dev. to variance.
     η = DiagNormal(μ, Σ)
 
-    X0 = @set (x[1] - 1.5)^2 + x[2]^2 ≤ 0.25
-    Xs = @set (x[1] + 1)^2 + (x[2] + 1)^2 ≥ 0.16
+    X = @set (x[1] - 0.75)^2 ≤ 2.75^2 && (x[2] - 1.0)^2 ≤ 1.5^2
+    X0 = @set (x[1] - 1.5)^2 + x[2]^2 ≤ 0.5^2
+    Xs = @set (x[1] + 1)^2 + (x[2] + 1)^2 ≥ 0.4^2
 
     Xu = [
-        @set (x[1] + 1)^2 + (x[2] + 1)^2 ≤ 0.16
+        @set (x[1] + 1)^2 + (x[2] + 1)^2 ≤ 0.4^2
     ]
 
-    return PolynomialSystem{2, Float64}(f, η, X0, Xs, Xu)
+    return PolynomialSystem{2, Float64}(f, η, X, X0, Xs, Xu)
 end
 
 prob_polynomial_scenario_approach = Problem("prob_polynomial_scenario_approach", polynomial(), 1, PolynomialBarrier, ScenarioApproach(0.005/1, 1e-4, false))

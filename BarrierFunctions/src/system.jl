@@ -5,7 +5,7 @@ export dimensionality, safe_set, unsafe_set, initial_set, regions, noise, next_s
 
 abstract type AbstractSystem end
 
-@kwdef struct PiecewiseSystem{N, T<:Real} <: AbstractSystem
+struct PiecewiseSystem{N, T<:Real} <: AbstractSystem
     Q::AbstractSpatialIndex{T, DynamicsRegion{T}}
 
     η::Sampleable
@@ -45,20 +45,22 @@ unsafe_set(s::PiecewiseSystem) = s.Xu
 regions(system::PiecewiseSystem) = system.Q
 noise(s::PiecewiseSystem) = s.η
 
-@kwdef struct PolynomialSystem{N, T<:Real} <: AbstractSystem
+struct PolynomialSystem{N, T<:Real} <: AbstractSystem
     vars::Vector{<:MultivariatePolynomials.AbstractVariable}
     f::Vector{AbstractPolynomialLike{T}}
 
     η::Sampleable
 
+    X::AbstractSemialgebraicSet
     X0::AbstractSemialgebraicSet
     Xs::AbstractSemialgebraicSet
     Xu::Vector{AbstractSemialgebraicSet}
 end
 
-PolynomialSystem{N, T}(f, η, X0, Xs, Xu) where {N, T} = PolynomialSystem{N, T}(MultivariatePolynomials.variables(f), f, η, X0, Xs, Xu)
+PolynomialSystem{N, T}(f, η, X, X0, Xs, Xu) where {N, T} = PolynomialSystem{N, T}(MultivariatePolynomials.variables(f), f, η, X, X0, Xs, Xu)
 
 dimensionality(::PolynomialSystem{N, T}) where {N, T} = N
+state_space(s::PolynomialSystem) = s.X
 initial_set(s::PolynomialSystem) = s.X0
 safe_set(s::PolynomialSystem) = s.Xs
 unsafe_set(s::PolynomialSystem) = s.Xu

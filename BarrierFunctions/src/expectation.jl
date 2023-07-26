@@ -35,9 +35,12 @@ struct SampleAverage{T<:Real} <: DataDrivenExpectationMethod
     end
 end
 confidence(method::SampleAverage) = method.β
-# FIXME: Warning - the numerator is incorrect, but necessary to make the problem tractable.
-# TODO: Update to use theory from Theorem 5.18 of Lectures on Stochastic Programming by Shapiro.
-required_samples(method::SampleAverage, d) = ceil(Int64, 0.0001 / (method.ϵ^2 * method.β))
+function required_samples(method::SampleAverage, d) 
+    M = 2.0
+    n = ceil(Int64, -log(method.β) * (0 - M)^2 / (2 * method.ϵ^2))
+
+    return n
+end
 
 function prepare(system, method::SampleAverage, solver, d, num_samples)
     distribution = noise(system)
@@ -151,7 +154,6 @@ function expectation_constraint!(model, system::PolynomialSystem, B::PolynomialB
     f = dynamics(system)
     x = variables(B)
 
-    # We can let M = 1 [max var(B(f(x, w))] as B(x) can be modified aposterori to be clipped to [0, 1] without violating the theory
     ϵ = expectation.method.ϵ
 
     @polyvar ws[1:dimensionality(system)]
@@ -167,7 +169,7 @@ function expectation_constraint!(model, system::PolynomialSystem, B::PolynomialB
         return new_term * empirical_mean
     end
 
-    @constraint(model, -B_next + B.p + c - ϵ in SOSCone(), domain=Xₛ)
+    @constraint(model, -B_next - ϵ + B.p + c in SOSCone(), domain=Xₛ)
 end
 
 function expectation_constraint!(model, system::PiecewiseSystem, B::PolynomialBarrier, c, expectation::ExpectationData{<:SampleAverage})
@@ -193,11 +195,11 @@ function expectation_constraint!(model, system::PiecewiseSystem, B::PolynomialBa
     y_lag_monos = monomials(y, 0:2)
     x_lag_monos = monomials(x, 0:2)
 
-    basic_constraint = @expression(model, -B_next - ϵ + B.p + c)
+    base_constraint = @expression(model, -B_next - ϵ + B.p + c)
 
     for qᵢ in regions(system)
         if is_intersection_zeromeasure(Xₛ, qᵢ)
-            return nothing
+            continue
         end
 
         fᵢ = dynamics(qᵢ)
@@ -207,8 +209,6 @@ function expectation_constraint!(model, system::PiecewiseSystem, B::PolynomialBa
         f̲ᵢ = A̲ᵢ * x + b̲ᵢ
         f̅ᵢ = A̅ᵢ * x + b̅ᵢ
 
-        # We can let M = 1 [max var(B(f(x, w))] as B(x) can be modified aposterori to be clipped to [0, 1] without violating the theory
-
         y_domain = (f̅ᵢ - y) .* (y - f̲ᵢ)
         y_lag = @variable(model, [1:length(y_domain)], variable_type=SOSPoly(y_lag_monos))
 
@@ -216,7 +216,7 @@ function expectation_constraint!(model, system::PiecewiseSystem, B::PolynomialBa
         qᵢ_symbolic = h .- H * x  # Hx ≤ h
         x_lag = @variable(model, [1:length(qᵢ_symbolic)], variable_type=SOSPoly(x_lag_monos))
 
-        @constraint(model, basic_constraint - dot(x_lag, qᵢ_symbolic) - dot(y_lag, y_domain) in SOSCone())
+        @constraint(model, base_constraint - dot(x_lag, qᵢ_symbolic) - dot(y_lag, y_domain) in SOSCone())
     end
 end
 
