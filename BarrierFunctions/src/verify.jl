@@ -198,7 +198,7 @@ function constraints!(model, system, B::PolynomialBarrier, c, γ, expectation_me
     expectation_constraint!(model, system, B, c, expectation)
 end
 
-function upper_bound_constraint!(model, system::PiecewiseSystem, B::PolynomialBarrier; M = 2) where {T}
+function upper_bound_constraint!(model, system::PiecewiseSystem, B::PolynomialBarrier; M = 2)
     x = variables(B)
 
     for qᵢ in regions(system)
@@ -209,7 +209,7 @@ function upper_bound_constraint!(model, system::PiecewiseSystem, B::PolynomialBa
     end
 end
 
-function upper_bound_constraint!(model, system::PolynomialSystem, B::PolynomialBarrier; M = 2) where {T}
+function upper_bound_constraint!(model, system::PolynomialSystem, B::PolynomialBarrier; M = 2)
     Xₛ = safe_set(system)
 
     @constraint(model, M - B.p in SOSCone(), domain=Xₛ)
