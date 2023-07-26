@@ -51,16 +51,14 @@ struct PolynomialSystem{N, T<:Real} <: AbstractSystem
 
     η::Sampleable
 
-    X::AbstractSemialgebraicSet
     X0::AbstractSemialgebraicSet
     Xs::AbstractSemialgebraicSet
     Xu::Vector{AbstractSemialgebraicSet}
 end
 
-PolynomialSystem{N, T}(f, η, X, X0, Xs, Xu) where {N, T} = PolynomialSystem{N, T}(MultivariatePolynomials.variables(f), f, η, X, X0, Xs, Xu)
+PolynomialSystem{N, T}(f, η, X0, Xs, Xu) where {N, T} = PolynomialSystem{N, T}(MultivariatePolynomials.variables(f), f, η, X0, Xs, Xu)
 
 dimensionality(::PolynomialSystem{N, T}) where {N, T} = N
-state_space(s::PolynomialSystem) = s.X
 initial_set(s::PolynomialSystem) = s.X0
 safe_set(s::PolynomialSystem) = s.Xs
 unsafe_set(s::PolynomialSystem) = s.Xu

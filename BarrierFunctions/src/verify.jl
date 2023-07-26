@@ -198,11 +198,21 @@ function constraints!(model, system, B::PolynomialBarrier, c, γ, expectation_me
     expectation_constraint!(model, system, B, c, expectation)
 end
 
-function upper_bound_constraint!(model, ::PolynomialSystem, B::BarrierRegion{T, <:LinearBarrier}; M = 5) where {T}
-    X = state_space(system)
-    M = 2.0
+function upper_bound_constraint!(model, system::PiecewiseSystem, B::PolynomialBarrier; M = 2) where {T}
+    x = variables(B)
 
-    @constraint(model, M - B.p in SOSCone(), domain=X)
+    for qᵢ in regions(system)
+        H, h = tosimplehrep(region(qᵢ))
+        qᵢ_symbolic = BasicSemialgebraicSet(FullSpace(), h .- H * x)  # Hx ≤ h
+
+        @constraint(model, M - B.p in SOSCone(), domain=qᵢ_symbolic)
+    end
+end
+
+function upper_bound_constraint!(model, system::PolynomialSystem, B::PolynomialBarrier; M = 2) where {T}
+    Xₛ = safe_set(system)
+
+    @constraint(model, M - B.p in SOSCone(), domain=Xₛ)
 end
 
 function initial_constraint!(model, system::PolynomialSystem, B::PolynomialBarrier, γ)
