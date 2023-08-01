@@ -203,20 +203,34 @@ function expectation_constraint!(model, system::PiecewiseSystem, B::PolynomialBa
         end
 
         fᵢ = dynamics(qᵢ)
-        @assert length(fᵢ) == 2
-        (A̲ᵢ, b̲ᵢ), (A̅ᵢ, b̅ᵢ) = fᵢ
 
-        f̲ᵢ = A̲ᵢ * x + b̲ᵢ
-        f̅ᵢ = A̅ᵢ * x + b̅ᵢ
+        if length(fᵢ) == 1
+            (Aᵢ, bᵢ) = fᵢ[1]
 
-        y_domain = (f̅ᵢ - y) .* (y - f̲ᵢ)
-        y_lag = @variable(model, [1:length(y_domain)], variable_type=SOSPoly(y_lag_monos))
+            constraint = subs(base_constraint, y => Aᵢ * x + bᵢ)
 
-        H, h = tosimplehrep(qᵢ)
-        qᵢ_symbolic = h .- H * x  # Hx ≤ h
-        x_lag = @variable(model, [1:length(qᵢ_symbolic)], variable_type=SOSPoly(x_lag_monos))
+            H, h = tosimplehrep(qᵢ)
+            qᵢ_symbolic = h .- H * x  # Hx ≤ h
+            x_lag = @variable(model, [1:length(qᵢ_symbolic)], variable_type=SOSPoly(x_lag_monos))
 
-        @constraint(model, base_constraint - dot(x_lag, qᵢ_symbolic) - dot(y_lag, y_domain) in SOSCone())
+            @constraint(model, constraint - dot(x_lag, qᵢ_symbolic) in SOSCone())
+        elseif length(fᵢ) == 2
+            (A̲ᵢ, b̲ᵢ), (A̅ᵢ, b̅ᵢ) = fᵢ
+
+            f̲ᵢ = A̲ᵢ * x + b̲ᵢ
+            f̅ᵢ = A̅ᵢ * x + b̅ᵢ
+    
+            y_domain = (f̅ᵢ - y) .* (y - f̲ᵢ)
+            y_lag = @variable(model, [1:length(y_domain)], variable_type=SOSPoly(y_lag_monos))
+    
+            H, h = tosimplehrep(qᵢ)
+            qᵢ_symbolic = h .- H * x  # Hx ≤ h
+            x_lag = @variable(model, [1:length(qᵢ_symbolic)], variable_type=SOSPoly(x_lag_monos))
+    
+            @constraint(model, base_constraint - dot(x_lag, qᵢ_symbolic) - dot(y_lag, y_domain) in SOSCone())
+        else
+            error("Unsupported number of vertices of convex hull dynamics")
+        end
     end
 end
 

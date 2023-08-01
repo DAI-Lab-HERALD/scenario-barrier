@@ -81,6 +81,14 @@ probs_drone = [
     prob_drone_exact
 ];
 
+prob_drone_uncertain_saa = Problem("drone_uncertain_saa", drone(true), 10, PolynomialBarrier, SampleAverage(0.005, 1e-9))
+prob_drone_exact_saa = Problem("drone_exact_saa", drone(false), 10, PolynomialBarrier, SampleAverage(0.005, 1e-9))
+
+probs_drone_saa = [
+    prob_drone_uncertain_saa,
+    prob_drone_exact_saa
+];
+
 
 function cdc_drone()
     # Only modeling longitudinal dynamics

@@ -90,6 +90,18 @@ probs_car_with_sidewind = [
     prob_car_with_sidewind_latlon_partitioning
 ];
 
+prob_car_with_sidewind_no_partitioning_saa = Problem("car_with_sidewind_no_partitioning_saa", car_with_sidewind(split="none"), 10, PolynomialBarrier, SampleAverage(0.005, 1e-9))
+prob_car_with_sidewind_lat_partitioning_saa = Problem("car_with_sidewind_lat_partitioning_saa", car_with_sidewind(split="lat"), 10, PolynomialBarrier, SampleAverage(0.005, 1e-9))
+prob_car_with_sidewind_lon_partitioning_saa = Problem("car_with_sidewind_lon_partitioning_saa", car_with_sidewind(split="lon"), 10, PolynomialBarrier, SampleAverage(0.005, 1e-9))
+prob_car_with_sidewind_latlon_partitioning_saa = Problem("car_with_sidewind_latlon_partitioning_saa", car_with_sidewind(split="latlon"), 10, PolynomialBarrier, SampleAverage(0.005, 1e-9))
+
+probs_car_with_sidewind_saa = [
+    prob_car_with_sidewind_no_partitioning_saa,
+    prob_car_with_sidewind_lat_partitioning_saa,
+    prob_car_with_sidewind_lon_partitioning_saa,
+    prob_car_with_sidewind_latlon_partitioning_saa
+];
+
 function cdc_car_with_sidewind(;split="none")
     # x[1] = longitudinal coordinate in meters
     # x[2] = lateral coordinate in meters

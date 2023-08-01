@@ -54,22 +54,17 @@ end
 prob_linear1d_uncertain = Problem("linear1d_uncertain", martingale1d(true, true), 10, PiecewiseBarrier, ScenarioApproach(0.005/10, 1e-9))
 prob_linear1d_exact = Problem("linear1d_exact", martingale1d(false, true), 10, PiecewiseBarrier, ScenarioApproach(0.005/10, 1e-9))
 
-probs_linear1d_gaussian = [
+probs_linear1d = [
     prob_linear1d_uncertain,
     prob_linear1d_exact
-]
-
-prob_linear1d_lognormal_uncertain = Problem("linear1d_lognormal_uncertain", martingale1d(true, false), 10, PiecewiseBarrier, ScenarioApproach(0.005/10, 1e-9))
-prob_linear1d_lognormal_exact = Problem("linear1d_lognormal_exact", martingale1d(false, false), 10, PiecewiseBarrier, ScenarioApproach(0.005/10, 1e-9))
-
-probs_linear1d_lognormal = [
-    prob_linear1d_lognormal_uncertain,
-    prob_linear1d_lognormal_exact
 ];
 
-probs_linear1d = [
-    probs_linear1d_gaussian;
-    probs_linear1d_lognormal
+prob_linear1d_uncertain_saa = Problem("linear1d_uncertain_saa", martingale1d(true, true), 10, PolynomialBarrier, SampleAverage(0.005, 1e-9))
+prob_linear1d_exact_saa = Problem("linear1d_exact_saa", martingale1d(false, true), 10, PolynomialBarrier, SampleAverage(0.005, 1e-9))
+
+probs_linear1d_saa = [
+    prob_linear1d_uncertain_saa,
+    prob_linear1d_exact_saa
 ];
 
 function sanity_check()
@@ -147,4 +142,4 @@ function cdc_martingale1d_polynomial()
     return PolynomialSystem{1, Float64}(f, η, X0, Xs, Xu)
 end
 
-cdc_prob_linear1d_ssa = Problem("cdc_linear1d_ssa", cdc_martingale1d_polynomial(), 10, PolynomialBarrier, SampleAverage(0.015, 0.01))
+cdc_prob_linear1d_saa = Problem("cdc_linear1d_ssa", cdc_martingale1d_polynomial(), 10, PolynomialBarrier, SampleAverage(0.015, 0.01))

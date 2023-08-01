@@ -33,7 +33,7 @@ function load_mat_system(path, initial_region_cb, stddev; eps=1e-12)
     # Dynamics
     dyn = []
     for (Mₗᵢ, Bₗᵢ, Mₕᵢ, Bₕᵢ) in zip(eachfirstdim(Mₗ), eachfirstdim(Bₗ), eachfirstdim(Mₕ), eachfirstdim(Bₕ))
-        Mₗᵢ = transpose(Mₗᵢ)  # Why is the transpose necessary?
+        Mₗᵢ = transpose(Mₗᵢ)  # The transpose necessary (validated in Python with bound_propagation)
         Mₕᵢ = transpose(Mₕᵢ)
 
         dyn_i = [AffineDynamics(copy(Mₗᵢ), copy(Bₗᵢ[:, 1]) .- eps), AffineDynamics(copy(Mₕᵢ), copy(Bₕᵢ[:, 1]) .+ eps)]
