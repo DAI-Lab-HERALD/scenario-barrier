@@ -37,9 +37,9 @@ function run_experiment(problem::Problem)
 
     # Warmup
     @info "Warmup" name=problem.name
-    succ, B, prob = @time verify(solver, problem.system, problem.horizon, problem.expectation_method)
+    succ, B, prob = @time verify(solver, problem.barrier_type, problem.system, problem.horizon, problem.expectation_method)
     println((succ, prob))
-    println(B)
+    # println(B)
     GC.gc(true)
 
     # Experiment run
@@ -47,7 +47,7 @@ function run_experiment(problem::Problem)
         @info "Iteration $i/100"
         with_logger(TerminalLogger(stderr, LogLevel(1); right_justify=120)) do
             start_time = time()
-            succ, _, prob = verify(solver, problem.system, problem.horizon, problem.expectation_method)
+            succ, _, prob = verify(solver, problem.barrier_type, problem.system, problem.horizon, problem.expectation_method)
             exec_time = time() - start_time
             push!(res, (success=succ, probability=prob, computation_time=exec_time))
         end

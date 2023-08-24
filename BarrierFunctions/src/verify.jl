@@ -7,7 +7,7 @@ export verify, barrier_variable!, partition_barrier_variable!, barrier_value, co
 export constraints!, asymmetric_dual_constraint!, unsafe_constraint!, initial_constraint!
 export region_constraints!, non_negativity_constraint!
 
-function verify(solver, system::AbstractSystem, H::Int, expectation_method::ExpectationMethod)
+function verify(solver, barrier_type::Type{<:BarrierFunction}, system::AbstractSystem, H::Int, expectation_method::ExpectationMethod)
     @assert(H >= 1, "Horizon H must be greater than or equal to one (is $H)")
 
     # solver = dual_optimizer(solver)
@@ -16,10 +16,10 @@ function verify(solver, system::AbstractSystem, H::Int, expectation_method::Expe
     # Decision variables
     @variable(model, γ, lower_bound = 0)
     @variable(model, c, lower_bound = 0)
-    B = barrier_variable!(model, system)
+    B = barrier_variable!(model, barrier_type, system)
 
     # Constraints
-    constraints!(model, system, B, γ, c, expectation_method, solver)
+    constraints!(model, system, B, c, γ, expectation_method, solver)
 
     # Objective
     @objective(model, Min, γ + c * H)
@@ -43,7 +43,7 @@ function verify(solver, system::AbstractSystem, H::Int, expectation_method::Expe
     return succ, B, prob
 end
 
-function barrier_variable!(model, system::PiecewiseSystem)
+function barrier_variable!(model, ::Type{<:PiecewiseBarrier}, system::PiecewiseSystem)
     B = PiecewiseBarrier(
            qᵢ => region_barrier_variable!(model, system, qᵢ)
            for qᵢ in regions(system)
@@ -52,13 +52,22 @@ function barrier_variable!(model, system::PiecewiseSystem)
     return B
 end
 
-function barrier_variable!(model, system::PolynomialSystem)
+function barrier_variable!(model, ::Type{<:PolynomialBarrier}, system::PolynomialSystem)
     vars = variables(system)
-    monos = monomials(vars, 0:4)
-    # Use SOSPoly to enforce non-negativity
-    B = @variable(model, variable_type=SOSPoly(monos))
+    monos = monomials(vars, 0:2)
+    # Encode non-negativity with SOSPoly
+    @variable(model, B, variable_type=SOSPoly(monos))
 
-    return PolynomialBarrier(B)
+    return PolynomialBarrier(B, vars)
+end
+
+function barrier_variable!(model, ::Type{<:PolynomialBarrier}, system::PiecewiseSystem)
+    @polyvar x[1:dimensionality(system)]
+    monos = monomials(x, 0:2)
+    # Encode non-negativity with SOSPoly
+    @variable(model, B, variable_type=SOSPoly(monos))
+
+    return PolynomialBarrier(B, x)
 end
 
 # Optimization variables
@@ -80,7 +89,7 @@ end
 barrier_value(B::PiecewiseBarrier) = PiecewiseBarrier(index(Bᵢ) => barrier_value(Bᵢ) for Bᵢ in B)
 barrier_value(B::BarrierRegion) = BarrierRegion(index(B), region(B), barrier_value(B.fun))
 barrier_value(B::LinearBarrier) = LinearBarrier(value.(B.p), value(B.v))
-barrier_value(B::PolynomialBarrier) = PolynomialBarrier(value(B.p))
+barrier_value(B::PolynomialBarrier) = PolynomialBarrier(value(B.p), B.vars)
 
 count_variables(B::PiecewiseBarrier) = sum(Bᵢ -> count_variables(Bᵢ), B)
 count_variables(B::BarrierRegion) = count_variables(B.fun)
@@ -89,7 +98,7 @@ count_variables(B::LinearBarrier{T, VT}) where {T<:Number, VT} = 0
 count_variables(B::PolynomialBarrier) = length(monomials(B.p))
 
 # Piece-wise constraints
-function constraints!(model, system::PiecewiseSystem, B, c, γ, expectation_method, solver)
+function constraints!(model, system, B::PiecewiseBarrier, c, γ, expectation_method, solver)
     n_variables = count_variables(B) + 2
     expectation = prepare(system, expectation_method, solver, n_variables)
 
@@ -179,25 +188,64 @@ function asymmetric_dual_constraint!(model, c, rhs, H, h)
 end
 
 # Polynomial constraints
-function constraints!(model, system::PolynomialSystem, B, c, γ, expectation_method, solver)
+function constraints!(model, system, B::PolynomialBarrier, c, γ, expectation_method, solver)
     n_variables = count_variables(B) + 2
     expectation = prepare(system, expectation_method, solver, n_variables)
 
+    upper_bound_constraint!(model, system, B)
     initial_constraint!(model, system, B, γ)
     unsafe_constraint!(model, system, B)
     expectation_constraint!(model, system, B, c, expectation)
 end
 
-function initial_constraint!(model, system, B::PolynomialBarrier, γ)
+function upper_bound_constraint!(model, system::PiecewiseSystem, B::PolynomialBarrier; M = 2)
+    x = variables(B)
+
+    for qᵢ in regions(system)
+        H, h = tosimplehrep(region(qᵢ))
+        qᵢ_symbolic = BasicSemialgebraicSet(FullSpace(), h .- H * x)  # Hx ≤ h
+
+        @constraint(model, M - B.p in SOSCone(), domain=qᵢ_symbolic)
+    end
+end
+
+function upper_bound_constraint!(model, system::PolynomialSystem, B::PolynomialBarrier; M = 2)
+    Xₛ = safe_set(system)
+
+    @constraint(model, M - B.p in SOSCone(), domain=Xₛ)
+end
+
+function initial_constraint!(model, system::PolynomialSystem, B::PolynomialBarrier, γ)
     X₀ = initial_set(system)
 
     @constraint(model, γ - B.p in SOSCone(), domain=X₀)
 end
 
-function unsafe_constraint!(model, system, B::PolynomialBarrier)
+function unsafe_constraint!(model, system::PolynomialSystem, B::PolynomialBarrier)
     Xᵤ = unsafe_set(system)
 
     for subset in Xᵤ
         @constraint(model, B.p - 1.0 in SOSCone(), domain=subset)
+    end
+end
+
+function initial_constraint!(model, system::PiecewiseSystem, B::PolynomialBarrier, γ)
+    X₀ = initial_set(system)
+    x = variables(B)
+
+    H, h = tosimplehrep(X₀)
+    X₀_symbolic = BasicSemialgebraicSet(FullSpace(), h .- H * x)  # Hx ≤ h
+
+    @constraint(model, γ - B.p in SOSCone(), domain=X₀_symbolic)
+end
+
+function unsafe_constraint!(model, system::PiecewiseSystem, B::PolynomialBarrier)
+    Xᵤ = unsafe_set(system)
+    x = variables(B)
+
+    for subset in Xᵤ
+        H, h = tosimplehrep(subset)
+        subset_symbolic = BasicSemialgebraicSet(FullSpace(), h .- H * x)  # Hx ≤ h
+        @constraint(model, B.p - 1.0 in SOSCone(), domain=subset_symbolic)
     end
 end

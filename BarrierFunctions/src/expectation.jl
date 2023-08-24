@@ -1,4 +1,5 @@
 using Polyhedra, LinearAlgebra, StaticArrays
+using Statistics
 
 export ExpectationMethod, SampleAverage, ScenarioApproach, OverrideNumSamples
 export ExpectationData
@@ -34,7 +35,12 @@ struct SampleAverage{T<:Real} <: DataDrivenExpectationMethod
     end
 end
 confidence(method::SampleAverage) = method.β
-required_samples(method::SampleAverage, d) = ceil(Int64, 1.0 / (method.ϵ^2 * method.β))
+function required_samples(method::SampleAverage, d) 
+    M = 2.0
+    n = ceil(Int64, -log(method.β) * (0 - M)^2 / (2 * method.ϵ^2))
+
+    return n
+end
 
 function prepare(system, method::SampleAverage, solver, d, num_samples)
     distribution = noise(system)
@@ -66,9 +72,12 @@ function required_samples(method::ScenarioApproach, d::T) where {T<:Int}
     lower_bound = d + 1
     upper_bound = ceil(T, (2 / method.ϵ) * log(1 / method.β) + 2 * d + (2 * d / method.ϵ) * log(2 / method.ϵ))
 
+    # Bisection
     while lower_bound + 1 < upper_bound
         mid = floor(T, (lower_bound + upper_bound) / 2)
 
+        # Compute beta for `mid` number of samples this way, as it is numerically sound.
+        # If doing it the naive way, then you end up with multiplication of very large and small numbers.
         η = Binomial(mid, method.ϵ)
         b = cdf(η, d - 1)
 
@@ -140,18 +149,89 @@ function prepare(system, method::OverrideNumSamples, d)
 end
 
 ### Sample average expecation
-function expectation_constraint!(model, system, B::PolynomialBarrier, c, expectation::ExpectationData{<:SampleAverage})
+function expectation_constraint!(model, system::PolynomialSystem, B::PolynomialBarrier, c, expectation::ExpectationData{<:SampleAverage})
     Xₛ = safe_set(system)
     f = dynamics(system)
+    x = variables(B)
 
-    # We can let M = 1 [max var(B(f(x, w))] as B(x) can be modified aposterori to be clipped to [0, 1] without violating the theory
     ϵ = expectation.method.ϵ
 
-    @polyvar w[1:dimensionality(system)]
-    B_next = subs(B.p, variables(system) => f + w)
-    B_next = sum(η -> subs(B_next, w => η), expectation.data) / length(expectation.data)
+    @polyvar ws[1:dimensionality(system)]
+    B_next = subs(B.p, x => f + ws)
 
-    @constraint(model, -B_next + B.p + c - ϵ in SOSCone(), domain=Xₛ)
+    # Fast and robust computation of the sample average
+    B_next = sum(terms(B_next)) do t
+        new_term = subs(t, ws => ones(length(ws)))
+        exponents = [MultivariatePolynomials.degree(t, w) for w in ws]
+        # Compute 1/N * sum_{i = 1}^N wᵢᵅ where wᵢ is a data vector and α is a vector of exponents.
+        empirical_mean = mean(η -> prod(splat(^), zip(η, exponents)), expectation.data)
+
+        return new_term * empirical_mean
+    end
+
+    @constraint(model, -B_next - ϵ + B.p + c in SOSCone(), domain=Xₛ)
+end
+
+function expectation_constraint!(model, system::PiecewiseSystem, B::PolynomialBarrier, c, expectation::ExpectationData{<:SampleAverage})
+    Xₛ = safe_set(system)
+    x = variables(B)
+
+    ϵ = expectation.method.ϵ
+
+    @polyvar ws[1:dimensionality(system)]
+    @polyvar y[1:dimensionality(system)]
+    B_next = subs(B.p, x => y + ws)
+
+    # Fast and robust computation of the sample average
+    B_next = sum(terms(B_next)) do t
+        new_term = subs(t, ws => ones(length(ws)))
+        exponents = [MultivariatePolynomials.degree(t, w) for w in ws]
+        # Compute 1/N * sum_{i = 1}^N wᵢᵅ where wᵢ is a data vector and α is a vector of exponents.
+        empirical_mean = mean(η -> prod(splat(^), zip(η, exponents)), expectation.data)
+
+        return new_term * empirical_mean
+    end
+
+    y_lag_monos = monomials(y, 0:2)
+    x_lag_monos = monomials(x, 0:2)
+
+    base_constraint = @expression(model, -B_next - ϵ + B.p + c)
+
+    for qᵢ in regions(system)
+        if is_intersection_zeromeasure(Xₛ, qᵢ)
+            continue
+        end
+
+        fᵢ = dynamics(qᵢ)
+
+        if length(fᵢ) == 1
+            (Aᵢ, bᵢ) = fᵢ[1]
+
+            constraint = subs(base_constraint, y => Aᵢ * x + bᵢ)
+
+            H, h = tosimplehrep(qᵢ)
+            qᵢ_symbolic = h .- H * x  # Hx ≤ h
+            x_lag = @variable(model, [1:length(qᵢ_symbolic)], variable_type=SOSPoly(x_lag_monos))
+
+            @constraint(model, constraint - dot(x_lag, qᵢ_symbolic) in SOSCone())
+        elseif length(fᵢ) == 2
+            (A̲ᵢ, b̲ᵢ), (A̅ᵢ, b̅ᵢ) = fᵢ
+
+            f̲ᵢ = A̲ᵢ * x + b̲ᵢ
+            f̅ᵢ = A̅ᵢ * x + b̅ᵢ
+    
+            y_domain = (f̅ᵢ - y) .* (y - f̲ᵢ)
+            y_lag = @variable(model, [1:length(y_domain)], variable_type=SOSPoly(y_lag_monos))
+    
+            H, h = tosimplehrep(qᵢ)
+            qᵢ_symbolic = h .- H * x  # Hx ≤ h
+            x_lag = @variable(model, [1:length(qᵢ_symbolic)], variable_type=SOSPoly(x_lag_monos))
+    
+            @constraint(model, base_constraint - dot(x_lag, qᵢ_symbolic) - dot(y_lag, y_domain) in SOSCone())
+        else
+            error("Unsupported number of vertices of convex hull dynamics")
+        end
+    end
 end
 
 ### Scenario approach expectation for different families of barriers

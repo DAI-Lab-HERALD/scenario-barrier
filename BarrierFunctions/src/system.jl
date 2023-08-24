@@ -5,7 +5,7 @@ export dimensionality, safe_set, unsafe_set, initial_set, regions, noise, next_s
 
 abstract type AbstractSystem end
 
-@kwdef struct PiecewiseSystem{N, T<:Real} <: AbstractSystem
+struct PiecewiseSystem{N, T<:Real} <: AbstractSystem
     Q::AbstractSpatialIndex{T, DynamicsRegion{T}}
 
     η::Sampleable
@@ -45,7 +45,7 @@ unsafe_set(s::PiecewiseSystem) = s.Xu
 regions(system::PiecewiseSystem) = system.Q
 noise(s::PiecewiseSystem) = s.η
 
-@kwdef struct PolynomialSystem{N, T<:Real} <: AbstractSystem
+struct PolynomialSystem{N, T<:Real} <: AbstractSystem
     vars::Vector{<:MultivariatePolynomials.AbstractVariable}
     f::Vector{AbstractPolynomialLike{T}}
 

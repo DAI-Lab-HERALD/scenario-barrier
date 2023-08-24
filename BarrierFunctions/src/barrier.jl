@@ -14,10 +14,14 @@ end
 
 struct PolynomialBarrier{T} <: BarrierFunction
     p::AbstractPolynomialLike{T}
+    # Store the variables separately, as the order is important
+    vars::Vector{<:MultivariatePolynomials.AbstractVariable}
 end
 function (B::PolynomialBarrier)(x)
     return B.p(x)
 end
+
+variables(B::PolynomialBarrier) = B.vars
 
 # Piece-wise barrier
 struct BarrierRegion{T<:Real, B<:BarrierFunction}
