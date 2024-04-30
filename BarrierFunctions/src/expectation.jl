@@ -285,7 +285,7 @@ function custom_minkowski_sum(qᵢ_next_nom::AbstractPolyhedron{N}, expectation)
     v = vertices_list(qᵢ_next_nom)
     center = reduce((+), v) ./ length(v)
     centered_qᵢ_next_nom = LazySets.translate(qᵢ_next_nom, -center)
-    min_norm = maximum(norm, vertices_list(centered_qᵢ_next_nom))
+    min_norm = minimum(norm, vertices_list(centered_qᵢ_next_nom))
     δ = inv(prevfloat(typemax(min_norm)))
     if min_norm ≥ δ # Safe to multiply with inverse
         invnrm = inv(min_norm)
