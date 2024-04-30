@@ -94,7 +94,10 @@ function cdc_martingale1d()
     ]
 
     Ab = singleton_dynamics(Float64[1][:,:], [0.0])
-    dyn = [Ab, Ab, Ab, Ab, Ab, Ab, Ab]
+    dyn = [Ab for _ in 1:length(Q)]
+
+    split_spec = Int64[1 1 1 1 1 1 1][:,:]
+    Q, dyn = grid_split(Q, dyn, split_spec)
 
     μ = [0]
     Σ = PDiagMat([0.01^2])  # Square to make std.dev. to variance.
@@ -120,8 +123,7 @@ function cdc_martingale1d()
     return PiecewiseSystem{1, Float64}(Q, η, X0, Xs, Xu)
 end
 
-cdc_prob_linear1d = Problem("cdc_linear1d", cdc_martingale1d(), 10, PiecewiseBarrier, ScenarioApproach(0.005/10, 1e-9, false))
-cdc_prob_linear1d_scenario = Problem("cdc_linear1d_scenario", cdc_martingale1d(), 10, PiecewiseBarrier, ScenarioApproach(0.005/10, 0.01, false))
+cdc_prob_linear1d = Problem("cdc_linear1d", cdc_martingale1d(), 10, PiecewiseBarrier, ScenarioApproach(0.005/10, 1e-9))
 
 function cdc_martingale1d_polynomial()
     @polyvar x
@@ -142,4 +144,4 @@ function cdc_martingale1d_polynomial()
     return PolynomialSystem{1, Float64}(f, η, X0, Xs, Xu)
 end
 
-cdc_prob_linear1d_saa = Problem("cdc_linear1d_ssa", cdc_martingale1d_polynomial(), 10, PolynomialBarrier, SampleAverage(0.015, 0.01))
+cdc_prob_linear1d_saa = Problem("cdc_linear1d_ssa", cdc_martingale1d_polynomial(), 10, PolynomialBarrier, SampleAverage(0.005, 1e-6))

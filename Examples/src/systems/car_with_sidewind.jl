@@ -181,7 +181,9 @@ function cdc_car_with_sidewind(;split="none")
     return PiecewiseSystem{2, Float64}(Q, η, X0, Xs, Xu)
 end
 
-cdc_prob_car_with_sidewind_no_partitioning = Problem("cdc_car_with_sidewind_no_partitioning", cdc_car_with_sidewind(split="none"), 10, PiecewiseBarrier, ScenarioApproach(0.005/10, 1e-9, false))
-cdc_prob_car_with_sidewind_lat_partitioning = Problem("cdc_car_with_sidewind_lat_partitioning", cdc_car_with_sidewind(split="lat"), 10, PiecewiseBarrier, ScenarioApproach(0.005/10, 1e-9, false))
-cdc_prob_car_with_sidewind_lon_partitioning = Problem("cdc_car_with_sidewind_lon_partitioning", cdc_car_with_sidewind(split="lon"), 10, PiecewiseBarrier, ScenarioApproach(0.005/10, 1e-9, false))
-cdc_prob_car_with_sidewind_latlon_partitioning = Problem("cdc_car_with_sidewind_latlon_partitioning", cdc_car_with_sidewind(split="latlon"), 10, PiecewiseBarrier, ScenarioApproach(0.005/10, 1e-9, false))
+cdc_prob_car_with_sidewind_no_partitioning = Problem("cdc_car_with_sidewind_no_partitioning", cdc_car_with_sidewind(split="none"), 10, PiecewiseBarrier, ScenarioApproach(0.005/10, 1e-9))
+cdc_prob_car_with_sidewind_lat_partitioning = Problem("cdc_car_with_sidewind_lat_partitioning", cdc_car_with_sidewind(split="lat"), 10, PiecewiseBarrier, ScenarioApproach(0.005/10, 1e-9))
+cdc_prob_car_with_sidewind_lon_partitioning = Problem("cdc_car_with_sidewind_lon_partitioning", cdc_car_with_sidewind(split="lon"), 10, PiecewiseBarrier, ScenarioApproach(0.005/10, 1e-9))
+cdc_prob_car_with_sidewind_latlon_partitioning = Problem("cdc_car_with_sidewind_latlon_partitioning", cdc_car_with_sidewind(split="latlon"), 10, PiecewiseBarrier, ScenarioApproach(0.005/10, 1e-9))
+
+cdc_prob_car_with_sidewind_saa = Problem("cdc_car_with_sidewind_saa", cdc_car_with_sidewind(), 10, PolynomialBarrier, SampleAverage(0.005, 1e-6))
