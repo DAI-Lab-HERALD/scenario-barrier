@@ -1,5 +1,5 @@
 using Polyhedra
-import GLPK, JuMP
+import HiGHS, GLPK, JuMP
 
 export AffineDynamics, ConvexHullDynamics, singleton_dynamics, DynamicsRegion, Partition, is_intersection_zeromeasure, index, region, dynamics
 
@@ -46,7 +46,7 @@ function is_intersection_zeromeasure(p::AbstractPolyhedron, q::AbstractPolyhedro
         solver = default_lp_solver(N)
     end
 
-    model = Model(solver; add_bridges = false)
+    model = Model(solver)
     set_string_names_on_creation(model, false)
 
     @variable(model, x[1:n])
@@ -66,7 +66,7 @@ end
 
 # default LP solver for floating-point numbers
 function default_lp_solver(N::Type{<:AbstractFloat})
-    JuMP.optimizer_with_attributes(() -> GLPK.Optimizer(method=GLPK.SIMPLEX))
+    JuMP.optimizer_with_attributes(HiGHS.Optimizer, "output_flag" => false)
 end
 
 # default LP solver for rational numbers

@@ -32,15 +32,17 @@ end
 
 function run_experiment(problem::Problem)
     @info "Running experiment" name=problem.name
-    solver = optimizer_with_attributes(Mosek.Optimizer, "INTPNT_BASIS" => MSK_BI_NEVER, "QUIET" => true)
+    solver = optimizer_with_attributes(Mosek.Optimizer, "INTPNT_BASIS" => MSK_BI_NEVER)
     res = []
 
     # Warmup
     @info "Warmup" name=problem.name
     succ, B, prob = @time verify(solver, problem.barrier_type, problem.system, problem.horizon, problem.expectation_method)
     println((succ, prob))
-    # println(B)
     GC.gc(true)
+
+
+    solver = optimizer_with_attributes(Mosek.Optimizer, "INTPNT_BASIS" => MSK_BI_NEVER, "QUIET" => true)
 
     # Experiment run
     for i in 1:100
@@ -75,4 +77,4 @@ end
 # run_experiments(probs_car_with_sidewind)
 # run_experiments(probs_drone)
 # run_experiments(probs_linear1d)
-# run_experiments(probs_nndm)
+run_experiments(probs_nndm_cartpole)

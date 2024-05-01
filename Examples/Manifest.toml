@@ -2,7 +2,7 @@
 
 julia_version = "1.10.1"
 manifest_format = "2.0"
-project_hash = "a05d38e5c724f24e87918451d3c02246b64fc8ff"
+project_hash = "41ddb74a09ffab6fbf57252a12d353d6e957f89f"
 
 [[deps.ADTypes]]
 git-tree-sha1 = "fcdb00b4d412b80ab08e39978e3bdef579e5e224"
@@ -140,7 +140,7 @@ uuid = "39de3d68-74b9-583c-8d2d-e117c070f3a9"
 version = "0.4.7"
 
 [[deps.BarrierFunctions]]
-deps = ["CDDLib", "ColorSchemes", "Colors", "Distributions", "Dualization", "DynamicPolynomials", "GLMakie", "GLPK", "InvertedIndices", "IterTools", "JuMP", "LazySets", "LinearAlgebra", "MathOptInterface", "MosekTools", "MultivariatePolynomials", "Plots", "PolyJuMP", "Polyhedra", "QHull", "Random", "ReachabilityBase", "SemialgebraicSets", "Spatial", "StaticArrays", "Statistics", "SumOfSquares"]
+deps = ["CDDLib", "ColorSchemes", "Colors", "Distributions", "Dualization", "DynamicPolynomials", "GLMakie", "GLPK", "HiGHS", "InvertedIndices", "IterTools", "JuMP", "LazySets", "LinearAlgebra", "MathOptInterface", "MosekTools", "MultivariatePolynomials", "Plots", "PolyJuMP", "Polyhedra", "QHull", "Random", "ReachabilityBase", "SemialgebraicSets", "SparseArrays", "Spatial", "StaticArrays", "Statistics", "SumOfSquares"]
 path = "../BarrierFunctions"
 uuid = "5dedeccf-5cb2-488c-aeb7-5be8ae7c4d1f"
 version = "0.1.0"
@@ -834,6 +834,18 @@ deps = ["Artifacts", "Cairo_jll", "Fontconfig_jll", "FreeType2_jll", "Glib_jll",
 git-tree-sha1 = "129acf094d168394e80ee1dc4bc06ec835e510a3"
 uuid = "2e76f6c2-a576-52d4-95c1-20adfe4de566"
 version = "2.8.1+1"
+
+[[deps.HiGHS]]
+deps = ["HiGHS_jll", "MathOptInterface", "PrecompileTools", "SparseArrays"]
+git-tree-sha1 = "a216e32299172b83abfe699604584f413ffbb045"
+uuid = "87dc4568-4c63-4d18-b0c0-bb2238e4078b"
+version = "1.9.0"
+
+[[deps.HiGHS_jll]]
+deps = ["Artifacts", "CompilerSupportLibraries_jll", "JLLWrappers", "Libdl", "Zlib_jll"]
+git-tree-sha1 = "9a550d55c49334beb538c5ad9504f07fc29a13dc"
+uuid = "8fd58aa0-07eb-5a78-9b36-339c94fd15ea"
+version = "1.7.0+0"
 
 [[deps.Hwloc_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl"]

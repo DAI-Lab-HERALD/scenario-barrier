@@ -4,11 +4,11 @@ module BarrierFunctions
     import MathOptInterface
     const MOI = MathOptInterface
 
-    using LazySets, ReachabilityBase.Require
+    using LazySets, ReachabilityBase.Require, ReachabilityBase.Commutative
     import Base.@kwdef
 
     using MultivariatePolynomials, DynamicPolynomials, SemialgebraicSets
-    using LinearAlgebra, Distributions
+    using LinearAlgebra, SparseArrays, Distributions
 
     include("sets/VPolyhedron.jl")
     include("operations/AffineGenerator.jl")

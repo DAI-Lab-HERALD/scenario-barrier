@@ -1,4 +1,4 @@
-using Polyhedra, LinearAlgebra, StaticArrays
+using Polyhedra, LinearAlgebra, SparseArrays, StaticArrays
 using Statistics
 
 export ExpectationMethod, SampleAverage, ScenarioApproach, OverrideNumSamples
@@ -91,7 +91,7 @@ function required_samples(method::ScenarioApproach, d::T) where {T<:Int}
     return upper_bound
 end
 
-function prepare(system::PiecewiseSystem, method::ScenarioApproach, solver, d, num_samples)
+function prepare(system::PiecewiseSystem{N, T}, method::ScenarioApproach, solver, d, num_samples) where {N, T}
     distribution = noise(system)
     ηs = rand(distribution, num_samples)
 
@@ -104,15 +104,15 @@ function prepare(system::PiecewiseSystem, method::ScenarioApproach, solver, d, n
 
     ηs = VPolytope(ηs)
     box_ηs = box_approximation(ηs)
-
-    hrep_ηs = normalize(tohrep(ηs))
     
-    template_dirs = CustomDirections([h.a for h in constraints_list(hrep_ηs)])
-    template_dirs = [(d, ρ(d, ηs)) for d in template_dirs]
+    vout = Vector{Vector{T}}(undef, length(vertices_list(ηs)) * 2 * 2^N)
+    for i in eachindex(vout)
+        vout[i] = zeros(T, N)
+    end
 
     return ExpectationData(
         method,
-        (vrep=ηs, hrep=hrep_ηs, box=box_ηs, template_dirs=template_dirs)
+        (vrep=ηs, box=box_ηs, vout=vout)
     )
 end
 
@@ -236,11 +236,6 @@ end
 
 ### Scenario approach expectation for different families of barriers
 function expectation_constraint!(model, system, B::PiecewiseBarrier, c, qᵢ, expectation::ExpectationData{<:ScenarioApproach})
-    Xₛ = safe_set(system)
-    if is_intersection_zeromeasure(Xₛ, qᵢ)
-        return nothing
-    end
-    
     qᵢ_next_nom = one_step_reachable_set(dynamics(qᵢ), region(qᵢ))
     qᵢ_next = custom_minkowski_sum(qᵢ_next_nom, expectation)
 
@@ -276,67 +271,112 @@ function one_step_reachable_set(dyn, qᵢ)
     return reachable_set
 end
 
-function custom_minkowski_sum(qᵢ_next_nom::AbstractPolyhedron{N}, expectation) where {N}
-    n = LazySets.dim(qᵢ_next_nom)
+function custom_minkowski_sum(qᵢ_next_nom::VPolyhedron{N}, expectation) where {N}
+    rlist1 = rays_list(qᵢ_next_nom)
+    vlist1 = vertices_list(qᵢ_next_nom)
+    vlist2 = vertices_list(expectation.data.vrep)
 
-    # Center and rescale qᵢ_next_nom for finding the normal vectors, to ameliorate numerical issues.
-    # Centering and rescaling does not impact the direction of the normal vectors, so
-    # we can do this without risk.
-    v = vertices_list(qᵢ_next_nom)
-    center = reduce((+), v) ./ length(v)
-    centered_qᵢ_next_nom = LazySets.translate(qᵢ_next_nom, -center)
-    min_norm = minimum(norm, vertices_list(centered_qᵢ_next_nom))
-    δ = inv(prevfloat(typemax(min_norm)))
-    if min_norm ≥ δ # Safe to multiply with inverse
-        invnrm = inv(min_norm)
-        centered_rescaled_qᵢ_next_nom = linear_map(Matrix(I * invnrm, n, n), centered_qᵢ_next_nom)
-    else # scale elements to avoid overflow
-        εδ = eps(one(min_norm))/δ
-        centered_rescaled_qᵢ_next_nom = linear_map(Matrix(I * εδ, n, n), centered_qᵢ_next_nom)
-        centered_rescaled_qᵢ_next_nom = linear_map(Matrix(I * inv(min_norm*εδ), n, n), centered_rescaled_qᵢ_next_nom)
-    end
-    centered_rescaled_hrep_qᵢ_next_nom = tohrep(centered_rescaled_qᵢ_next_nom)
-    nomial_template_dirs = [normalize(h.a) for h in constraints_list(centered_rescaled_hrep_qᵢ_next_nom)]
-    
-    # Use support vectors to find halfspace constant term. 
-    H = Vector{LazySets.HalfSpace{N, Vector{N}}}()
-    sizehint!(H, length(nomial_template_dirs) + length(expectation.data.template_dirs))
+    vpolytope_minkowski_sum!(expectation.data.vout, vlist1, vlist2)
+    vout = expectation.data.vout[1:(length(vlist1) * length(vlist2))]
 
-    for d in nomial_template_dirs
-        sf = ρ(d, qᵢ_next_nom) + ρ(d, expectation.data.vrep)
-        if !isinf(sf)
-            push!(H, LazySets.HalfSpace(d, sf))
-        end
-    end
-
-    for (d, ρ_val_noise) in expectation.data.template_dirs
-        sf = ρ(d, qᵢ_next_nom) + ρ_val_noise
-        if !isinf(sf)
-            push!(H, LazySets.HalfSpace(d, sf))
-        end
-    end
-
-    qᵢ_next = HPolyhedron(H)
-    qᵢ_next = normalize(qᵢ_next)
+    qᵢ_next = VPolyhedron(vout, rlist1)
 
     return qᵢ_next
 end
 
+function vpolytope_minkowski_sum!(vout, vlist1, vlist2)
+    i = 1
+
+    for vi in vlist1
+        for vj in vlist2
+            vout[i] .= vi .+ vj
+            i += 1
+        end
+    end
+end
+
+@commutative function LazySets.isdisjoint(P::VPolyhedron{N}, X::AbstractPolyhedron; solver=default_lp_solver(N)) where {N}
+    if isempty(P)
+        return true
+    end
+
+    for v in vertices_list(P)
+        if v ∈ X
+            return false
+        end
+    end
+
+    if LazySets.isbounded(P)
+        return true
+    else
+        return _isdisjoint_vpolyhedron(P, X; solver=solver)
+    end
+end
+
+@commutative function LazySets.isdisjoint(P::VPolyhedron{N}, X::AbstractZonotope; solver=default_lp_solver(N)) where {N}
+    if isempty(P)
+        return true
+    end
+
+    for v in vertices_list(P)
+        if v ∈ X
+            return false
+        end
+    end
+
+    if LazySets.isbounded(P)
+        return true
+    else
+        return _isdisjoint_vpolyhedron(P, X; solver=solver)
+    end
+end
+
+
+function _isdisjoint_vpolyhedron(P::VPolyhedron{N}, X; solver=default_lp_solver(N)) where {N}
+    vertices = vertices_list(P)
+    m = length(vertices)
+
+    rays = rays_list(P)
+    o = length(rays)
+
+    n = LazySets.dim(P)
+    @assert n == LazySets.dim(X) "Dimensionalities must match"
+
+    model = Model(solver)
+    set_string_names_on_creation(model, false)
+
+    @variable(model, λ[1:m] ≥ 0)
+    @variable(model, μ[1:o] ≥ 0)
+    @variable(model, x[1:n])
+
+    @constraint(model, sum(λ) == 1)
+    @constraint(model, sum(splat(*), zip(λ, vertices)) .+ sum(splat(*), zip(μ, rays)) .== x)
+
+    H, h = tosimplehrep(X)
+    @constraint(model, H * x ≤ h)
+
+    optimize!(model)
+
+    if termination_status(model) == MathOptInterface.OPTIMAL
+        return false
+    elseif termination_status(model) == MathOptInterface.INFEASIBLE
+        return true
+    end
+    error("LP returned status $(lp.status) unexpectedly")
+end
+
 function expectation_partition_constraint!(model, dyn, Bᵢ::BarrierRegion{T, <:LinearBarrier}, Bⱼ::BarrierRegion{T, <:LinearBarrier}, c, expectation::ExpectationData{<:ScenarioApproach}) where {T}
+    dyn = tighten_dynamics(dyn, region(Bᵢ), region(Bⱼ), expectation)
+    if isnothing(dyn)
+        @debug "Tightening dynamics shows non-overlap"
+        return nothing
+    end
+
     qᵢ = tighten_region(dyn, region(Bᵢ), region(Bⱼ), expectation)
     if isnothing(qᵢ)
         @debug "Tightening region non-overlap"
         return nothing
     end
-    
-    dyn = tighten_dynamics(dyn, qᵢ, region(Bⱼ), expectation)
-    if isnothing(dyn)
-        @debug "Tightening dynamics shows non-overlap"
-        return nothing
-    end
-    
-    input_noise_sets = cartesian_product(qᵢ, expectation.data.hrep)
-    H, h = tosimplehrep(input_noise_sets)
 
     pᵢ, vᵢ = Bᵢ.fun.p, Bᵢ.fun.v
     pⱼ, vⱼ = Bⱼ.fun.p, Bⱼ.fun.v
@@ -346,9 +386,16 @@ function expectation_partition_constraint!(model, dyn, Bᵢ::BarrierRegion{T, <:
     M = 1
     ν = M * ϵ / (1 - ϵ)
 
+    t = @variable(model)
+    vertices = vertices_list(expectation.data.vrep)
+    @constraint(model, [i=eachindex(vertices)], dot(pⱼ, vertices[i]) ≤ t)
+
+    H, h = tosimplehrep(qᵢ)
+    H = sparse(H)
+
     for (Aᵢ, bᵢ) in dyn
-        a = vcat(@expression(model, Aᵢ' * pⱼ .- pᵢ), pⱼ)
-        rhs = @expression(model, vᵢ + c - ν - vⱼ - pⱼ ⋅ bᵢ)
+        a = @expression(model, Aᵢ' * pⱼ .- pᵢ)
+        rhs = @expression(model, vᵢ + c - ν - vⱼ - pⱼ ⋅ bᵢ - t)
 
         asymmetric_dual_constraint!(model, a, rhs, H, h)
     end
