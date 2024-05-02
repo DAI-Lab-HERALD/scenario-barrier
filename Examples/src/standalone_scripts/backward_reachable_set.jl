@@ -3,7 +3,8 @@ using BarrierFunctions
 
 using LinearAlgebra
 
-using Plots
+using Plots, LaTeXStrings
+pgfplotsx()
 
 
 function one_step_reachable_set(dyn, qᵢ)
@@ -149,16 +150,38 @@ function binary_search_tighten_region(dyn, qᵢ, qⱼ, normal_vector, max, min; 
 end
 
 N = Float64
-A₁ = N[1 -1; 0 1]
-A₂ = N[1 1; -1 0]
+A₁ = N[1.0 0; 0 1.0]
+A₂ = N[-1.0 0; 0 -1.0]
+A₃ = 0.5 * A₁ + 0.5 * A₂
+A₄ = A₁ - A₂
 
-println((A₁, A₂))
-println((opnorm(A₁), opnorm(A₂)))
-println((det(A₁), det(A₂)))
+display(A₃)
+display(A₄)
+println(("det", det(A₁), det(A₂), det(A₃), det(A₄)))
 
-qᵢ = LazySets.Hyperrectangle(low=N[-5, 7], high=N[-4, 8])
+qᵢ = LazySets.Hyperrectangle(low=N[4, -8], high=N[5, -7])
 qᵢ_next = one_step_reachable_set([A₁, A₂], qᵢ)
-qⱼ = LazySets.translate(rand(HPolytope; seed=42, num_vertices=20), N[5, 7])
+qⱼ = LazySets.Hyperrectangle(low=N[2, 2], high=N[3, 3]) #LazySets.translate(rand(Hyperrectangle; seed=42), N[5, 7])
+
+# lower, upper = low(qᵢ), high(qᵢ)
+# x_range = LinRange(lower[1], upper[1], 4)
+# y_range = LinRange(lower[2], upper[2], 4)
+
+# f̂1lower(x, y) = (A₁ * [x; y])[1]
+# f̂2lower(x, y) = (A₁ * [x; y])[2]
+# f̂1upper(x, y) = (A₂ * [x; y])[1]
+# f̂2upper(x, y) = (A₂ * [x; y])[2]
+
+# green_cd = cgrad([:green, :green])
+# red_cd = cgrad([:red, :red])
+
+# p = Plots.surface(x_range, y_range, f̂1lower, color=green_cd, colorbar=false, xlabel="x_1", ylabel="x_2", title="y_1")
+# surface!(p, x_range, y_range, f̂1upper, color=red_cd)
+# display(p)
+
+# p = Plots.surface(x_range, y_range, f̂2lower, color=green_cd, colorbar=false, xlabel="x_1", ylabel="x_2", title="y_2")
+# surface!(p, x_range, y_range, f̂2upper, color=red_cd)
+# display(p)
 
 # dyn = tighten_dynamics([A₁, A₂], qᵢ, qⱼ)
 # qᵢ_next2 = one_step_reachable_set(dyn, qᵢ)
@@ -172,29 +195,38 @@ qⱼ_intersect_fqᵢ = intersection(qᵢ_next, qⱼ)
 # vs_x2 = first.(vs2)
 # vs_y2 = last.(vs2)
 
-Ys = [InverseLinearMap(A₁ * λ + A₂ * (1 - λ), qⱼ_intersect_fqᵢ) for λ in LinRange(0.0, 1.0, 20)]
+Ys = [InverseLinearMap(A₁ * λ + A₂ * (1 - λ), qⱼ) for λ in LinRange(0.0, 1.0, 10)]
 Ys_vertex = ConvexHull(Ys[1], Ys[end])
 
-p = plot(qᵢ, label="X", legend=:bottomleft)
+# p = plot(qᵢ, label="X", legend=:bottomleft)
 # plot!(p, qᵢ_tightened, label="qi tightened")
-plot!(p, qᵢ_next, label="conv(A(λ)X + b(λ))")
+# plot!(p, qᵢ_next, label="conv(A(λ)X + b(λ))")
 # plot!(p, qᵢ_next2, label="f(qi) = A(λ_pruned)q_i")
 # plot!(p, qⱼ, label="qj")
 # plot!(p, vs_x, vs_y, seriestype=:scatter, label="(qj ∩ f(qi)) vertices")
 # plot!(p, vs_x2, vs_y2, seriestype=:scatter, label="(qj ∩ f(qi) pruned) vertices")
 
-p = plot()
-plot!(p, qⱼ_intersect_fqᵢ, label="Pⱼ") #, xlims=(x_min, x_max), ylims=(y_min, y_max))
-plot!(p, Ys_vertex, label="conv(∪ A(λ)⁻¹(Pⱼ - b(λ)))") #, xlims=(x_min, x_max), ylims=(y_min, y_max))
+p = plot(qⱼ, label=L"$\bar{P}_j$", xlabel=L"$x_1$", ylabel=L"$x_2$", legend=:bottomright, size=(375, 240)) #, xlims=(x_min, x_max), ylims=(y_min, y_max))
+plot!(p, Ys_vertex, label=L"$\mathrm{conv}(A_i(0)^{-1}\bar{P}_j, A_i(1)^{-1}\bar{P}_j)$") #, xlims=(x_min, x_max), ylims=(y_min, y_max))
 
-for Y in [linear_map(A₁ * λ + A₂ * (1 - λ), qᵢ) for λ in LinRange(0, 1, 15)]
+for Y in Ys
     plot!(p, Y, fillalpha=0.0)
 end
 # plot!(p, vs_x, vs_y, seriestype=:scatter, label="(qj ∩ f(qi)) vertices")
 # plot!(p, vs_x2, vs_y2, seriestype=:scatter, label="(qj ∩ f(qi) pruned) vertices")
-
-# for Y in [linear_map(A₁ * λ + A₂ * (1 - λ), qᵢ) for λ in LinRange(0, 1, 20)]
-#     plot!(p, Y, fillalpha=0.0)
+vertices = vertices_list(qᵢ)
+Ys = [map(p -> (A₁ * λ + A₂ * (1 - λ)) * p, vertices) for λ in LinRange(0.0, 1.0, 11)]
+Y0 = linear_map(A₁, qᵢ)
+Y1 = linear_map(A₂, qᵢ)
+Ys_vertex = ConvexHull(Y0, Y1)
+# plot!(p, Ys_vertex, label="conv(A(λ)Pᵢ + b(λ))") #, xlims=(x_min, x_max), ylims=(y_min, y_max))
+# for Y in Ys
+#     # scatter!(p, [Y[1][1]], [Y[1][2]], color=:blue, label=nothing)
+#     # scatter!(p, [Y[2][1]], [Y[2][2]], color=:red, label=nothing)
+#     # scatter!(p, [Y[3][1]], [Y[3][2]], color=:green, label=nothing)
+#     # scatter!(p, [Y[4][1]], [Y[4][2]], color=:yellow, label=nothing)
+#     poly = VPolytope(Y)
+#     plot!(p, poly, fillalpha=0.0)
 # end
 savefig(p, "figures/non_convex_uncertain_affine_transformation.pdf")
 display(p)
