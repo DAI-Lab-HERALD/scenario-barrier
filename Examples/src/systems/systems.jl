@@ -3,6 +3,7 @@ include("car_with_sidewind.jl")
 include("drone.jl")
 include("nndm.jl")
 include("polynomial.jl")
+include("unicycle.jl")
 
 # run_experiments(probs_car_with_sidewind)
 # run_experiments(probs_drone)
