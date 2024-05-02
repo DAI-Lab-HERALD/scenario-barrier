@@ -1,4 +1,4 @@
-using LinearAlgebra
+using LinearAlgebra, SparseArrays
 
 using Distributions
 using Dualization
@@ -11,7 +11,8 @@ function verify(solver, barrier_type::Type{<:BarrierFunction}, system::AbstractS
     @assert(H >= 1, "Horizon H must be greater than or equal to one (is $H)")
 
     # solver = dual_optimizer(solver)
-    model = Model(solver)
+    model = direct_model(solver)
+    set_string_names_on_creation(model, false)
 
     # Decision variables
     @variable(model, γ, lower_bound = 0)
@@ -74,8 +75,7 @@ end
 function region_barrier_variable!(model, system, qᵢ)
     n = dimensionality(system)
 
-    Xₛ = safe_set(system)
-    if is_intersection_zeromeasure(Xₛ, region(qᵢ))
+    if overlaps_unsafe(system, region(qᵢ))
         p = zeros(n)
         v = 1.0
     else
@@ -108,28 +108,31 @@ function constraints!(model, system, B::PiecewiseBarrier, c, γ, expectation_met
     end
 end
 
-function region_constraints!(model, system, B, c, γ, qᵢ, expectation)
-    Bᵢ = B[qᵢ]
+region_constraints!(model, system, B, c, γ, qᵢ, expectation) = region_constraints!(model, system, B, c, γ, B[qᵢ], qᵢ, expectation)
 
+function region_constraints!(model, system, B, c, γ, Bᵢ::BarrierRegion{T, <:LinearBarrier{<:VariableRef}}, qᵢ, expectation) where {T}
     non_negativity_constraint!(model, Bᵢ)
     upper_bound_constraint!(model, Bᵢ)
     initial_constraint!(model, system, Bᵢ, γ)
-    unsafe_constraint!(model, system, Bᵢ)
     expectation_constraint!(model, system, B, c, qᵢ, expectation)
 end
+
+function region_constraints!(model, system, B, c, γ, Bᵢ::BarrierRegion{T, <:LinearBarrier{<:Number}}, qᵢ, expectation) where {T} end
 
 # Piece-wise linear barrier
 function non_negativity_constraint!(model, B::BarrierRegion{T, <:LinearBarrier}) where {T}
     H, h = tosimplehrep(region(B))
+    H = sparse(H)
+    
     p, v = B.fun.p, B.fun.v
     asymmetric_dual_constraint!(model, @expression(model, -p), v, H, h)
 end
 
 function upper_bound_constraint!(model, B::BarrierRegion{T, <:LinearBarrier}; M = 5) where {T}
     H, h = tosimplehrep(region(B))
-    p, v = B.fun.p, B.fun.v
+    H = sparse(H)
 
-    M = 5
+    p, v = B.fun.p, B.fun.v
     asymmetric_dual_constraint!(model, p, @expression(model, M - v), H, h)
 end
 
@@ -141,6 +144,8 @@ function initial_constraint!(model, system, B::BarrierRegion{T, <:LinearBarrier}
     end
 
     H₀, h₀ = tosimplehrep(intersection(X₀, region(B)))
+    H₀ = sparse(H₀)
+
     p, v = B.fun.p, B.fun.v
     asymmetric_dual_constraint!(model, p, @expression(model, γ - v), H₀, h₀)
 end
@@ -158,16 +163,6 @@ function overlaps_unsafe(system, q)
     return false
 end
 
-function unsafe_constraint!(model, system, B::BarrierRegion{T, <:LinearBarrier}) where {T}
-    if !overlaps_unsafe(system, region(B))
-        return nothing
-    end
-
-    H, h = tosimplehrep(region(B))
-    p, v = B.fun.p, B.fun.v
-    asymmetric_dual_constraint!(model, @expression(model, -p), @expression(model, v - 1.0), H, h)
-end
-
 function asymmetric_dual_constraint!(model, c, rhs, H, h)
     # Constraints of the form              [max_x  cᵀx, s.t. Hx ≤ h] ≤ rhs
     # reformulated to the asymmetric dual  [min_{y ≥ 0} yᵀh, s.t. Hᵀx = c] ≤ rhs
@@ -178,8 +173,6 @@ function asymmetric_dual_constraint!(model, c, rhs, H, h)
 
     m = size(H, 1)
     y = @variable(model, [1:m], lower_bound = 0)
-
-    H, h = tosimplehrep(normalize(HPolyhedron(H, h)))
 
     @constraints(model, begin
         y' * h ≤ rhs

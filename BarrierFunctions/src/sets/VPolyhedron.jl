@@ -198,7 +198,9 @@ function σ_helper(d, P, solver)
         @inbounds return vertices[max_idx], false
     end
 
-    model = Model(solver; add_bridges = false)
+    model = Model(solver)
+    set_string_names_on_creation(model, false)
+
     n = LazySets.dim(P)
 
     @variable(model, x[1:n])
@@ -206,9 +208,7 @@ function σ_helper(d, P, solver)
     @variable(model, μ[1:o] ≥ 0)
 
     @constraint(model, sum(λ) == 1)
-
-    multiply((w, v)) = w .* v
-    @constraint(model, sum(multiply, zip(λ, vertices)) .+ sum(multiply, zip(μ, rays)) .== x)
+    @constraint(model, sum(splat(*), zip(λ, vertices)) .+ sum(splat(*), zip(μ, rays)) .== x)
 
     @objective(model, Max, dot(d, x))
 
@@ -269,13 +269,14 @@ function ∈(x::AbstractVector{N}, P::VPolyhedron{N};
     @assert n == LazySets.dim(P) "a vector of length $(length(x)) cannot be " *
         "contained in a polyhedron of dimension $(LazySets.dim(P))"
 
-    model = Model(solver; add_bridges = false)
+    model = Model(solver)
+    set_string_names_on_creation(model, false)
 
     @variable(model, λ[1:m] ≥ 0)
     @variable(model, μ[1:o] ≥ 0)
 
     @constraint(model, sum(λ) == 1)
-    @constraint(model, sum(*, zip(λ, vertices)) .+ sum(*, zip(μ, rays)) .== x)
+    @constraint(model, sum(splat(*), zip(λ, vertices)) .+ sum(splat(*), zip(μ, rays)) .== x)
 
     optimize!(model)
 
