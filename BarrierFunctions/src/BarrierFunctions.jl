@@ -22,7 +22,7 @@ module BarrierFunctions
     include("partition.jl")
     include("system.jl")
 
-    include("utils/plot.jl")
+    # include("utils/plot.jl")
 
     include("barrier.jl")
     include("expectation.jl")

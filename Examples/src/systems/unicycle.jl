@@ -1,37 +1,37 @@
 using BarrierFunctions
 import Spatial: has_mbr
 using LazySets, Symbolics
-using MAT, ZipFile
+using NCDatasets
 
 using Distributions, PDMats
 
 function load_nc_system(path; eps=1e-12)
-    system = NCDataset(path, "r") do ds 
-        regions = ds[:regions][:, :]
+    system = NCDataset(path, "r") do ds
+        regions = ds[:regions][:, :, :]
         state_space = ds[:safe_set][:, :]
 
         # Read Bounds
-        A = ds[:nominal_dynamics_A][:, :, :, :]
+        A = convert.(Float64, ds[:nominal_dynamics_A][:, :, :, :])
         b = ds[:nominal_dynamics_b][:, :, :]
 
         n = size(state_space, 1)
         vars = Symbolics.@variables x[1:n]
 
-        eachfirstdim(A) = eachslice(A, dims=(1,))
+        eachlastdim(A) = eachslice(A, dims=(ndims(A),))
 
         # Regions
         Q = []
-        for region in eachfirstdim(regions)
-            push!(Q, Hyperrectangle(low=region[1, :], high=region[2, :]))
+        for region in eachlastdim(regions)
+            push!(Q, Hyperrectangle(low=region[:, 1], high=region[:, 2]))
         end
 
         # Dynamics
         dyn = []
-        for (Aᵢ, bᵢ) in zip(eachfirstdim(A), eachfirstdim(b))
+        for (Aᵢ, bᵢ) in zip(eachlastdim(A), eachlastdim(b))
 
             dyn_i = [
-                AffineDynamics(copy(Aᵢ[1, :, :]), copy(bᵢ[1, :]) .- eps),
-                AffineDynamics(copy(Aᵢ[2, :, :]), copy(bᵢ[2, :]) .+ eps)
+                AffineDynamics(transpose(copy(Aᵢ[:, :, 1])), copy(bᵢ[:, 1]) .- eps),
+                AffineDynamics(transpose(copy(Aᵢ[:, :, 2])), copy(bᵢ[:, 2]) .+ eps)
             ]
             push!(dyn, dyn_i)
         end
@@ -49,6 +49,8 @@ function load_nc_system(path; eps=1e-12)
 
         # Unsafe
         remaining_region = Universe(n)
+
+        eachfirstdim(A) = eachslice(A, dims=(1,))
 
         Xu = HPolyhedron{Float64, Vector{Float64}}[]
         for (i, dim_bounds) in enumerate(eachfirstdim(state_space))
