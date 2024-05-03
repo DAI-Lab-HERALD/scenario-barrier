@@ -73,16 +73,16 @@ function drone(uncertain=true)
     return PiecewiseSystem(Q, dyn, η, X0, Xs, Xu)
 end
 
-prob_drone_uncertain = Problem("drone_uncertain", drone(true), 10, PiecewiseBarrier, ScenarioApproach(0.005/10, 1e-9))
-prob_drone_exact = Problem("drone_exact", drone(false), 10, PiecewiseBarrier, ScenarioApproach(0.005/10, 1e-9))
+prob_drone_uncertain = Problem("drone_uncertain", drone(true), 10, PiecewiseTemplate(LinearTemplate()), ScenarioApproach(0.005/10, 1e-9))
+prob_drone_exact = Problem("drone_exact", drone(false), 10, PiecewiseTemplate(LinearTemplate()), ScenarioApproach(0.005/10, 1e-9))
 
 probs_drone = [
     prob_drone_uncertain,
     prob_drone_exact
 ];
 
-prob_drone_uncertain_saa = Problem("drone_uncertain_saa", drone(true), 10, PolynomialBarrier, SampleAverage(0.005, 1e-9))
-prob_drone_exact_saa = Problem("drone_exact_saa", drone(false), 10, PolynomialBarrier, SampleAverage(0.005, 1e-9))
+prob_drone_uncertain_saa = Problem("drone_uncertain_saa", drone(true), 10, PolynomialTemplate(2), SampleAverage(0.005, 1e-9))
+prob_drone_exact_saa = Problem("drone_exact_saa", drone(false), 10, PolynomialTemplate(2), SampleAverage(0.005, 1e-9))
 
 probs_drone_saa = [
     prob_drone_uncertain_saa,
@@ -152,7 +152,7 @@ function cdc_drone()
     return PiecewiseSystem{2, Float64}(Q, η, X0, Xs, Xu)
 end
 
-cdc_prob_drone_exact = Problem("cdc_drone_exact", cdc_drone(), 10, PiecewiseBarrier, ScenarioApproach(0.005/10, 1e-9))
+cdc_prob_drone_exact = Problem("cdc_drone_exact", cdc_drone(), 10, PiecewiseTemplate(LinearTemplate()), ScenarioApproach(0.005/10, 1e-9))
 
 function cdc_drone_saa()
     # Only modeling longitudinal dynamics
@@ -188,4 +188,4 @@ function cdc_drone_saa()
     return PolynomialSystem{2, Float64}(f, η, X0, Xs, Xu)
 end
 
-cdc_prob_drone_exact_saa = Problem("cdc_drone_exact_saa", cdc_drone_saa(), 10, PolynomialBarrier, SampleAverage(0.005, 1e-6))
+cdc_prob_drone_exact_saa = Problem("cdc_drone_exact_saa", cdc_drone_saa(), 10, PolynomialTemplate(2), SampleAverage(0.005, 1e-6))

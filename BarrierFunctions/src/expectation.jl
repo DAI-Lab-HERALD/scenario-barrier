@@ -251,7 +251,7 @@ function expectation_constraint!(model, system, B::PiecewiseBarrier, c, qᵢ, ex
     @debug "Number of next regions is $(length(next_regions))"
 
     for qⱼ in next_regions
-        expectation_partition_constraint!(model, dynamics(qᵢ), B[qᵢ], B[qⱼ], c, expectation)
+        expectation_partition_constraint!(model, dynamics(qᵢ), B[index(qᵢ)], B[index(qⱼ)], c, expectation)
     end
 end
 
@@ -365,7 +365,7 @@ function _isdisjoint_vpolyhedron(P::VPolyhedron{N}, X; solver=default_lp_solver(
     error("LP returned status $(lp.status) unexpectedly")
 end
 
-function expectation_partition_constraint!(model, dyn, Bᵢ::BarrierRegion{T, <:LinearBarrier}, Bⱼ::BarrierRegion{T, <:LinearBarrier}, c, expectation::ExpectationData{<:ScenarioApproach}) where {T}
+function expectation_partition_constraint!(model, dyn, Bᵢ::BarrierRegion{<:LinearBarrier}, Bⱼ::BarrierRegion{<:LinearBarrier}, c, expectation::ExpectationData{<:ScenarioApproach})
     dyn = tighten_dynamics(dyn, region(Bᵢ), region(Bⱼ), expectation)
     if isnothing(dyn)
         @debug "Tightening dynamics shows non-overlap"
@@ -399,6 +399,30 @@ function expectation_partition_constraint!(model, dyn, Bᵢ::BarrierRegion{T, <:
 
         asymmetric_dual_constraint!(model, a, rhs, H, h)
     end
+end
+
+function expectation_partition_constraint!(model, dyn, Bᵢ::BarrierRegion{<:ConstantBarrier}, Bⱼ::BarrierRegion{<:ConstantBarrier}, c, expectation::ExpectationData{<:ScenarioApproach})
+    dyn = tighten_dynamics(dyn, region(Bᵢ), region(Bⱼ), expectation)
+    if isnothing(dyn)
+        @debug "Tightening dynamics shows non-overlap"
+        return nothing
+    end
+
+    qᵢ = tighten_region(dyn, region(Bᵢ), region(Bⱼ), expectation)
+    if isnothing(qᵢ)
+        @debug "Tightening region non-overlap"
+        return nothing
+    end
+
+    vᵢ = Bᵢ.fun.v
+    vⱼ = Bⱼ.fun.v
+
+    # We can let M = 1 [max B(x)] as B(x) can be modified aposterori to be capped at 1 without violating the theory
+    ϵ = expectation.method.ϵ
+    M = 1
+    ν = M * ϵ / (1 - ϵ)
+
+    @constraint(model, vⱼ + ν ≤ vᵢ + c)
 end
 
 function single_entry_vector(i, n)

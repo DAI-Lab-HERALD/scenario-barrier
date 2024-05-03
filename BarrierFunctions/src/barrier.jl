@@ -1,5 +1,16 @@
-export BarrierFunction, ConstantBarrier, LinearBarrier, QuadraticBarrier, BarrierRegion, PiecewiseBarrier, PolynomialBarrier
+export BarrierFunction, ConstantBarrier, LinearBarrier, BarrierRegion, PiecewiseBarrier, PolynomialBarrier
+export BarrierTemplate, ConstantTemplate, LinearTemplate, PolynomialTemplate, PiecewiseTemplate
 
+abstract type BarrierTemplate end
+
+struct ConstantTemplate <: BarrierTemplate end
+struct LinearTemplate <: BarrierTemplate end
+struct PolynomialTemplate <: BarrierTemplate
+    degree::Int
+end
+struct PiecewiseTemplate <: BarrierTemplate
+    underlying_template::BarrierTemplate
+end
 
 abstract type BarrierFunction end
 
@@ -10,6 +21,13 @@ struct LinearBarrier{T, VT<:AbstractVector{T}} <: BarrierFunction
 end
 function (B::LinearBarrier)(x)
     return B.p' * x + B.v
+end
+
+struct ConstantBarrier{T} <: BarrierFunction
+    v::T
+end
+function (B::ConstantBarrier)(x)
+    return B.v
 end
 
 struct PolynomialBarrier{T} <: BarrierFunction
@@ -24,13 +42,14 @@ end
 variables(B::PolynomialBarrier) = B.vars
 
 # Piece-wise barrier
-struct BarrierRegion{T<:Real, B<:BarrierFunction}
-    index::Int
-    polytope::AbstractPolyhedron{T}
+struct BarrierRegion{B <: BarrierFunction, I <: Integer}
+    index::I
+    polytope::AbstractPolyhedron
     fun::B
 end
 index(b::BarrierRegion) = b.index
 region(b::BarrierRegion) = b.polytope
+Base.print(io::IO, b::BarrierRegion) = print(io, "$(index(b))")
 
 function (B::BarrierRegion)(x)
     @assert x ∈ region(B)
@@ -38,12 +57,8 @@ function (B::BarrierRegion)(x)
     return B.fun(x)
 end
 
-struct PiecewiseBarrier <: BarrierFunction
-    regions
-
-    function PiecewiseBarrier(kv)
-        new(Dict(kv))
-    end
+struct PiecewiseBarrier{I <: Integer, R <: BarrierRegion} <: BarrierFunction
+    regions::Dict{I, R}
 end
 
 (B::PiecewiseBarrier)(x::T) where {T<:Real} = B([x])

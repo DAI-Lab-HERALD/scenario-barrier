@@ -7,7 +7,7 @@ export verify, barrier_variable!, partition_barrier_variable!, barrier_value, co
 export constraints!, asymmetric_dual_constraint!, unsafe_constraint!, initial_constraint!
 export region_constraints!, non_negativity_constraint!
 
-function verify(solver, barrier_type::Type{<:BarrierFunction}, system::AbstractSystem, H::Int, expectation_method::ExpectationMethod)
+function verify(solver, barrier_type::BarrierTemplate, system::AbstractSystem, H::Int, expectation_method::ExpectationMethod)
     @assert(H >= 1, "Horizon H must be greater than or equal to one (is $H)")
 
     # solver = dual_optimizer(solver)
@@ -44,27 +44,27 @@ function verify(solver, barrier_type::Type{<:BarrierFunction}, system::AbstractS
     return succ, B, prob
 end
 
-function barrier_variable!(model, ::Type{<:PiecewiseBarrier}, system::PiecewiseSystem)
-    B = PiecewiseBarrier(
-           qᵢ => region_barrier_variable!(model, system, qᵢ)
-           for qᵢ in regions(system)
-       )
+function barrier_variable!(model, template::PiecewiseTemplate, system::PiecewiseSystem)
+    B = PiecewiseBarrier(Dict(
+            index(qᵢ) => region_barrier_variable!(model, template.underlying_template, system, qᵢ) 
+            for qᵢ in regions(system)
+        ))
 
     return B
 end
 
-function barrier_variable!(model, ::Type{<:PolynomialBarrier}, system::PolynomialSystem)
+function barrier_variable!(model, template::PolynomialTemplate, system::PolynomialSystem)
     vars = variables(system)
-    monos = monomials(vars, 0:2)
+    monos = monomials(vars, 0:(template.degree // 2))
     # Encode non-negativity with SOSPoly
     @variable(model, B, variable_type=SOSPoly(monos))
 
     return PolynomialBarrier(B, vars)
 end
 
-function barrier_variable!(model, ::Type{<:PolynomialBarrier}, system::PiecewiseSystem)
+function barrier_variable!(model, template::PolynomialTemplate, system::PiecewiseSystem)
     @polyvar x[1:dimensionality(system)]
-    monos = monomials(x, 0:2)
+    monos = monomials(x, 0:(template.degree // 2))
     # Encode non-negativity with SOSPoly
     @variable(model, B, variable_type=SOSPoly(monos))
 
@@ -72,10 +72,11 @@ function barrier_variable!(model, ::Type{<:PolynomialBarrier}, system::Piecewise
 end
 
 # Optimization variables
-function region_barrier_variable!(model, system, qᵢ)
+function region_barrier_variable!(model, ::LinearTemplate, system, qᵢ)
     n = dimensionality(system)
 
-    if overlaps_unsafe(system, region(qᵢ))
+    Xₛ = safe_set(system)
+    if is_intersection_zeromeasure(Xₛ, region(qᵢ))
         p = zeros(n)
         v = 1.0
     else
@@ -86,68 +87,14 @@ function region_barrier_variable!(model, system, qᵢ)
     return BarrierRegion(index(qᵢ), region(qᵢ), LinearBarrier(p, v))
 end
 
-barrier_value(B::PiecewiseBarrier) = PiecewiseBarrier(index(Bᵢ) => barrier_value(Bᵢ) for Bᵢ in B)
-barrier_value(B::BarrierRegion) = BarrierRegion(index(B), region(B), barrier_value(B.fun))
-barrier_value(B::LinearBarrier) = LinearBarrier(value.(B.p), value(B.v))
-barrier_value(B::PolynomialBarrier) = PolynomialBarrier(value(B.p), B.vars)
-
-count_variables(B::PiecewiseBarrier) = sum(Bᵢ -> count_variables(Bᵢ), B)
-count_variables(B::BarrierRegion) = count_variables(B.fun)
-count_variables(B::LinearBarrier{T, VT}) where {T<:AbstractVariableRef, VT} = length(B.p) + 1
-count_variables(B::LinearBarrier{T, VT}) where {T<:Number, VT} = 0
-count_variables(B::PolynomialBarrier) = length(monomials(B.p))
-
-# Piece-wise constraints
-function constraints!(model, system, B::PiecewiseBarrier, c, γ, expectation_method, solver)
-    n_variables = count_variables(B) + 2
-    expectation = prepare(system, expectation_method, solver, n_variables)
-
-    for qᵢ in regions(system)
-        @debug "Region $qᵢ, $(region(qᵢ))"
-        region_constraints!(model, system, B, c, γ, qᵢ, expectation)
-    end
-end
-
-region_constraints!(model, system, B, c, γ, qᵢ, expectation) = region_constraints!(model, system, B, c, γ, B[qᵢ], qᵢ, expectation)
-
-function region_constraints!(model, system, B, c, γ, Bᵢ::BarrierRegion{T, <:LinearBarrier{<:VariableRef}}, qᵢ, expectation) where {T}
-    non_negativity_constraint!(model, Bᵢ)
-    upper_bound_constraint!(model, Bᵢ)
-    initial_constraint!(model, system, Bᵢ, γ)
-    expectation_constraint!(model, system, B, c, qᵢ, expectation)
-end
-
-function region_constraints!(model, system, B, c, γ, Bᵢ::BarrierRegion{T, <:LinearBarrier{<:Number}}, qᵢ, expectation) where {T} end
-
-# Piece-wise linear barrier
-function non_negativity_constraint!(model, B::BarrierRegion{T, <:LinearBarrier}) where {T}
-    H, h = tosimplehrep(region(B))
-    H = sparse(H)
-    
-    p, v = B.fun.p, B.fun.v
-    asymmetric_dual_constraint!(model, @expression(model, -p), v, H, h)
-end
-
-function upper_bound_constraint!(model, B::BarrierRegion{T, <:LinearBarrier}; M = 5) where {T}
-    H, h = tosimplehrep(region(B))
-    H = sparse(H)
-
-    p, v = B.fun.p, B.fun.v
-    asymmetric_dual_constraint!(model, p, @expression(model, M - v), H, h)
-end
-
-function initial_constraint!(model, system, B::BarrierRegion{T, <:LinearBarrier}, γ) where {T}
-    X₀ = initial_set(system)
-
-    if isdisjoint(X₀, region(B))  # Must be strictly disjoint, as this constraint does not involve dynamics
-        return nothing
+function region_barrier_variable!(model, ::ConstantTemplate, system, qᵢ)
+    if overlaps_unsafe(system, region(qᵢ))
+        v = 1.0
+    else
+        v = @variable(model, base_name = "B[$qᵢ]")
     end
 
-    H₀, h₀ = tosimplehrep(intersection(X₀, region(B)))
-    H₀ = sparse(H₀)
-
-    p, v = B.fun.p, B.fun.v
-    asymmetric_dual_constraint!(model, p, @expression(model, γ - v), H₀, h₀)
+    return BarrierRegion(index(qᵢ), region(qᵢ), ConstantBarrier(v))
 end
 
 function overlaps_unsafe(system, q)
@@ -161,6 +108,86 @@ function overlaps_unsafe(system, q)
     end
 
     return false
+end
+
+barrier_value(B::PiecewiseBarrier) = PiecewiseBarrier(Dict(index(Bᵢ) => barrier_value(Bᵢ) for Bᵢ in B))
+barrier_value(B::BarrierRegion) = BarrierRegion(index(B), region(B), barrier_value(B.fun))
+barrier_value(B::LinearBarrier) = LinearBarrier(value.(B.p), value(B.v))
+barrier_value(B::ConstantBarrier) = ConstantBarrier(value(B.v))
+barrier_value(B::PolynomialBarrier) = PolynomialBarrier(value(B.p), B.vars)
+
+count_variables(B::PiecewiseBarrier) = sum(Bᵢ -> count_variables(Bᵢ), B)
+count_variables(B::BarrierRegion) = count_variables(B.fun)
+count_variables(B::LinearBarrier{T}) where {T<:AbstractVariableRef} = length(B.p) + 1
+count_variables(B::LinearBarrier{T}) where {T<:Number} = 0
+count_variables(B::ConstantBarrier{T}) where {T<:AbstractVariableRef} = 1
+count_variables(B::ConstantBarrier{T}) where {T<:Number} = 0
+count_variables(B::PolynomialBarrier) = length(monomials(B.p))
+
+# Piece-wise constraints
+function constraints!(model, system, B::PiecewiseBarrier, c, γ, expectation_method, solver)
+    n_variables = count_variables(B) + 2
+    expectation = prepare(system, expectation_method, solver, n_variables)
+
+    for qᵢ in regions(system)
+        @debug "Region $qᵢ, $(region(qᵢ))"
+        region_constraints!(model, system, B, c, γ, qᵢ, expectation)
+    end
+end
+
+function region_constraints!(model, system, B, c, γ, qᵢ, expectation)
+    Bᵢ = B[index(qᵢ)]
+
+    non_negativity_constraint!(model, Bᵢ)
+    upper_bound_constraint!(model, Bᵢ)
+    initial_constraint!(model, system, Bᵢ, γ)
+    unsafe_constraint!(model, system, Bᵢ)
+    expectation_constraint!(model, system, B, c, qᵢ, expectation)
+end
+
+# Piece-wise linear barrier
+function non_negativity_constraint!(model, B::BarrierRegion{<:LinearBarrier})
+    H, h = tosimplehrep(region(B))
+    H = sparse(H)
+    
+    p, v = B.fun.p, B.fun.v
+    asymmetric_dual_constraint!(model, @expression(model, -p), v, H, h)
+end
+
+function upper_bound_constraint!(model, B::BarrierRegion{<:LinearBarrier}; M = 5)
+    H, h = tosimplehrep(region(B))
+    H = sparse(H)
+
+    p, v = B.fun.p, B.fun.v
+    asymmetric_dual_constraint!(model, p, @expression(model, M - v), H, h)
+end
+
+function initial_constraint!(model, system, B::BarrierRegion{<:LinearBarrier}, γ)
+    X₀ = initial_set(system)
+
+    if isdisjoint(X₀, region(B))  # Must be strictly disjoint, as this constraint does not involve dynamics
+        return nothing
+    end
+
+    H₀, h₀ = tosimplehrep(intersection(X₀, region(B)))
+    H₀ = sparse(H₀)
+
+    p, v = B.fun.p, B.fun.v
+    asymmetric_dual_constraint!(model, p, @expression(model, γ - v), H₀, h₀)
+end
+
+function unsafe_constraint!(model, system, B::BarrierRegion{<:LinearBarrier})
+    Xᵤ = unsafe_set(system)
+    p, v = B.fun.p, B.fun.v
+    q = region(B)
+
+    # Note the unsafe set can consist of multiple disjoint components
+    for Xᵤ_subset in Xᵤ
+        if !is_intersection_zeromeasure(Xᵤ_subset, q)
+            H, h = tosimplehrep(intersection(region(B), Xᵤ_subset))
+            asymmetric_dual_constraint!(model, @expression(model, -p), @expression(model, v - 1.0), H, h)
+        end
+    end
 end
 
 function asymmetric_dual_constraint!(model, c, rhs, H, h)
@@ -179,6 +206,47 @@ function asymmetric_dual_constraint!(model, c, rhs, H, h)
         H' * y .== c
     end)
 end
+
+# Piece-wise constant barrier
+function non_negativity_constraint!(model, B::BarrierRegion{<:ConstantBarrier{<:AbstractVariableRef}})
+    v = B.fun.v
+    set_lower_bound(v, 0)
+end
+
+function non_negativity_constraint!(model, B::BarrierRegion{<:ConstantBarrier{<:Number}}) end
+
+function upper_bound_constraint!(model, B::BarrierRegion{<:ConstantBarrier{<:AbstractVariableRef}}; M = 5)
+    v = B.fun.v
+    set_upper_bound(v, M)
+end
+
+function upper_bound_constraint!(model, B::BarrierRegion{<:ConstantBarrier{<:Number}}; M = 5) end
+
+function initial_constraint!(model, system, B::BarrierRegion{<:ConstantBarrier}, γ)
+    X₀ = initial_set(system)
+
+    if isdisjoint(X₀, region(B))  # Must be strictly disjoint, as this constraint does not involve dynamics
+        return nothing
+    end
+
+    v = B.fun.v
+    @constraint(model, v ≤ γ)
+end
+
+function initial_constraint!(model, system, B::BarrierRegion{<:ConstantBarrier{<:AbstractVariableRef}}, γ)
+    X₀ = initial_set(system)
+
+    if isdisjoint(X₀, region(B))  # Must be strictly disjoint, as this constraint does not involve dynamics
+        return nothing
+    end
+
+    v = B.fun.v
+    @constraint(model, v ≤ γ)
+end
+
+function initial_constraint!(model, system, B::BarrierRegion{<:ConstantBarrier{<:Number}}, γ) end
+
+function unsafe_constraint!(model, system, B::BarrierRegion{<:ConstantBarrier}) end
 
 # Polynomial constraints
 function constraints!(model, system, B::PolynomialBarrier, c, γ, expectation_method, solver)

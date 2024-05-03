@@ -2,7 +2,7 @@ using Revise
 using BarrierFunctions
 using Gurobi, MosekTools, Mosek, GLPK, JuMP
 
-using Plots
+# using Plots
 # import PythonPlot: pygui
 
 using Logging
@@ -76,5 +76,7 @@ end
 
 # run_experiments(probs_car_with_sidewind)
 # run_experiments(probs_drone)
-# run_experiments(probs_linear1d)
-run_experiments(probs_nndm_cartpole)
+# run_experiment(prob_linear1d_exact)
+# run_experiments(probs_nndm_cartpole)
+# run_experiment(prob_linear1d_exact_constant)
+run_experiment(prob_nndm_cartpole_1layer_3840regions_constant)

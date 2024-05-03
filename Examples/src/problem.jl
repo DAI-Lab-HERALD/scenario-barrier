@@ -3,6 +3,6 @@ struct Problem
     system::AbstractSystem
     horizon::Int64
 
-    barrier_type::Type{<:BarrierFunction}
+    barrier_type::BarrierTemplate
     expectation_method::ExpectationMethod
 end

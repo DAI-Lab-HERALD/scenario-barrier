@@ -11,9 +11,11 @@ function martingale1d(uncertain=true, gaussian=true)
     Q = [
         HPolyhedron([x ≥ 2.5], vars),
         HPolyhedron([x ≤ -2.5], vars),
-        LazySets.Interval(0.5, 2.5),
+        LazySets.Interval(1.5, 2.5),
+        LazySets.Interval(0.5, 1.5),
         LazySets.Interval(-0.5, 0.5),
-        LazySets.Interval(-2.5, -0.5)
+        LazySets.Interval(-1.5, -0.5),
+        LazySets.Interval(-2.5, -1.5)
     ]
 
     if uncertain
@@ -23,7 +25,7 @@ function martingale1d(uncertain=true, gaussian=true)
     end
     dyn = [Ab for _ in 1:length(Q)]
 
-    split_spec = Int64[1 1 1 1 1][:,:]
+    split_spec = Int64[1 1 5 5 5 5 5][:,:]
     Q, dyn = grid_split(Q, dyn, split_spec)
 
     if gaussian
@@ -51,16 +53,24 @@ function martingale1d(uncertain=true, gaussian=true)
     return PiecewiseSystem(Q, dyn, η, X0, Xs, Xu)
 end
 
-prob_linear1d_uncertain = Problem("linear1d_uncertain", martingale1d(true, true), 10, PiecewiseBarrier, ScenarioApproach(0.005/10, 1e-9))
-prob_linear1d_exact = Problem("linear1d_exact", martingale1d(false, true), 10, PiecewiseBarrier, ScenarioApproach(0.005/10, 1e-9))
+prob_linear1d_uncertain = Problem("linear1d_uncertain", martingale1d(true, true), 10, PiecewiseTemplate(LinearTemplate()), ScenarioApproach(0.005/10, 1e-9))
+prob_linear1d_exact = Problem("linear1d_exact", martingale1d(false, true), 10, PiecewiseTemplate(LinearTemplate()), ScenarioApproach(0.005/10, 1e-9))
 
 probs_linear1d = [
     prob_linear1d_uncertain,
     prob_linear1d_exact
 ];
 
-prob_linear1d_uncertain_saa = Problem("linear1d_uncertain_saa", martingale1d(true, true), 10, PolynomialBarrier, SampleAverage(0.005, 1e-9))
-prob_linear1d_exact_saa = Problem("linear1d_exact_saa", martingale1d(false, true), 10, PolynomialBarrier, SampleAverage(0.005, 1e-9))
+prob_linear1d_uncertain_constant = Problem("linear1d_uncertain_constant", martingale1d(true, true), 10, PiecewiseTemplate(ConstantTemplate()), ScenarioApproach(0.005/10, 1e-9))
+prob_linear1d_exact_constant = Problem("linear1d_exact_constant", martingale1d(false, true), 10, PiecewiseTemplate(ConstantTemplate()), ScenarioApproach(0.005/10, 1e-9))
+
+probs_linear1d_constant = [
+    prob_linear1d_uncertain_constant,
+    prob_linear1d_exact_constant
+];
+
+prob_linear1d_uncertain_saa = Problem("linear1d_uncertain_saa", martingale1d(true, true), 10, PolynomialTemplate(2), SampleAverage(0.005, 1e-9))
+prob_linear1d_exact_saa = Problem("linear1d_exact_saa", martingale1d(false, true), 10, PolynomialTemplate(2), SampleAverage(0.005, 1e-9))
 
 probs_linear1d_saa = [
     prob_linear1d_uncertain_saa,
@@ -123,7 +133,7 @@ function cdc_martingale1d()
     return PiecewiseSystem{1, Float64}(Q, η, X0, Xs, Xu)
 end
 
-cdc_prob_linear1d = Problem("cdc_linear1d", cdc_martingale1d(), 10, PiecewiseBarrier, ScenarioApproach(0.005/10, 1e-9))
+cdc_prob_linear1d = Problem("cdc_linear1d", cdc_martingale1d(), 10, PiecewiseTemplate(LinearTemplate()), ScenarioApproach(0.005/10, 1e-9))
 
 function cdc_martingale1d_polynomial()
     @polyvar x
@@ -144,4 +154,4 @@ function cdc_martingale1d_polynomial()
     return PolynomialSystem{1, Float64}(f, η, X0, Xs, Xu)
 end
 
-cdc_prob_linear1d_saa = Problem("cdc_linear1d_ssa", cdc_martingale1d_polynomial(), 10, PolynomialBarrier, SampleAverage(0.005, 1e-6))
+cdc_prob_linear1d_saa = Problem("cdc_linear1d_ssa", cdc_martingale1d_polynomial(), 10, PolynomialTemplate(2), SampleAverage(0.005, 1e-6))

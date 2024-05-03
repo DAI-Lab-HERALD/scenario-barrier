@@ -76,11 +76,11 @@ function load_nc_system(path; eps=1e-12)
 end
 
 H = 10
-prob_unicycle_1250regions_5555 = () -> Problem("unicycle_1250regions_5555", load_nc_system("models/unicycle/dynamics_1250regions_5555.nc"), H, PiecewiseBarrier, ScenarioApproach(0.005/H, 1e-9))
-prob_unicycle_1800regions_6655 = () -> Problem("unicycle_1800regions_6655", load_nc_system("models/unicycle/dynamics_1800regions_6655.nc"), H, PiecewiseBarrier, ScenarioApproach(0.005/H, 1e-9))
-prob_unicycle_1800regions_5566 = () -> Problem("unicycle_1800regions_5566", load_nc_system("models/unicycle/dynamics_1800regions_5566.nc"), H, PiecewiseBarrier, ScenarioApproach(0.005/H, 1e-9))
-prob_unicycle_2400regions_5568 = () -> Problem("unicycle_2400regions_5568", load_nc_system("models/unicycle/dynamics_2400regions_5568.nc"), H, PiecewiseBarrier, ScenarioApproach(0.005/H, 1e-9))
-prob_unicycle_2400regions_5586 = () -> Problem("unicycle_2400regions_5586", load_nc_system("models/unicycle/dynamics_2400regions_5586.nc"), H, PiecewiseBarrier, ScenarioApproach(0.005/H, 1e-9))
+prob_unicycle_1250regions_5555 = () -> Problem("unicycle_1250regions_5555", load_nc_system("models/unicycle/dynamics_1250regions_5555.nc"), H, PiecewiseTemplate(LinearTemplate()), ScenarioApproach(0.005/H, 1e-9))
+prob_unicycle_1800regions_6655 = () -> Problem("unicycle_1800regions_6655", load_nc_system("models/unicycle/dynamics_1800regions_6655.nc"), H, PiecewiseTemplate(LinearTemplate()), ScenarioApproach(0.005/H, 1e-9))
+prob_unicycle_1800regions_5566 = () -> Problem("unicycle_1800regions_5566", load_nc_system("models/unicycle/dynamics_1800regions_5566.nc"), H, PiecewiseTemplate(LinearTemplate()), ScenarioApproach(0.005/H, 1e-9))
+prob_unicycle_2400regions_5568 = () -> Problem("unicycle_2400regions_5568", load_nc_system("models/unicycle/dynamics_2400regions_5568.nc"), H, PiecewiseTemplate(LinearTemplate()), ScenarioApproach(0.005/H, 1e-9))
+prob_unicycle_2400regions_5586 = () -> Problem("unicycle_2400regions_5586", load_nc_system("models/unicycle/dynamics_2400regions_5586.nc"), H, PiecewiseTemplate(LinearTemplate()), ScenarioApproach(0.005/H, 1e-9))
 
 probs_unicycle = [
     prob_unicycle_1250regions_5555,
