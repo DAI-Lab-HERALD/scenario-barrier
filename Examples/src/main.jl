@@ -80,3 +80,6 @@ end
 # run_experiments(probs_nndm_cartpole)
 # run_experiment(prob_linear1d_exact_constant)
 run_experiment(prob_nndm_cartpole_1layer_3840regions_constant)
+# run_experiments(probs_linear1d)
+# run_experiment(prob_nndm_acrobot_288regions)
+# run_experiments(probs_unicycle)
