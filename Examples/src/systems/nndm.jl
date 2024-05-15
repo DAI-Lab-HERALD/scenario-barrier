@@ -58,11 +58,10 @@ function load_mat_system(path, initial_region_cb, stddev; eps=1e-12)
         unsafe_lower = HPolyhedron([x[i] ≤ dim_bounds[1]], vars)
         unsafe_upper = HPolyhedron([x[i] ≥ dim_bounds[2]], vars)
 
-        push!(Xu, unsafe_lower, unsafe_upper)
-
         unsafe_lower = intersection(unsafe_lower, remaining_region)
         unsafe_upper = intersection(unsafe_upper, remaining_region)
 
+        push!(Xu, unsafe_lower, unsafe_upper)
         push!(Q, unsafe_lower, unsafe_upper)
 
         # Just zero dynamics - not important as this region is unsafe and thus never propagated
@@ -278,7 +277,8 @@ probs_nndm_pendulum_sample_average = [
 ]
 
 # Cartpole
-prob_nndm_cartpole_1layer_3840regions_constant = () -> Problem("nndm_cartpole_1layer_3840regions", nndm_system("cartpole", 1, 3840), H, PiecewiseTemplate(ConstantTemplate()), ScenarioApproach(0.005/H, 1e-9))
+prob_nndm_cartpole_1layer_960regions_constant = () -> Problem("nndm_cartpole_1layer_960regions_constant", nndm_system("cartpole", 1, 960), H, PiecewiseTemplate(ConstantTemplate()), ScenarioApproach(0.005/H, 1e-9))
+prob_nndm_cartpole_1layer_3840regions_constant = () -> Problem("nndm_cartpole_1layer_3840regions_constant", nndm_system("cartpole", 1, 3840), H, PiecewiseTemplate(ConstantTemplate()), ScenarioApproach(0.005/H, 1e-9))
 
 prob_nndm_cartpole_1layer_960regions = () -> Problem("nndm_cartpole_1layer_960regions", nndm_system("cartpole", 1, 960), H, PiecewiseTemplate(LinearTemplate()), ScenarioApproach(0.005/H, 1e-9))
 prob_nndm_cartpole_1layer_1920regions = () -> Problem("nndm_cartpole_1layer_1920regions", nndm_system("cartpole", 1, 1920), H, PiecewiseTemplate(LinearTemplate()), ScenarioApproach(0.005/H, 1e-9))

@@ -57,11 +57,10 @@ function load_nc_system(path; eps=1e-12)
             unsafe_lower = HPolyhedron([x[i] ≤ dim_bounds[1]], vars)
             unsafe_upper = HPolyhedron([x[i] ≥ dim_bounds[2]], vars)
 
-            push!(Xu, unsafe_lower, unsafe_upper)
 
             unsafe_lower = intersection(unsafe_lower, remaining_region)
             unsafe_upper = intersection(unsafe_upper, remaining_region)
-
+            push!(Xu, unsafe_lower, unsafe_upper)
             push!(Q, unsafe_lower, unsafe_upper)
 
             # Just zero dynamics - not important as this region is unsafe and thus never propagated
