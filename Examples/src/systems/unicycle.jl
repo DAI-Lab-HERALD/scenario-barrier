@@ -64,7 +64,7 @@ function load_nc_system(path; eps=1e-12)
             push!(Q, unsafe_lower, unsafe_upper)
 
             # Just zero dynamics - not important as this region is unsafe and thus never propagated
-            dyn_i = [AffineDynamics(zero(A[1, 1, :, :]), zero(b[1, 1, :]))]
+            dyn_i = [AffineDynamics(zero(A[:, :, 1, 1]), zero(b[:, 1, 1]))]
             push!(dyn, dyn_i, dyn_i)
 
             remaining_region = intersection(remaining_region, HPolyhedron([dim_bounds[1] ≤ x[i], x[i] ≤ dim_bounds[2]], vars))

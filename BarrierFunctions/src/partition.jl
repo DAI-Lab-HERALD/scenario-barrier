@@ -66,12 +66,12 @@ end
 
 # default LP solver for floating-point numbers
 function default_lp_solver(N::Type{<:AbstractFloat})
-    JuMP.optimizer_with_attributes(HiGHS.Optimizer, "output_flag" => false)
+    return JuMP.optimizer_with_attributes(HiGHS.Optimizer, "output_flag" => false)
 end
 
 # default LP solver for rational numbers
 function default_lp_solver(N::Type{<:Rational})
-    JuMP.optimizer_with_attributes(() -> GLPK.Optimizer(method=GLPK.EXACT))
+    return JuMP.optimizer_with_attributes(() -> GLPK.Optimizer(method=GLPK.EXACT))
 end
 
 Base.show(io::IO, p::DynamicsRegion) = print(io, p.index)
