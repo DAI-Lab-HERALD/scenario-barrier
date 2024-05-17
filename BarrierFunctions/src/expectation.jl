@@ -306,11 +306,7 @@ end
         end
     end
 
-    if LazySets.isbounded(P)
-        return true
-    else
-        return _isdisjoint_vpolyhedron(P, X; solver=solver)
-    end
+    return _isdisjoint_vpolyhedron(P, X; solver=solver)
 end
 
 @commutative function LazySets.isdisjoint(P::VPolyhedron{N}, X::AbstractZonotope; solver=default_lp_solver(N)) where {N}
@@ -324,15 +320,11 @@ end
         end
     end
 
-    if LazySets.isbounded(P)
-        return true
-    else
-        return _isdisjoint_vpolyhedron(P, X; solver=solver)
-    end
+    return _isdisjoint_vpolyhedron(P, X; solver=solver)
 end
 
 
-function _isdisjoint_vpolyhedron(P::VPolyhedron{N}, X; solver=default_lp_solver(N)) where {N}
+function _isdisjoint_vpolyhedron(P::VPolyhedron{N}, X; solver=default_lp_solver(N), scaling=100.0) where {N}
     vertices = vertices_list(P)
     m = length(vertices)
 
@@ -350,10 +342,14 @@ function _isdisjoint_vpolyhedron(P::VPolyhedron{N}, X; solver=default_lp_solver(
     @variable(model, x[1:n])
 
     @constraint(model, sum(λ) == 1)
-    @constraint(model, sum(splat(*), zip(λ, vertices)) .+ sum(splat(*), zip(μ, rays)) .== x)
+    if isempty(rays)
+        @constraint(model, scaling * sum(splat(*), zip(λ, vertices)) .== x)
+    else
+        @constraint(model, scaling * sum(splat(*), zip(λ, vertices)) .+ sum(splat(*), zip(μ, rays)) .== x)
+    end
 
     H, h = tosimplehrep(X)
-    @constraint(model, H * x ≤ h)
+    @constraint(model, (H * scaling) * x ≤ h)
 
     optimize!(model)
 
@@ -362,7 +358,7 @@ function _isdisjoint_vpolyhedron(P::VPolyhedron{N}, X; solver=default_lp_solver(
     elseif termination_status(model) == MathOptInterface.INFEASIBLE
         return true
     end
-    error("LP returned status $(lp.status) unexpectedly")
+    error("LP returned status $(solution_summary(model)) unexpectedly")
 end
 
 function expectation_partition_constraint!(model, dyn, Bᵢ::BarrierRegion{<:LinearBarrier}, Bⱼ::BarrierRegion{<:LinearBarrier}, c, expectation::ExpectationData{<:ScenarioApproach})
