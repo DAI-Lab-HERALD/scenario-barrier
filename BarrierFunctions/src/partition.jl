@@ -66,7 +66,7 @@ end
 
 # default LP solver for floating-point numbers
 function default_lp_solver(N::Type{<:AbstractFloat})
-    return JuMP.optimizer_with_attributes(HiGHS.Optimizer, "output_flag" => false)
+    JuMP.optimizer_with_attributes(HiGHS.Optimizer, "output_flag" => false, "primal_feasibility_tolerance" => 1e-4, "dual_feasibility_tolerance" => 1e-4)
 end
 
 # default LP solver for rational numbers

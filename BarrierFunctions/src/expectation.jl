@@ -276,8 +276,7 @@ function custom_minkowski_sum(qᵢ_next_nom::VPolyhedron{N}, expectation) where 
     vlist1 = vertices_list(qᵢ_next_nom)
     vlist2 = vertices_list(expectation.data.vrep)
 
-    vpolytope_minkowski_sum!(expectation.data.vout, vlist1, vlist2)
-    vout = expectation.data.vout[1:(length(vlist1) * length(vlist2))]
+    vout = vpolytope_minkowski_sum!(expectation.data.vout, vlist1, vlist2)
 
     qᵢ_next = VPolyhedron(vout, rlist1)
 
@@ -293,6 +292,8 @@ function vpolytope_minkowski_sum!(vout, vlist1, vlist2)
             i += 1
         end
     end
+
+    vout = vout[1:i - 1]
 end
 
 @commutative function LazySets.isdisjoint(P::VPolyhedron{N}, X::AbstractPolyhedron; solver=default_lp_solver(N)) where {N}
@@ -324,7 +325,7 @@ end
 end
 
 
-function _isdisjoint_vpolyhedron(P::VPolyhedron{N}, X; solver=default_lp_solver(N), scaling=100.0) where {N}
+function _isdisjoint_vpolyhedron(P::VPolyhedron{N}, X; solver=default_lp_solver(N)) where {N}
     vertices = vertices_list(P)
     m = length(vertices)
 
@@ -340,25 +341,24 @@ function _isdisjoint_vpolyhedron(P::VPolyhedron{N}, X; solver=default_lp_solver(
     @variable(model, λ[1:m] ≥ 0)
     @variable(model, μ[1:o] ≥ 0)
     @variable(model, x[1:n])
+    @variable(model, x₀, upper_bound=1.0)
+
+    @objective(model, Max, 1.0 * x₀)
 
     @constraint(model, sum(λ) == 1)
-    if isempty(rays)
-        @constraint(model, scaling * sum(splat(*), zip(λ, vertices)) .== x)
-    else
-        @constraint(model, scaling * sum(splat(*), zip(λ, vertices)) .+ sum(splat(*), zip(μ, rays)) .== x)
-    end
+    @constraint(model, sum(splat(*), zip(λ, vertices)) .+ sum(splat(*), zip(μ, rays); init=zero(first(vertices))) .== x)
 
     H, h = tosimplehrep(X)
-    @constraint(model, (H * scaling) * x ≤ h)
+    @constraint(model, H * x .+ x₀ ≤ h)
 
     optimize!(model)
 
-    if termination_status(model) == MathOptInterface.OPTIMAL
-        return false
-    elseif termination_status(model) == MathOptInterface.INFEASIBLE
-        return true
+    if termination_status(model) != MathOptInterface.OPTIMAL
+        error("LP returned status $(solution_summary(model)) unexpectedly")
     end
-    error("LP returned status $(solution_summary(model)) unexpectedly")
+
+    isdisjoint = objective_value(model) < 0.0
+    return isdisjoint
 end
 
 function expectation_partition_constraint!(model, dyn, Bᵢ::BarrierRegion{<:LinearBarrier}, Bⱼ::BarrierRegion{<:LinearBarrier}, c, expectation::ExpectationData{<:ScenarioApproach})

@@ -135,15 +135,16 @@ function constraints!(model, system, B::PiecewiseBarrier, c, γ, expectation_met
     end
 end
 
-function region_constraints!(model, system, B, c, γ, qᵢ, expectation)
-    Bᵢ = B[index(qᵢ)]
-
+region_constraints!(model, system, B, c, γ, qᵢ, expectation) = region_constraints!(model, system, B, c, γ, B[index(qᵢ)], qᵢ, expectation)
+function region_constraints!(model, system, B, c, γ, Bᵢ::BarrierRegion{<:LinearBarrier{<:VariableRef}}, qᵢ, expectation)
     non_negativity_constraint!(model, Bᵢ)
     upper_bound_constraint!(model, Bᵢ)
     initial_constraint!(model, system, Bᵢ, γ)
     unsafe_constraint!(model, system, Bᵢ)
     expectation_constraint!(model, system, B, c, qᵢ, expectation)
 end
+
+function region_constraints!(model, system, B, c, γ, Bᵢ::BarrierRegion{<:LinearBarrier{<:Number}}, qᵢ, expectation) end
 
 # Piece-wise linear barrier
 function non_negativity_constraint!(model, B::BarrierRegion{<:LinearBarrier})
