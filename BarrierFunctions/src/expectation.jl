@@ -307,7 +307,7 @@ end
         end
     end
 
-    return _isdisjoint_vpolyhedron(P, X; solver=solver)
+    return _isdisjoint_vpolyhedron_lp(P, X; solver=solver)
 end
 
 @commutative function LazySets.isdisjoint(P::VPolyhedron{N}, X::AbstractZonotope; solver=default_lp_solver(N)) where {N}
@@ -321,11 +321,30 @@ end
         end
     end
 
-    return _isdisjoint_vpolyhedron(P, X; solver=solver)
+    return _isdisjoint_vpolyhedron_lp(P, X; solver=solver)
+end
+
+@commutative function LazySets.isdisjoint(P::VPolyhedron{N}, X::AbstractHyperrectangle; solver=default_lp_solver(N)) where {N}
+    if isempty(P)
+        return true
+    end
+
+    for v in vertices_list(P)
+        if v ∈ X
+            return false
+        end
+    end
+
+    HP = box_approximation(VPolytope(vertices_list(P)))
+    if LazySets.isbounded(P) && isdisjoint(HP, X)
+        return true
+    end
+
+    return _isdisjoint_vpolyhedron_lp(P, X; solver=solver)
 end
 
 
-function _isdisjoint_vpolyhedron(P::VPolyhedron{N}, X; solver=default_lp_solver(N)) where {N}
+function _isdisjoint_vpolyhedron_lp(P::VPolyhedron{N}, X; solver=default_lp_solver(N)) where {N}
     vertices = vertices_list(P)
     m = length(vertices)
 
@@ -346,7 +365,19 @@ function _isdisjoint_vpolyhedron(P::VPolyhedron{N}, X; solver=default_lp_solver(
     @objective(model, Max, 1.0 * x₀)
 
     @constraint(model, sum(λ) == 1)
-    @constraint(model, sum(splat(*), zip(λ, vertices)) .+ sum(splat(*), zip(μ, rays); init=zero(first(vertices))) .== x)
+    for i in 1:n
+        expr = zero(AffExpr)
+
+        for (j, vertex) in enumerate(vertices)
+            add_to_expression!(expr, vertex[i], λ[j])
+        end
+
+        for (j, ray) in enumerate(rays)
+            add_to_expression!(expr, ray[i], μ[j])
+        end
+
+        @constraint(model, expr == x[i])
+    end
 
     H, h = tosimplehrep(X)
     @constraint(model, H * x .+ x₀ ≤ h)
@@ -473,7 +504,7 @@ function tighten_dynamics(dyn, qᵢ, qⱼ, expectation)
     return dyn
 end
 
-function binary_search_tighten_dynamics(dyn, qᵢ, qⱼ, expectation, lambda_polytope, normal_vector, min_vertex, max_vertex; max_steps=10)
+function binary_search_tighten_dynamics(dyn, qᵢ, qⱼ, expectation, lambda_polytope, normal_vector, min_vertex, max_vertex; max_steps=5)
     min = dot(normal_vector, min_vertex)
     max = dot(normal_vector, max_vertex)
 
@@ -526,7 +557,7 @@ function tighten_region(dyn, qᵢ, qⱼ, expectation)
     return qᵢ
 end
 
-function binary_search_tighten_region(dyn, qᵢ, qⱼ, expectation, normal_vector, max, min; max_steps=10)
+function binary_search_tighten_region(dyn, qᵢ, qⱼ, expectation, normal_vector, max, min; max_steps=5)
     step = 1
 
     # Perform binary search
