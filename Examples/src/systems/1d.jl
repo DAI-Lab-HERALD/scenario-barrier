@@ -69,8 +69,55 @@ probs_linear1d_constant = [
     prob_linear1d_exact_constant
 ];
 
-prob_linear1d_uncertain_saa = Problem("linear1d_uncertain_saa", martingale1d(true, true), 10, PolynomialTemplate(2), SampleAverage(0.005, 1e-9))
-prob_linear1d_exact_saa = Problem("linear1d_exact_saa", martingale1d(false, true), 10, PolynomialTemplate(2), SampleAverage(0.005, 1e-9))
+function polynomial_martingale1d(uncertain=true, gaussian=true)
+    vars = Symbolics.@variables x
+
+    Q = [
+        HPolyhedron([x ≥ 2.5], vars),
+        HPolyhedron([x ≤ -2.5], vars),
+        LazySets.Interval(1.5, 2.5),
+        LazySets.Interval(0.5, 1.5),
+        LazySets.Interval(-0.5, 0.5),
+        LazySets.Interval(-1.5, -0.5),
+        LazySets.Interval(-2.5, -1.5)
+    ]
+
+    if uncertain
+        Ab = [AffineDynamics(Float64[1][:,:], [-0.05]), AffineDynamics(Float64[1][:,:], [0.05])]
+    else
+        Ab = singleton_dynamics(Float64[1][:,:], [0.0])
+    end
+    dyn = [Ab for _ in 1:length(Q)]
+
+    split_spec = Int64[1 1 5 5 5 5 5][:,:]
+    Q, dyn = grid_split(Q, dyn, split_spec)
+
+    if gaussian
+        μ = [0]
+        Σ = PDiagMat([0.01^2])  # Square to make std.dev. to variance.
+        η = DiagNormal(μ, Σ)
+    else
+        μ = [-5.0]
+        Σ = PDiagMat([0.1^2])  # Square to make std.dev. to variance.
+        η = MvLogNormal(DiagNormal(μ, Σ))
+    end
+
+    # Start in a box [-0.5, 0.5]
+    X0 = LazySets.Interval(-0.5, 0.5)
+
+    # Center is safe
+    Xs = LazySets.Interval(-2.5, 2.5)
+
+    # Outside the center is dangerous
+    Xu = [
+        Complement(Xs)
+    ]
+
+    return PiecewiseSystem(Q, dyn, η, X0, Xs, Xu)
+end
+
+prob_linear1d_uncertain_saa = Problem("linear1d_uncertain_saa", polynomial_martingale1d(true, true), 10, PolynomialTemplate(4), SampleAverage(0.005, 0.01))
+prob_linear1d_exact_saa = Problem("linear1d_exact_saa", polynomial_martingale1d(false, true), 10, PolynomialTemplate(4), SampleAverage(0.005, 0.01))
 
 probs_linear1d_saa = [
     prob_linear1d_uncertain_saa,
@@ -154,4 +201,4 @@ function cdc_martingale1d_polynomial()
     return PolynomialSystem{1, Float64}(f, η, X0, Xs, Xu)
 end
 
-cdc_prob_linear1d_saa = Problem("cdc_linear1d_ssa", cdc_martingale1d_polynomial(), 10, PolynomialTemplate(2), SampleAverage(0.005, 1e-6))
+cdc_prob_linear1d_saa = Problem("cdc_linear1d_ssa", cdc_martingale1d_polynomial(), 10, PolynomialTemplate(2), SampleAverage(0.005, 0.01))

@@ -31,13 +31,16 @@ Base.hash(p::DynamicsRegion, h::UInt) = hash(p.index, h)
 Base.:(==)(p1::DynamicsRegion, p2::DynamicsRegion) = p1.index == p2.index
 
 is_intersection_zeromeasure(p::DynamicsRegion, q::DynamicsRegion; solver=nothing)::Bool = is_intersection_zeromeasure(region(p), region(q); solver=solver)
-is_intersection_zeromeasure(p::DynamicsRegion, q::AbstractPolyhedron; solver=nothing)::Bool = is_intersection_zeromeasure(region(p), q; solver=solver)
-is_intersection_zeromeasure(p::AbstractPolyhedron, q::DynamicsRegion; solver=nothing)::Bool = is_intersection_zeromeasure(q, p; solver=solver)
+is_intersection_zeromeasure(p::DynamicsRegion, q; solver=nothing)::Bool = is_intersection_zeromeasure(region(p), q; solver=solver)
+is_intersection_zeromeasure(p, q::DynamicsRegion; solver=nothing)::Bool = is_intersection_zeromeasure(q, p; solver=solver)
 
-function is_intersection_zeromeasure(p::AbstractPolyhedron, q::AbstractPolyhedron; solver=nothing)::Bool
-    N = promote_type(eltype(p), eltype(q))
+const SupportedTypes = Union{AbstractPolyhedron, CartesianProduct}
+is_intersection_zeromeasure(p::SupportedTypes, q::SupportedTypes; solver=nothing)::Bool = is_intersection_zeromeasure(constraints_list(q), constraints_list(p); solver=solver)
 
-    z = [constraints_list(p); constraints_list(q)]
+function is_intersection_zeromeasure(p::Vector, q::Vector; solver=nothing)::Bool
+    N = promote_type(eltype(first(p)), eltype(first(q)))
+
+    z = [p; q]
 
     A, b = tosimplehrep(z)
     n = size(A, 2)

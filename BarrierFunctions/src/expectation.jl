@@ -37,7 +37,8 @@ end
 confidence(method::SampleAverage) = method.β
 function required_samples(method::SampleAverage, d) 
     M = 2.0
-    n = ceil(Int64, -log(method.β) * (0 - M)^2 / (2 * method.ϵ^2))
+    # n = ceil(Int64, -log(method.β) * (0 - M)^2 / (2 * method.ϵ^2))
+    n = ceil(Int64, M / (method.ϵ^2 * method.β))
 
     return n
 end
@@ -192,9 +193,6 @@ function expectation_constraint!(model, system::PiecewiseSystem, B::PolynomialBa
         return new_term * empirical_mean
     end
 
-    y_lag_monos = monomials(y, 0:2)
-    x_lag_monos = monomials(x, 0:2)
-
     base_constraint = @expression(model, -B_next - ϵ + B.p + c)
 
     for qᵢ in regions(system)
@@ -204,16 +202,14 @@ function expectation_constraint!(model, system::PiecewiseSystem, B::PolynomialBa
 
         fᵢ = dynamics(qᵢ)
 
+        qᵢ = region(qᵢ)
+        qᵢ_symbolic = lazysets2semialgebraic(qᵢ, x)
+
         if length(fᵢ) == 1
             (Aᵢ, bᵢ) = fᵢ[1]
 
             constraint = subs(base_constraint, y => Aᵢ * x + bᵢ)
-
-            H, h = tosimplehrep(qᵢ)
-            qᵢ_symbolic = h .- H * x  # Hx ≤ h
-            x_lag = @variable(model, [1:length(qᵢ_symbolic)], variable_type=SOSPoly(x_lag_monos))
-
-            @constraint(model, constraint - dot(x_lag, qᵢ_symbolic) in SOSCone())
+            @constraint(model, constraint in SOSCone(), domain=qᵢ_symbolic)
         elseif length(fᵢ) == 2
             (A̲ᵢ, b̲ᵢ), (A̅ᵢ, b̅ᵢ) = fᵢ
 
@@ -221,17 +217,22 @@ function expectation_constraint!(model, system::PiecewiseSystem, B::PolynomialBa
             f̅ᵢ = A̅ᵢ * x + b̅ᵢ
     
             y_domain = (f̅ᵢ - y) .* (y - f̲ᵢ)
-            y_lag = @variable(model, [1:length(y_domain)], variable_type=SOSPoly(y_lag_monos))
+            y_symbolic = BasicSemialgebraicSet(FullSpace(), y_domain)
     
-            H, h = tosimplehrep(qᵢ)
-            qᵢ_symbolic = h .- H * x  # Hx ≤ h
-            x_lag = @variable(model, [1:length(qᵢ_symbolic)], variable_type=SOSPoly(x_lag_monos))
-    
-            @constraint(model, base_constraint - dot(x_lag, qᵢ_symbolic) - dot(y_lag, y_domain) in SOSCone())
+            @constraint(model, base_constraint in SOSCone(), domain=intersect(qᵢ_symbolic, y_symbolic))
         else
             error("Unsupported number of vertices of convex hull dynamics")
         end
     end
+end
+
+function lazysets2semialgebraic(region::AbstractHyperrectangle, x)
+    return BasicSemialgebraicSet(FullSpace(), radius_hyperrectangle(region) .^ 2 - (x - center(region)) .^ 2)
+end
+
+function lazysets2semialgebraic(region::AbstractPolyhedron, x)
+    H, h = tosimplehrep(region)
+    return BasicSemialgebraicSet(FullSpace(), h .- H * x)
 end
 
 ### Scenario approach expectation for different families of barriers
