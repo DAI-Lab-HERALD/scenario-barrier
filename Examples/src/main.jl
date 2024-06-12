@@ -74,8 +74,8 @@ function run_experiments(problems)
     end
 end
 
-# run_experiments(probs_car_with_sidewind_saa)
-# run_experiments(probs_drone_saa)
-# run_experiments(probs_linear1d_saa)
-# run_experiments(probs_nndm_pendulum_sample_average)
-run_experiment(prob_dubins_car_1000regions_saa)
+run_experiments(probs_car_with_sidewind)
+run_experiments(probs_drone)
+run_experiments(probs_linear1d)
+run_experiments(probs_nndm_pendulum)
+run_experiment(prob_dubins_car_1000regions)

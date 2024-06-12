@@ -42,6 +42,19 @@ probs_to_analyze = [
 ]
 
 # probs_to_analyze = [
+#     "linear1d_uncertain_1e_2",
+#     "linear1d_uncertain_1e_3",
+#     "linear1d_uncertain_1e_4",
+#     "linear1d_uncertain_1e_2_saa",
+#     "linear1d_uncertain_1e_3_saa",
+#     "nndm_pendulum_1layer_480regions_1e_2",
+#     "nndm_pendulum_1layer_480regions_1e_3",
+#     "nndm_pendulum_1layer_480regions_1e_4",
+#     "nndm_pendulum_1layer_480regions_1e_2_saa",
+#     "nndm_pendulum_1layer_480regions_1e_3_saa",
+# ]
+
+# probs_to_analyze = [
 #     "cdc_car_with_sidewind_no_partitioning",
 #     "cdc_car_with_sidewind_lat_partitioning",
 #     "cdc_car_with_sidewind_lon_partitioning",

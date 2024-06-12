@@ -295,9 +295,9 @@ end
 
 # Pendulum
 H = 5
-prob_nndm_pendulum_1layer_120regions = () -> Problem("linear_indexing_nndm_pendulum_1layer_120regions", nndm_system("pendulum", 1, 120), H, PiecewiseTemplate(LinearTemplate()), ScenarioApproach(0.005/H, 1e-9))
-prob_nndm_pendulum_1layer_240regions = () -> Problem("linear_indexing_nndm_pendulum_1layer_240regions", nndm_system("pendulum", 1, 240), H, PiecewiseTemplate(LinearTemplate()), ScenarioApproach(0.005/H, 1e-9))
-prob_nndm_pendulum_1layer_480regions = () -> Problem("linear_indexing_nndm_pendulum_1layer_480regions", nndm_system("pendulum", 1, 480), H, PiecewiseTemplate(LinearTemplate()), ScenarioApproach(0.005/H, 1e-9))
+prob_nndm_pendulum_1layer_120regions = () -> Problem("nndm_pendulum_1layer_120regions", nndm_system("pendulum", 1, 120), H, PiecewiseTemplate(LinearTemplate()), ScenarioApproach(0.005/H, 1e-9))
+prob_nndm_pendulum_1layer_240regions = () -> Problem("nndm_pendulum_1layer_240regions", nndm_system("pendulum", 1, 240), H, PiecewiseTemplate(LinearTemplate()), ScenarioApproach(0.005/H, 1e-9))
+prob_nndm_pendulum_1layer_480regions = () -> Problem("nndm_pendulum_1layer_480regions", nndm_system("pendulum", 1, 480), H, PiecewiseTemplate(LinearTemplate()), ScenarioApproach(0.005/H, 1e-9))
 
 probs_nndm_pendulum_1layer = [
     prob_nndm_pendulum_1layer_120regions,
@@ -313,6 +313,26 @@ probs_nndm_pendulum_1layer_sample_average = [
     prob_nndm_pendulum_1layer_120regions_sample_average,
     prob_nndm_pendulum_1layer_240regions_sample_average,
     prob_nndm_pendulum_1layer_480regions_sample_average
+]
+
+prob_nndm_pendulum_1layer_480regions_1e_2 = () -> Problem("nndm_pendulum_1layer_480regions_1e_2", nndm_system("pendulum", 1, 480), H, PiecewiseTemplate(LinearTemplate()), ScenarioApproach(0.005/H, 1e-2))
+prob_nndm_pendulum_1layer_480regions_1e_3 = () -> Problem("nndm_pendulum_1layer_480regions_1e_3", nndm_system("pendulum", 1, 480), H, PiecewiseTemplate(LinearTemplate()), ScenarioApproach(0.005/H, 1e-3))
+prob_nndm_pendulum_1layer_480regions_1e_4 = () -> Problem("nndm_pendulum_1layer_480regions_1e_4", nndm_system("pendulum", 1, 480), H, PiecewiseTemplate(LinearTemplate()), ScenarioApproach(0.005/H, 1e-4))
+
+probs_nndm_pendulum_1layer_1e = [
+    prob_nndm_pendulum_1layer_480regions_1e_2,
+    prob_nndm_pendulum_1layer_480regions_1e_3,
+    prob_nndm_pendulum_1layer_480regions_1e_4
+]
+
+prob_nndm_pendulum_1layer_480regions_1e_2_saa = () -> Problem("nndm_pendulum_1layer_480regions_1e_2_saa", nndm_polynomial_system("pendulum", 1, 480), H, PolynomialTemplate(2), SampleAverage(0.005, 1e-2))
+prob_nndm_pendulum_1layer_480regions_1e_3_saa = () -> Problem("nndm_pendulum_1layer_480regions_1e_3_saa", nndm_polynomial_system("pendulum", 1, 480), H, PolynomialTemplate(2), SampleAverage(0.005, 1e-3))
+prob_nndm_pendulum_1layer_480regions_1e_4_saa = () -> Problem("nndm_pendulum_1layer_480regions_1e_4_saa", nndm_polynomial_system("pendulum", 1, 480), H, PolynomialTemplate(2), SampleAverage(0.005, 1e-4))
+
+probs_nndm_pendulum_1layer_1e_saa = [
+    prob_nndm_pendulum_1layer_480regions_1e_2_saa,
+    prob_nndm_pendulum_1layer_480regions_1e_3_saa,
+    prob_nndm_pendulum_1layer_480regions_1e_4_saa
 ]
 
 prob_nndm_pendulum_2layer_120regions = () -> Problem("nndm_pendulum_2layer_120regions", nndm_system("pendulum", 2, 120), H, PiecewiseTemplate(LinearTemplate()), ScenarioApproach(0.005/H, 1e-9))
