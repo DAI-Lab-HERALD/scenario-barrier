@@ -206,8 +206,8 @@ Ys_vertex = ConvexHull(Ys[1], Ys[end])
 # plot!(p, vs_x, vs_y, seriestype=:scatter, label="(qj ∩ f(qi)) vertices")
 # plot!(p, vs_x2, vs_y2, seriestype=:scatter, label="(qj ∩ f(qi) pruned) vertices")
 
-p = plot(qⱼ, label=L"$\bar{P}_j$", xlabel=L"$x_1$", ylabel=L"$x_2$", legend=:bottomright, size=(375, 240)) #, xlims=(x_min, x_max), ylims=(y_min, y_max))
-plot!(p, Ys_vertex, label=L"$\mathrm{conv}(A_i(0)^{-1}\bar{P}_j, A_i(1)^{-1}\bar{P}_j)$") #, xlims=(x_min, x_max), ylims=(y_min, y_max))
+p = plot(qⱼ, label=L"$Q_j$", xlabel=L"$x_1$", ylabel=L"$x_2$", legend=:bottomright, size=(375, 240)) #, xlims=(x_min, x_max), ylims=(y_min, y_max))
+plot!(p, Ys_vertex, label=L"$\mathrm{conv}(A_i(0)^{-1}Q_j, A_i(1)^{-1}Q_j)$") #, xlims=(x_min, x_max), ylims=(y_min, y_max))
 
 for Y in Ys
     plot!(p, Y, fillalpha=0.0)

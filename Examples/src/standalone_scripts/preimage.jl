@@ -68,12 +68,12 @@ bar_Qᵢⱼω_next = convex_hull(bar_Qᵢⱼω_next_α0, bar_Qᵢⱼω_next_α1)
 
 colors = ColorSchemes.seaborn_colorblind
 
-p = plot(qᵢ, label=L"$\bar{P_i}$", xlabel=L"$x_1$", ylabel=L"$x_2$", fillcolor=colors[1], alpha=0.5, legend=:topleft, legendcolumns=2, xtickfontsize=14, ytickfontsize=14, xguidefontsize=14, yguidefontsize=14, legendfontsize=14, size=(660, 420))
-plot!(p, qᵢ_next, label=L"$\mathrm{conv}(\cup_{\alpha} \hat{f}(\bar{P_i}, \alpha) + \eta(\omega))$", fillcolor=colors[10], alpha=0.5)
-plot!(p, qⱼ, label=L"$\bar{P_j}$", fillcolor=colors[3], alpha=0.5)
-plot!(p, Qᵢⱼω_next, label=L"$\mathrm{conv}(\cup_{\alpha} \hat{f}(Q_{ij}(\omega), \alpha) + \eta(\omega))$", fillcolor=colors[8], alpha=0.5)
+p = plot(qᵢ, label=L"$Q_i$", xlabel=L"$x_1$", ylabel=L"$x_2$", fillcolor=colors[1], alpha=0.5, legend=:topleft, legendcolumns=2, xtickfontsize=14, ytickfontsize=14, xguidefontsize=14, yguidefontsize=14, legendfontsize=14, size=(660, 420))
+plot!(p, qᵢ_next, label=L"$\mathrm{conv}(F(Q_i) + \eta(\omega))$", fillcolor=colors[10], alpha=0.5)
+plot!(p, qⱼ, label=L"$Q_j$", fillcolor=colors[3], alpha=0.5)
+plot!(p, Qᵢⱼω_next, label=L"$\mathrm{conv}(F(Q_{ij}(\omega)) + \eta(\omega))$", fillcolor=colors[8], alpha=0.5)
 plot!(p, Qᵢⱼω, label=L"$Q_{ij}(\omega)$", fillcolor=colors[4], alpha=0.5)
-plot!(p, bar_Qᵢⱼω_next, label=L"$\mathrm{conv}(\cup_{\alpha} \hat{f}(\bar{Q}_{ij}(\omega), \alpha) + \eta(\omega))$", fillcolor=colors[9], alpha=0.5)
+plot!(p, bar_Qᵢⱼω_next, label=L"$\mathrm{conv}(F(\bar{Q}_{ij}(\omega)) + \eta(\omega))$", fillcolor=colors[9], alpha=0.5)
 plot!(p, bar_Qij_omega, label=L"$\bar{Q}_{ij}(\omega)$", fillcolor=colors[5], alpha=0.5)
 
 # for Qᵢⱼω in Qᵢⱼω_α
