@@ -10,9 +10,9 @@ struct PiecewiseSystem{N, T<:Real} <: AbstractSystem
 
     η::Sampleable
 
-    X0::AbstractPolyhedron{T}
-    Xs::AbstractPolyhedron{T}
-    Xu::AbstractVector{<:AbstractPolyhedron{T}}
+    X0::LazySet{T}
+    Xs::LazySet{T}
+    Xu::AbstractVector{<:LazySet{T}}
 
     function PiecewiseSystem{N, T}(Q, η, X0, Xs, Xu) where {N, T}
         n = length(Q)
@@ -23,7 +23,7 @@ struct PiecewiseSystem{N, T<:Real} <: AbstractSystem
     end
 end
 
-function PiecewiseSystem(Q, dyn, η, X0::AbstractPolyhedron{T}, Xs::AbstractPolyhedron{T}, Xu::AbstractVector{<:AbstractPolyhedron{T}}) where {T<:Real}
+function PiecewiseSystem(Q, dyn, η, X0::LazySet{T}, Xs::LazySet{T}, Xu::AbstractVector{<:LazySet{T}}) where {T<:Real}
     n1, n2 = length(dyn), size(Q, 1)
     @assert(n1 == n2, "Number of regions and dynamics matrices must match")
     @assert(n1 >= 1, "The number of regions must be at least 1")

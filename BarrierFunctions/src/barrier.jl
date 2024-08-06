@@ -90,3 +90,4 @@ function Base.iterate(B::PiecewiseBarrier, state)
     (_, region), state = it
     return region, state
 end
+Base.length(B::PiecewiseBarrier) = length(B.regions)

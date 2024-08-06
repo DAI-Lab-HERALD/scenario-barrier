@@ -11,19 +11,7 @@ function drone(uncertain=true)
     vars = Symbolics.@variables x[1:2]
 
     Q = [
-        Hyperrectangle(low=[0, -10], high=[20, 10]),
-        HPolyhedron([x[1] ≤ 0, x[2] ≥ -10, x[2] ≤ -6], vars),
-        HPolyhedron([x[1] ≤ 0, x[2] ≥ -6, x[2] ≤ -2], vars),
-        HPolyhedron([x[1] ≤ 0, x[2] ≥ -2, x[2] ≤ 2], vars),
-        HPolyhedron([x[1] ≤ 0, x[2] ≥ 2, x[2] ≤ 6], vars),
-        HPolyhedron([x[1] ≤ 0, x[2] ≥ 6, x[2] ≤ 10], vars),
-        HPolyhedron([x[1] ≥ 20, x[2] ≥ -10, x[2] ≤ -6], vars),
-        HPolyhedron([x[1] ≥ 20, x[2] ≥ -6, x[2] ≤ -2], vars),
-        HPolyhedron([x[1] ≥ 20, x[2] ≥ -2, x[2] ≤ 2], vars),
-        HPolyhedron([x[1] ≥ 20, x[2] ≥ 2, x[2] ≤ 6], vars),
-        HPolyhedron([x[1] ≥ 20, x[2] ≥ 6, x[2] ≤ 10], vars),
-        HPolyhedron([x[2] ≥ 10], vars),
-        HPolyhedron([x[2] ≤ -10], vars),
+        Hyperrectangle(low=[-10, -10], high=[14, 10]),
     ]
 
     m₋, m₊ = 0.75, 1.25
@@ -46,7 +34,7 @@ function drone(uncertain=true)
                 0 (m - 0.1 * τ) / m
             ], Float64[0, 0])]
     end
-    dyn = [Ab, Ab, Ab, Ab, Ab, Ab, Ab, Ab, Ab, Ab, Ab, Ab, Ab]
+    dyn = [Ab]
 
     μ = [0, 0]
     Σ = PDiagMat([0.1^2, 0.1^2])  # Square to make std.dev. to variance.
@@ -56,17 +44,19 @@ function drone(uncertain=true)
     X0 = Hyperrectangle(low=[0.5, -0.5], high=[1.0, 0.5])
 
     # Low velocity is safe
-    Xs = HPolyhedron([x[2] ≤ 10, x[2] ≥ -10], vars)
+    Xs = Hyperrectangle(low=[-10, -10], high=[14, 10])
 
     # High velocity is dangerous
     Xu = [
+        HPolyhedron([x[1] ≥ 14], vars),
+        HPolyhedron([x[1] ≤ -10], vars),
         HPolyhedron([x[2] ≥ 10], vars),
         HPolyhedron([x[2] ≤ -10], vars)
     ]
 
     split_spec = Int64[
-        [5 1 1 1 1 1 1 1 1 1 1 1 1]
-        [5 1 1 1 1 1 1 1 1 1 1 1 1]
+        [24]
+        [20]
     ]
     Q, dyn = grid_split(Q, dyn, split_spec)
 
@@ -81,8 +71,64 @@ probs_drone = [
     prob_drone_exact
 ];
 
-prob_drone_uncertain_saa = Problem("drone_uncertain_saa", drone(true), 10, PolynomialTemplate(2), SampleAverage(0.005, 1e-9))
-prob_drone_exact_saa = Problem("drone_exact_saa", drone(false), 10, PolynomialTemplate(2), SampleAverage(0.005, 1e-9))
+function polynomial_drone(uncertain=true)
+    # Only modeling longitudinal dynamics
+    # x[1] = position
+    # x[2] = velocity
+    vars = Symbolics.@variables x[1:2]
+
+    Q = [
+        Hyperrectangle(low=[-10, -10], high=[14, 10]),
+    ]
+
+    m₋, m₊ = 0.75, 1.25
+    m = (m₋ + m₊) / 2
+    τ = 1.0
+
+    if uncertain
+        Ab = [
+            AffineDynamics{Float64}([
+                1 τ;
+                0 (m₋ - 0.1 * τ) / m₋
+            ], Float64[0, 0]),
+            AffineDynamics{Float64}([
+                1 τ;
+                0 (m₊ - 0.1 * τ) / m₊
+            ], Float64[0, 0])]
+    else
+        Ab = [AffineDynamics{Float64}([
+                1 τ;
+                0 (m - 0.1 * τ) / m
+            ], Float64[0, 0])]
+    end
+    dyn = [Ab]
+
+    μ = [0, 0]
+    Σ = PDiagMat([0.1^2, 0.1^2])  # Square to make std.dev. to variance.
+    η = DiagNormal(μ, Σ)
+
+    # Start in a box [-0.5m, -0.5m] × [-0.5m/s, 0.5m/s]
+    X0 = Hyperrectangle(low=[-0.5, -0.5], high=[0.5, 0.5])
+
+    # Low velocity is safe
+    Xs = Hyperrectangle(low=[-10, -10], high=[14, 10])
+
+    # High velocity is dangerous
+    Xu = [
+        Complement(Xs)
+    ]
+
+    split_spec = Int64[
+        [24]
+        [20]
+    ]
+    Q, dyn = grid_split(Q, dyn, split_spec)
+
+    return PiecewiseSystem(Q, dyn, η, X0, Xs, Xu)
+end
+
+prob_drone_uncertain_saa = Problem("drone_uncertain_saa", polynomial_drone(true), 10, PolynomialTemplate(4), SampleAverage(0.005, 0.01))
+prob_drone_exact_saa = Problem("drone_exact_saa", polynomial_drone(false), 10, PolynomialTemplate(4), SampleAverage(0.005, 0.01))
 
 probs_drone_saa = [
     prob_drone_uncertain_saa,
@@ -188,4 +234,4 @@ function cdc_drone_saa()
     return PolynomialSystem{2, Float64}(f, η, X0, Xs, Xu)
 end
 
-cdc_prob_drone_exact_saa = Problem("cdc_drone_exact_saa", cdc_drone_saa(), 10, PolynomialTemplate(2), SampleAverage(0.005, 1e-6))
+cdc_prob_drone_exact_saa = Problem("cdc_drone_exact_saa", cdc_drone_saa(), 10, PolynomialTemplate(2), SampleAverage(0.005/10, 1e-6))

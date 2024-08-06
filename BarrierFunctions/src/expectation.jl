@@ -37,7 +37,8 @@ end
 confidence(method::SampleAverage) = method.β
 function required_samples(method::SampleAverage, d) 
     M = 2.0
-    n = ceil(Int64, -log(method.β) * (0 - M)^2 / (2 * method.ϵ^2))
+    # n = ceil(Int64, -log(method.β) * (0 - M)^2 / (2 * method.ϵ^2))
+    n = ceil(Int64, M / (method.ϵ^2 * method.β))
 
     return n
 end
@@ -192,9 +193,6 @@ function expectation_constraint!(model, system::PiecewiseSystem, B::PolynomialBa
         return new_term * empirical_mean
     end
 
-    y_lag_monos = monomials(y, 0:2)
-    x_lag_monos = monomials(x, 0:2)
-
     base_constraint = @expression(model, -B_next - ϵ + B.p + c)
 
     for qᵢ in regions(system)
@@ -204,16 +202,14 @@ function expectation_constraint!(model, system::PiecewiseSystem, B::PolynomialBa
 
         fᵢ = dynamics(qᵢ)
 
+        qᵢ = region(qᵢ)
+        qᵢ_symbolic = lazysets2semialgebraic(qᵢ, x)
+
         if length(fᵢ) == 1
             (Aᵢ, bᵢ) = fᵢ[1]
 
             constraint = subs(base_constraint, y => Aᵢ * x + bᵢ)
-
-            H, h = tosimplehrep(qᵢ)
-            qᵢ_symbolic = h .- H * x  # Hx ≤ h
-            x_lag = @variable(model, [1:length(qᵢ_symbolic)], variable_type=SOSPoly(x_lag_monos))
-
-            @constraint(model, constraint - dot(x_lag, qᵢ_symbolic) in SOSCone())
+            @constraint(model, constraint in SOSCone(), domain=qᵢ_symbolic)
         elseif length(fᵢ) == 2
             (A̲ᵢ, b̲ᵢ), (A̅ᵢ, b̅ᵢ) = fᵢ
 
@@ -221,17 +217,22 @@ function expectation_constraint!(model, system::PiecewiseSystem, B::PolynomialBa
             f̅ᵢ = A̅ᵢ * x + b̅ᵢ
     
             y_domain = (f̅ᵢ - y) .* (y - f̲ᵢ)
-            y_lag = @variable(model, [1:length(y_domain)], variable_type=SOSPoly(y_lag_monos))
+            y_symbolic = BasicSemialgebraicSet(FullSpace(), y_domain)
     
-            H, h = tosimplehrep(qᵢ)
-            qᵢ_symbolic = h .- H * x  # Hx ≤ h
-            x_lag = @variable(model, [1:length(qᵢ_symbolic)], variable_type=SOSPoly(x_lag_monos))
-    
-            @constraint(model, base_constraint - dot(x_lag, qᵢ_symbolic) - dot(y_lag, y_domain) in SOSCone())
+            @constraint(model, base_constraint in SOSCone(), domain=intersect(qᵢ_symbolic, y_symbolic))
         else
             error("Unsupported number of vertices of convex hull dynamics")
         end
     end
+end
+
+function lazysets2semialgebraic(region::AbstractHyperrectangle, x)
+    return BasicSemialgebraicSet(FullSpace(), radius_hyperrectangle(region) .^ 2 - (x - center(region)) .^ 2)
+end
+
+function lazysets2semialgebraic(region::AbstractPolyhedron, x)
+    H, h = tosimplehrep(region)
+    return BasicSemialgebraicSet(FullSpace(), h .- H * x)
 end
 
 ### Scenario approach expectation for different families of barriers
@@ -276,8 +277,7 @@ function custom_minkowski_sum(qᵢ_next_nom::VPolyhedron{N}, expectation) where 
     vlist1 = vertices_list(qᵢ_next_nom)
     vlist2 = vertices_list(expectation.data.vrep)
 
-    vpolytope_minkowski_sum!(expectation.data.vout, vlist1, vlist2)
-    vout = expectation.data.vout[1:(length(vlist1) * length(vlist2))]
+    vout = vpolytope_minkowski_sum!(expectation.data.vout, vlist1, vlist2)
 
     qᵢ_next = VPolyhedron(vout, rlist1)
 
@@ -293,6 +293,8 @@ function vpolytope_minkowski_sum!(vout, vlist1, vlist2)
             i += 1
         end
     end
+
+    vout = vout[1:i - 1]
 end
 
 @commutative function LazySets.isdisjoint(P::VPolyhedron{N}, X::AbstractPolyhedron; solver=default_lp_solver(N)) where {N}
@@ -306,11 +308,7 @@ end
         end
     end
 
-    if LazySets.isbounded(P)
-        return true
-    else
-        return _isdisjoint_vpolyhedron(P, X; solver=solver)
-    end
+    return _isdisjoint_vpolyhedron_lp(P, X; solver=solver)
 end
 
 @commutative function LazySets.isdisjoint(P::VPolyhedron{N}, X::AbstractZonotope; solver=default_lp_solver(N)) where {N}
@@ -324,15 +322,30 @@ end
         end
     end
 
-    if LazySets.isbounded(P)
+    return _isdisjoint_vpolyhedron_lp(P, X; solver=solver)
+end
+
+@commutative function LazySets.isdisjoint(P::VPolyhedron{N}, X::AbstractHyperrectangle; solver=default_lp_solver(N)) where {N}
+    if isempty(P)
         return true
-    else
-        return _isdisjoint_vpolyhedron(P, X; solver=solver)
     end
+
+    for v in vertices_list(P)
+        if v ∈ X
+            return false
+        end
+    end
+
+    HP = box_approximation(VPolytope(vertices_list(P)))
+    if LazySets.isbounded(P) && isdisjoint(HP, X)
+        return true
+    end
+
+    return _isdisjoint_vpolyhedron_lp(P, X; solver=solver)
 end
 
 
-function _isdisjoint_vpolyhedron(P::VPolyhedron{N}, X; solver=default_lp_solver(N)) where {N}
+function _isdisjoint_vpolyhedron_lp(P::VPolyhedron{N}, X; solver=default_lp_solver(N)) where {N}
     vertices = vertices_list(P)
     m = length(vertices)
 
@@ -348,21 +361,36 @@ function _isdisjoint_vpolyhedron(P::VPolyhedron{N}, X; solver=default_lp_solver(
     @variable(model, λ[1:m] ≥ 0)
     @variable(model, μ[1:o] ≥ 0)
     @variable(model, x[1:n])
+    @variable(model, x₀, upper_bound=1.0)
+
+    @objective(model, Max, 1.0 * x₀)
 
     @constraint(model, sum(λ) == 1)
-    @constraint(model, sum(splat(*), zip(λ, vertices)) .+ sum(splat(*), zip(μ, rays)) .== x)
+    for i in 1:n
+        expr = zero(AffExpr)
+
+        for (j, vertex) in enumerate(vertices)
+            add_to_expression!(expr, vertex[i], λ[j])
+        end
+
+        for (j, ray) in enumerate(rays)
+            add_to_expression!(expr, ray[i], μ[j])
+        end
+
+        @constraint(model, expr == x[i])
+    end
 
     H, h = tosimplehrep(X)
-    @constraint(model, H * x ≤ h)
+    @constraint(model, H * x .+ x₀ ≤ h)
 
     optimize!(model)
 
-    if termination_status(model) == MathOptInterface.OPTIMAL
-        return false
-    elseif termination_status(model) == MathOptInterface.INFEASIBLE
-        return true
+    if termination_status(model) != MathOptInterface.OPTIMAL
+        error("LP returned status $(solution_summary(model)) unexpectedly")
     end
-    error("LP returned status $(lp.status) unexpectedly")
+
+    isdisjoint = objective_value(model) < 0.0
+    return isdisjoint
 end
 
 function expectation_partition_constraint!(model, dyn, Bᵢ::BarrierRegion{<:LinearBarrier}, Bⱼ::BarrierRegion{<:LinearBarrier}, c, expectation::ExpectationData{<:ScenarioApproach})
@@ -477,7 +505,7 @@ function tighten_dynamics(dyn, qᵢ, qⱼ, expectation)
     return dyn
 end
 
-function binary_search_tighten_dynamics(dyn, qᵢ, qⱼ, expectation, lambda_polytope, normal_vector, min_vertex, max_vertex; max_steps=10)
+function binary_search_tighten_dynamics(dyn, qᵢ, qⱼ, expectation, lambda_polytope, normal_vector, min_vertex, max_vertex; max_steps=5)
     min = dot(normal_vector, min_vertex)
     max = dot(normal_vector, max_vertex)
 
@@ -530,7 +558,7 @@ function tighten_region(dyn, qᵢ, qⱼ, expectation)
     return qᵢ
 end
 
-function binary_search_tighten_region(dyn, qᵢ, qⱼ, expectation, normal_vector, max, min; max_steps=10)
+function binary_search_tighten_region(dyn, qᵢ, qⱼ, expectation, normal_vector, max, min; max_steps=5)
     step = 1
 
     # Perform binary search

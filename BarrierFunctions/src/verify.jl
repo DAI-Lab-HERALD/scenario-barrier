@@ -11,7 +11,7 @@ function verify(solver, barrier_type::BarrierTemplate, system::AbstractSystem, H
     @assert(H >= 1, "Horizon H must be greater than or equal to one (is $H)")
 
     # solver = dual_optimizer(solver)
-    model = direct_model(solver)
+    model = Model(solver)
     set_string_names_on_creation(model, false)
 
     # Decision variables
@@ -55,7 +55,7 @@ end
 
 function barrier_variable!(model, template::PolynomialTemplate, system::PolynomialSystem)
     vars = variables(system)
-    monos = monomials(vars, 0:(template.degree // 2))
+    monos = monomials(vars, 0:div(template.degree, 2))
     # Encode non-negativity with SOSPoly
     @variable(model, B, variable_type=SOSPoly(monos))
 
@@ -64,7 +64,7 @@ end
 
 function barrier_variable!(model, template::PolynomialTemplate, system::PiecewiseSystem)
     @polyvar x[1:dimensionality(system)]
-    monos = monomials(x, 0:(template.degree // 2))
+    monos = monomials(x, 0:div(template.degree, 2))
     # Encode non-negativity with SOSPoly
     @variable(model, B, variable_type=SOSPoly(monos))
 
@@ -135,15 +135,16 @@ function constraints!(model, system, B::PiecewiseBarrier, c, γ, expectation_met
     end
 end
 
-function region_constraints!(model, system, B, c, γ, qᵢ, expectation)
-    Bᵢ = B[index(qᵢ)]
-
+region_constraints!(model, system, B, c, γ, qᵢ, expectation) = region_constraints!(model, system, B, c, γ, B[index(qᵢ)], qᵢ, expectation)
+function region_constraints!(model, system, B, c, γ, Bᵢ::BarrierRegion{<:LinearBarrier{<:VariableRef}}, qᵢ, expectation)
     non_negativity_constraint!(model, Bᵢ)
     upper_bound_constraint!(model, Bᵢ)
     initial_constraint!(model, system, Bᵢ, γ)
     unsafe_constraint!(model, system, Bᵢ)
     expectation_constraint!(model, system, B, c, qᵢ, expectation)
 end
+
+function region_constraints!(model, system, B, c, γ, Bᵢ::BarrierRegion{<:LinearBarrier{<:Number}}, qᵢ, expectation) end
 
 # Piece-wise linear barrier
 function non_negativity_constraint!(model, B::BarrierRegion{<:LinearBarrier})
@@ -253,7 +254,7 @@ function constraints!(model, system, B::PolynomialBarrier, c, γ, expectation_me
     n_variables = count_variables(B) + 2
     expectation = prepare(system, expectation_method, solver, n_variables)
 
-    upper_bound_constraint!(model, system, B)
+    # upper_bound_constraint!(model, system, B)
     initial_constraint!(model, system, B, γ)
     unsafe_constraint!(model, system, B)
     expectation_constraint!(model, system, B, c, expectation)
@@ -291,11 +292,13 @@ function unsafe_constraint!(model, system::PolynomialSystem, B::PolynomialBarrie
 end
 
 function initial_constraint!(model, system::PiecewiseSystem, B::PolynomialBarrier, γ)
-    X₀ = initial_set(system)
+    initial_constraint!(model, initial_set(system), B::PolynomialBarrier, γ)
+end
+
+function initial_constraint!(model, region::AbstractHyperrectangle, B::PolynomialBarrier, γ)
     x = variables(B)
 
-    H, h = tosimplehrep(X₀)
-    X₀_symbolic = BasicSemialgebraicSet(FullSpace(), h .- H * x)  # Hx ≤ h
+    X₀_symbolic = BasicSemialgebraicSet(FullSpace(), radius_hyperrectangle(region) .^ 2 - (x .- center(region)) .^ 2)
 
     @constraint(model, γ - B.p in SOSCone(), domain=X₀_symbolic)
 end
@@ -305,8 +308,37 @@ function unsafe_constraint!(model, system::PiecewiseSystem, B::PolynomialBarrier
     x = variables(B)
 
     for subset in Xᵤ
-        H, h = tosimplehrep(subset)
-        subset_symbolic = BasicSemialgebraicSet(FullSpace(), h .- H * x)  # Hx ≤ h
-        @constraint(model, B.p - 1.0 in SOSCone(), domain=subset_symbolic)
+        unsafe_constraint!(model, subset, B, x)
+    end
+end
+
+function unsafe_constraint!(model, region::Complement{T, <:AbstractHyperrectangle}, B::PolynomialBarrier, x) where {T}
+    Xₛ = Complement(region)
+    subset_symbolic = BasicSemialgebraicSet(FullSpace(), x .^ 2 - radius_hyperrectangle(Xₛ) .^ 2) 
+    @constraint(model, B.p - 1.0 in SOSCone(), domain=subset_symbolic)
+end
+
+function unsafe_constraint!(model, region::Complement{T, <:Universe}, B::PolynomialBarrier, x) where {T}
+    # No constraints
+end
+
+function unsafe_constraint!(model, region::Complement{T, <:CartesianProduct}, B::PolynomialBarrier, x) where {T}
+    Xₛ = Complement(region)
+    X₁, X₂ = Xₛ
+
+    n = LazySets.dim(X₁)
+    x₁, x₂ = x[1:n], x[1 + n:end]
+
+    unsafe_constraint!(model, Complement(X₁), B, x₁)
+    unsafe_constraint!(model, Complement(X₂), B, x₂)
+end
+
+function unsafe_constraint!(model, region::Complement{T, <:CartesianProductArray}, B::PolynomialBarrier, x) where {T}
+    Xₛ = Complement(region)
+
+    for Xᵢ in array(Xₛ)
+        xᵢ = x[1:LazySets.dim(Xᵢ)]
+        x = x[LazySets.dim(Xᵢ) + 1:end]
+        unsafe_constraint!(model, Complement(Xᵢ), B, xᵢ)
     end
 end
