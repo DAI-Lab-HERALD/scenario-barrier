@@ -79,3 +79,6 @@ run_experiments(probs_drone)
 run_experiments(probs_linear1d)
 run_experiments(probs_nndm_pendulum)
 run_experiment(prob_dubins_car_1000regions)
+
+# monte_carlo(prob_drone_uncertain.system, 10, LinRange(0, 1, 10), 100, 10000)
+# monte_carlo(prob_linear1d_uncertain.system, 10, LinRange(0, 1, 10), 100, 10000)
