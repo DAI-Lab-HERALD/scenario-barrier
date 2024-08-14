@@ -21,10 +21,6 @@ function monte_carlo(system, steps, alphas, initial_conditions, particles)
                     if !unsafe[i, j, k]
                         x, u = dynstep(system, x0[i, j, k], alphas[i], ηs[i, j, k])
 
-                        if i == 1 && j == 1 && k == 1
-                            println(x0[i, j, k], " -> ", x, " (", x0[i, j, k] - x, ")")
-                        end
-
                         x1[i, j, k] = x
                         unsafe[i, j, k] = u
                     end
