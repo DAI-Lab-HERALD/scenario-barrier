@@ -2,8 +2,8 @@ using Revise
 using BarrierFunctions
 using Gurobi, MosekTools, Mosek, GLPK, JuMP
 
-# using Plots
-# import PythonPlot: pygui
+using Plots
+import PythonPlot: pygui
 
 using Logging
 using TerminalLoggers: TerminalLoggers, TerminalLogger
@@ -12,8 +12,8 @@ using ProgressLogging
 
 using CSV, DataFrames
 
-# pythonplot()
-# pygui(true)
+pythonplot()
+pygui(true)
 
 include("problem.jl")
 include("systems/systems.jl")
@@ -77,8 +77,11 @@ end
 run_experiments(probs_car_with_sidewind)
 run_experiments(probs_drone)
 run_experiments(probs_linear1d)
-run_experiments(probs_nndm_pendulum)
+run_experiments(probs_nndm_pendulum_1layer)
+run_experiments(probs_nndm_pendulum_2layer)
 run_experiment(prob_dubins_car_1000regions)
 
-# monte_carlo(prob_drone_uncertain.system, 10, LinRange(0, 1, 10), 100, 10000)
-# monte_carlo(prob_linear1d_uncertain.system, 10, LinRange(0, 1, 10), 100, 10000)
+run_experiments(probs_linear1d_1e)
+run_experiments(probs_linear1d_1e_saa)
+run_experiments(probs_nndm_pendulum_1layer_1e)
+run_experiments(probs_nndm_pendulum_1layer_1e_saa)

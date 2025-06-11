@@ -127,21 +127,25 @@ probs_linear1d_saa = [
 prob_linear_1d_uncertain_1e_2 = Problem("linear1d_uncertain_1e_2", martingale1d(true, true), 10, PiecewiseTemplate(LinearTemplate()), ScenarioApproach(0.005/10, 1e-2))
 prob_linear_1d_uncertain_1e_3 = Problem("linear1d_uncertain_1e_3", martingale1d(true, true), 10, PiecewiseTemplate(LinearTemplate()), ScenarioApproach(0.005/10, 1e-3))
 prob_linear_1d_uncertain_1e_4 = Problem("linear1d_uncertain_1e_4", martingale1d(true, true), 10, PiecewiseTemplate(LinearTemplate()), ScenarioApproach(0.005/10, 1e-4))
+prob_linear_1d_uncertain_1e_9 = Problem("linear1d_uncertain_1e_9", martingale1d(true, true), 10, PiecewiseTemplate(LinearTemplate()), ScenarioApproach(0.005/10, 1e-9))
 
 prob_linear_1d_uncertain_1e_2_saa = Problem("linear1d_uncertain_1e_2_saa", polynomial_martingale1d(true, true), 10, PolynomialTemplate(4), SampleAverage(0.005, 1e-2))
 prob_linear_1d_uncertain_1e_3_saa = Problem("linear1d_uncertain_1e_3_saa", polynomial_martingale1d(true, true), 10, PolynomialTemplate(4), SampleAverage(0.005, 1e-3))
 prob_linear_1d_uncertain_1e_4_saa = Problem("linear1d_uncertain_1e_4_saa", polynomial_martingale1d(true, true), 10, PolynomialTemplate(4), SampleAverage(0.005, 1e-4))
+prob_linear_1d_uncertain_1e_9_saa = Problem("linear1d_uncertain_1e_9_saa", polynomial_martingale1d(true, true), 10, PolynomialTemplate(4), SampleAverage(0.005, 1e-9))
 
 probs_linear1d_1e = [
     prob_linear_1d_uncertain_1e_2,
     prob_linear_1d_uncertain_1e_3,
-    prob_linear_1d_uncertain_1e_4
+    prob_linear_1d_uncertain_1e_4,
+    prob_linear_1d_uncertain_1e_9
 ];
 
 probs_linear1d_1e_saa = [
     prob_linear_1d_uncertain_1e_2_saa,
     prob_linear_1d_uncertain_1e_3_saa,
-    prob_linear_1d_uncertain_1e_4_saa
+    prob_linear_1d_uncertain_1e_4_saa,
+    prob_linear_1d_uncertain_1e_9_saa
 ];
 
 function sanity_check()

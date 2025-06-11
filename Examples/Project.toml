@@ -30,6 +30,7 @@ PProf = "e4faabce-9ead-11e9-39d9-4379958e3056"
 Plots = "91a5bcdd-55d7-5caf-9e0b-520d859cae80"
 Polyhedra = "67491407-f73d-577b-9b50-8179a7c68029"
 ProgressLogging = "33c8b6b6-d38a-422a-b730-caa89a2f386c"
+PythonPlot = "274fc56d-3b97-40fa-a1cd-1b4a50311bf9"
 Revise = "295af30f-e4ad-537b-8983-00126c2a3abe"
 SemialgebraicSets = "8e049039-38e8-557d-ae3a-bc521ccf6204"
 SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
@@ -37,3 +38,9 @@ Spatial = "5a2acdf3-0caf-4501-bcc8-47e0871aab01"
 Symbolics = "0c5d862f-8b57-4792-8d23-62f2024744c7"
 TerminalLoggers = "5d786b92-1e48-4d6f-9151-6b4477ca9bed"
 ZipFile = "a5390f91-8eb1-5f08-bee0-b1d1ffed6cea"
+
+[sources]
+BarrierFunctions = {path = "../BarrierFunctions"}
+
+[compat]
+PythonPlot = "1.0.6"
