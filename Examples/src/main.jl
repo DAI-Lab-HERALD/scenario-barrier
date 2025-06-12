@@ -83,5 +83,7 @@ run_experiment(prob_dubins_car_1000regions)
 
 run_experiments(probs_linear1d_1e)
 run_experiments(probs_linear1d_1e_saa)
+run_experiments(probs_drone_1e)
+run_experiments(probs_drone_1e_saa)
 run_experiments(probs_nndm_pendulum_1layer_1e)
 run_experiments(probs_nndm_pendulum_1layer_1e_saa)
