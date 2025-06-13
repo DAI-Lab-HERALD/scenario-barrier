@@ -360,32 +360,20 @@ function _isdisjoint_vpolyhedron_lp(P::VPolyhedron{N}, X; solver=default_lp_solv
 
     @variable(model, λ[1:m] ≥ 0)
     @variable(model, μ[1:o] ≥ 0)
-    @variable(model, x[1:n])
     @variable(model, x₀, upper_bound=1.0)
 
     @objective(model, Max, 1.0 * x₀)
 
     @constraint(model, sum(λ) == 1)
-    for i in 1:n
-        expr = zero(AffExpr)
 
-        for (j, vertex) in enumerate(vertices)
-            add_to_expression!(expr, vertex[i], λ[j])
-        end
-
-        for (j, ray) in enumerate(rays)
-            add_to_expression!(expr, ray[i], μ[j])
-        end
-
-        @constraint(model, expr == x[i])
-    end
+    x = @expression(model, sum(λ[j] * vertices[j] for j in 1:m) + sum(μ[j] * rays[j] for j in 1:o))
 
     H, h = tosimplehrep(X)
     @constraint(model, H * x .+ x₀ ≤ h)
 
     optimize!(model)
 
-    if termination_status(model) != MathOptInterface.OPTIMAL
+    if termination_status(model) != MOI.OPTIMAL
         error("LP returned status $(solution_summary(model)) unexpectedly")
     end
 
