@@ -5,6 +5,7 @@ include("nndm.jl")
 include("polynomial.jl")
 include("unicycle.jl")
 include("dubins_car.jl")
+include("room_temp.jl")
 
 # run_experiments(probs_car_with_sidewind)
 # run_experiments(probs_drone)

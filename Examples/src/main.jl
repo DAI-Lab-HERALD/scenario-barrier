@@ -54,6 +54,7 @@ function run_experiment(problem::Problem)
             push!(res, (success=succ, probability=prob, computation_time=exec_time))
         end
 
+        flush(stderr)
         GC.gc(true)
     end
 
@@ -80,6 +81,7 @@ run_experiments(probs_linear1d)
 run_experiments(probs_nndm_pendulum_1layer)
 run_experiments(probs_nndm_pendulum_2layer)
 run_experiment(prob_dubins_car_1000regions)
+run_experiment(prob_room_temp)
 
 run_experiments(probs_linear1d_1e)
 run_experiments(probs_linear1d_1e_saa)
