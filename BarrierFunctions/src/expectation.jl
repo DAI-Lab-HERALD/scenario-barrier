@@ -572,7 +572,7 @@ function binary_search_tighten_region(dyn, qᵢ, qⱼ, expectation, normal_vecto
     return qᵢ
 end
 
-function expectation_constraint!(model, system, B::PolynomialBarrier, c, expectation::ExpectationData{ScenarioApproach})
+function expectation_constraint!(model, system, B::PolynomialBarrier, c, expectation::ExpectationData{<:ScenarioApproach})
     Xₛ = safe_set(system)
     f = dynamics(system)
 

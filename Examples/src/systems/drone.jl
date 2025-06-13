@@ -63,12 +63,22 @@ function drone(uncertain=true)
     return PiecewiseSystem(Q, dyn, η, X0, Xs, Xu)
 end
 
-prob_drone_uncertain = Problem("drone_uncertain", drone(true), 10, PiecewiseTemplate(LinearTemplate()), ScenarioApproach(0.005/10, 1e-9))
 prob_drone_exact = Problem("drone_exact", drone(false), 10, PiecewiseTemplate(LinearTemplate()), ScenarioApproach(0.005/10, 1e-9))
 
 probs_drone = [
-    prob_drone_uncertain,
     prob_drone_exact
+];
+
+prob_drone_1e_2 = Problem("drone_1e_2", drone(false), 10, PiecewiseTemplate(LinearTemplate()), ScenarioApproach(0.005/10, 1e-2))
+prob_drone_1e_3 = Problem("drone_1e_3", drone(false), 10, PiecewiseTemplate(LinearTemplate()), ScenarioApproach(0.005/10, 1e-3))
+prob_drone_1e_4 = Problem("drone_1e_4", drone(false), 10, PiecewiseTemplate(LinearTemplate()), ScenarioApproach(0.005/10, 1e-4))
+prob_drone_1e_9 = Problem("drone_1e_9", drone(false), 10, PiecewiseTemplate(LinearTemplate()), ScenarioApproach(0.005/10, 1e-9))
+
+probs_drone_1e = [
+    prob_drone_1e_2,
+    prob_drone_1e_3,
+    prob_drone_1e_4,
+    prob_drone_1e_9
 ];
 
 function polynomial_drone(uncertain=true)
@@ -127,12 +137,16 @@ function polynomial_drone(uncertain=true)
     return PiecewiseSystem(Q, dyn, η, X0, Xs, Xu)
 end
 
-prob_drone_uncertain_saa = Problem("drone_uncertain_saa", polynomial_drone(true), 10, PolynomialTemplate(4), SampleAverage(0.005, 0.01))
-prob_drone_exact_saa = Problem("drone_exact_saa", polynomial_drone(false), 10, PolynomialTemplate(4), SampleAverage(0.005, 0.01))
+prob_drone_1e_2_saa = Problem("drone_1e_2_saa", polynomial_drone(false), 10, PolynomialTemplate(4), SampleAverage(0.005, 1e-2))
+prob_drone_1e_3_saa = Problem("drone_1e_3_saa", polynomial_drone(false), 10, PolynomialTemplate(4), SampleAverage(0.005, 1e-3))
+prob_drone_1e_4_saa = Problem("drone_1e_4_saa", polynomial_drone(false), 10, PolynomialTemplate(4), SampleAverage(0.005, 1e-4))
+prob_drone_1e_9_saa = Problem("drone_1e_9_saa", polynomial_drone(false), 10, PolynomialTemplate(4), SampleAverage(0.005, 1e-9))
 
-probs_drone_saa = [
-    prob_drone_uncertain_saa,
-    prob_drone_exact_saa
+probs_drone_1e_saa = [
+    prob_drone_1e_2_saa,
+    prob_drone_1e_3_saa,
+    prob_drone_1e_4_saa,
+    prob_drone_1e_9_saa
 ];
 
 
