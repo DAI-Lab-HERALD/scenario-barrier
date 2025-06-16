@@ -5,9 +5,7 @@ using Gurobi, MosekTools, Mosek, GLPK, JuMP
 using Plots
 import PythonPlot: pygui
 
-using Logging
-using TerminalLoggers: TerminalLoggers, TerminalLogger
-global_logger(TerminalLogger(stderr, Logging.Debug; right_justify=120))
+using Logging, LoggingExtras
 using ProgressLogging
 
 using CSV, DataFrames
@@ -31,6 +29,11 @@ function run_experiment(make_problem::Function)
 end
 
 function run_experiment(problem::Problem)
+    console_logger = MinLevelLogger(ConsoleLogger(stderr), Logging.Debug)
+    file_logger = MinLevelLogger(FileLogger("logs/$(problem.name).log"), Logging.Debug)
+    logger = TeeLogger(console_logger, file_logger)
+    global_logger(logger)
+
     @info "Running experiment" name=problem.name
     solver = optimizer_with_attributes(Mosek.Optimizer, "INTPNT_BASIS" => MSK_BI_NEVER)
     res = []
@@ -41,13 +44,16 @@ function run_experiment(problem::Problem)
     println((succ, prob))
     GC.gc(true)
 
-
     solver = optimizer_with_attributes(Mosek.Optimizer, "INTPNT_BASIS" => MSK_BI_NEVER, "QUIET" => true)
+
+    console_logger = MinLevelLogger(ConsoleLogger(stderr), Logging.Warn)
+    file_logger = MinLevelLogger(FileLogger("logs/$(problem.name).log"; append=true), Logging.Warn)
+    experiment_logger = TeeLogger(console_logger, file_logger)
 
     # Experiment run
     for i in 1:100
         @info "Iteration $i/100"
-        with_logger(TerminalLogger(stderr, LogLevel(1); right_justify=120)) do
+        with_logger(experiment_logger) do
             start_time = time()
             succ, _, prob = verify(solver, problem.barrier_type, problem.system, problem.horizon, problem.expectation_method)
             exec_time = time() - start_time

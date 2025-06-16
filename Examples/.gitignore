@@ -27,3 +27,4 @@ models
 results
 figures
 alloc-profile.pb.gz
+logs
