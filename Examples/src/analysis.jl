@@ -39,7 +39,8 @@ probs_to_analyze = [
     "nndm_pendulum_2layer_240regions",
     "nndm_pendulum_2layer_480regions",
     "dubins_car_1000regions",
-    "room_temp"
+    "room_temp",
+    "lane_keeping_2520regions_181410"
 ]
 
 # probs_to_analyze = [
