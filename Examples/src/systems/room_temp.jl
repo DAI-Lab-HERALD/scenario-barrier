@@ -62,3 +62,27 @@ prob_room_temp = Problem("room_temp", room_temp(), 3, PiecewiseTemplate(LinearTe
 probs_room_temp = [
     prob_room_temp
 ];
+
+prob_room_temp_1e_2 = Problem("room_temp_1e_2", room_temp(), 3, PiecewiseTemplate(LinearTemplate()), ScenarioApproach(0.005/3, 1e-2))
+prob_room_temp_1e_3 = Problem("room_temp_1e_3", room_temp(), 3, PiecewiseTemplate(LinearTemplate()), ScenarioApproach(0.005/3, 1e-3))
+prob_room_temp_1e_4 = Problem("room_temp_1e_4", room_temp(), 3, PiecewiseTemplate(LinearTemplate()), ScenarioApproach(0.005/3, 1e-4))
+prob_room_temp_1e_9 = Problem("room_temp_1e_9", room_temp(), 3, PiecewiseTemplate(LinearTemplate()), ScenarioApproach(0.005/3, 1e-9))
+
+probs_room_temp_1e = [
+    prob_room_temp_1e_2,
+    prob_room_temp_1e_3,
+    prob_room_temp_1e_4,
+    prob_room_temp_1e_9
+];
+
+prob_room_temp_1e_2_saa = Problem("room_temp_1e_2_saa", room_temp(), 3, PolynomialTemplate(4), SampleAverage(0.005, 1e-2))
+prob_room_temp_1e_3_saa = Problem("room_temp_1e_3_saa", room_temp(), 3, PolynomialTemplate(4), SampleAverage(0.005, 1e-3))
+prob_room_temp_1e_4_saa = Problem("room_temp_1e_4_saa", room_temp(), 3, PolynomialTemplate(4), SampleAverage(0.005, 1e-4))
+prob_room_temp_1e_9_saa = Problem("room_temp_1e_9_saa", room_temp(), 3, PolynomialTemplate(4), SampleAverage(0.005, 1e-9))
+
+probs_room_temp_1e_saa = [
+    prob_room_temp_1e_2_saa,
+    prob_room_temp_1e_3_saa,
+    prob_room_temp_1e_4_saa,
+    prob_room_temp_1e_9_saa
+];

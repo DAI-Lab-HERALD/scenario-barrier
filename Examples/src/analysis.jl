@@ -44,18 +44,16 @@ probs_to_analyze = [
 ]
 
 # probs_to_analyze = [
-#     "linear1d_uncertain_1e_2",
-#     "linear1d_uncertain_1e_3",
-#     "linear1d_uncertain_1e_4",
-#     "linear1d_uncertain_1e_9",
-#     "linear1d_uncertain_1e_2_saa",
-#     "linear1d_uncertain_1e_3_saa",
 #     "drone_1e_2",
 #     "drone_1e_3",
 #     "drone_1e_4",
 #     "drone_1e_9",
 #     "drone_1e_2_saa",
 #     "drone_1e_3_saa",
+#     "room_temp_1e_2",
+#     "room_temp_1e_3",
+#     "room_temp_1e_4",
+#     "room_temp_1e_9",
 #     "nndm_pendulum_1layer_480regions_1e_2",
 #     "nndm_pendulum_1layer_480regions_1e_3",
 #     "nndm_pendulum_1layer_480regions_1e_4",

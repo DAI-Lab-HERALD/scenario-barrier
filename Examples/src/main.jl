@@ -51,8 +51,8 @@ function run_experiment(problem::Problem)
     experiment_logger = TeeLogger(console_logger, file_logger)
 
     # Experiment run
-    for i in 1:100
-        @info "Iteration $i/100"
+    for i in 1:4
+        @info "Iteration $i/4"
         with_logger(experiment_logger) do
             start_time = time()
             succ, _, prob = verify(solver, problem.barrier_type, problem.system, problem.horizon, problem.expectation_method)
@@ -90,9 +90,9 @@ run_experiment(prob_dubins_car_1000regions)
 run_experiment(prob_room_temp)
 run_experiment(prob_lane_keeping_2520regions_181410)
 
-run_experiments(probs_linear1d_1e)
-run_experiments(probs_linear1d_1e_saa)
 run_experiments(probs_drone_1e)
 run_experiments(probs_drone_1e_saa)
+run_experiments(probs_room_temp_1e)
+run_experiments(probs_room_temp_1e_saa)
 run_experiments(probs_nndm_pendulum_1layer_1e)
 run_experiments(probs_nndm_pendulum_1layer_1e_saa)
