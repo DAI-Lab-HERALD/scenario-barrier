@@ -318,6 +318,28 @@ function unsafe_constraint!(model, region::Complement{T, <:AbstractHyperrectangl
     @constraint(model, B.p - 1.0 in SOSCone(), domain=subset_symbolic)
 end
 
+function unsafe_constraint!(model, region::HPolyhedron, B::PolynomialBarrier, x)
+    dom_encoding = sos_hpoly_lag(model, x, region)
+
+    @constraint(model, B.p - 1.0 - dom_encoding in SOSCone())
+end
+
+function sos_hpoly_lag(model, x, region)
+    # Quadratic H-polytope encoding
+    H, h = tosimplehrep(region)
+    halfspace_constraints = H * x - h
+
+    domain = sum(Iterators.product(halfspace_constraints, halfspace_constraints)) do (constraint1, constraint2)
+        # TODO: Skip if the `constraint1 * constraint2` is zero (i.e. the constraints are orthogonal)
+        
+        # Lagragian multiplier
+        τ = @variable(model, lower_bound=0.0)
+        return τ * constraint1 * constraint2
+    end
+
+    return domain
+end
+
 function unsafe_constraint!(model, region::Complement{T, <:Universe}, B::PolynomialBarrier, x) where {T}
     # No constraints
 end
