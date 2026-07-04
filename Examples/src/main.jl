@@ -1,6 +1,6 @@
 using Revise
 using BarrierFunctions
-using Gurobi, MosekTools, Mosek, GLPK, JuMP
+using MosekTools, Mosek, JuMP
 
 using Plots
 import PythonPlot: pygui
@@ -51,8 +51,8 @@ function run_experiment(problem::Problem)
     experiment_logger = TeeLogger(console_logger, file_logger)
 
     # Experiment run
-    for i in 1:4
-        @info "Iteration $i/4"
+    for i in 1:100
+        @info "Iteration $i/100"
         with_logger(experiment_logger) do
             start_time = time()
             succ, _, prob = verify(solver, problem.barrier_type, problem.system, problem.horizon, problem.expectation_method)
