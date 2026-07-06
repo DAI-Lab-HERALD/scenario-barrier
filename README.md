@@ -1,6 +1,6 @@
 # Scenario barrier
 
-Research code underlying the publications ... and ...
+Research code underlying the publications Mathiesen, F. B., Romao, L., Calvert, S. C., Abate, A., & Laurenti, L. (2023, December). Inner approximations of stochastic programs for data-driven stochastic barrier function design. In 2023 62nd IEEE Conference on Decision and Control (CDC) (pp. 3073-3080). IEEE. and ...
 
 ## What This Repository Contains
 
