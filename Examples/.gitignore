@@ -23,7 +23,8 @@ docs/site/
 # environment.
 Manifest.toml
 .CondaPkg
-models
+models/*
+!models/dubins_car/
 results
 figures
 alloc-profile.pb.gz

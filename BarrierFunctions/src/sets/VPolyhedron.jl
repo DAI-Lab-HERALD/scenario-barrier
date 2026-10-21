@@ -473,7 +473,7 @@ function LazySets.remove_redundant_vertices(P::VPolyhedron{N};
     if backend == nothing
         backend = default_polyhedra_backend(P)
     end
-    Q = polyhedron(P; backend=backend)
+    Q = Polyhedra.polyhedron(P; backend=backend)
     if Polyhedra.supportssolver(typeof(Q))
         if solver == nothing
             solver = default_lp_solver_polyhedra(N)
@@ -508,7 +508,7 @@ function LazySets.tohrep(P::VPolyhedron{N};
     @assert !isempty(P.vertices) "cannot convert an empty polyhedron in vertex/ray " *
         "representation to constraint representation"
     require(@__MODULE__, :Polyhedra; fun_name="tohrep")
-    return convert(HPolyhedron, polyhedron(P; backend=backend))
+    return convert(HPolyhedron, Polyhedra.polyhedron(P; backend=backend))
 end
 
 """
@@ -529,7 +529,7 @@ const HPoly = Union{HPolyhedron, HPolytope}
 function Base.convert(::Type{VPolyhedron}, P::HPoly; 
         backend=default_polyhedra_backend(P))
     require(@__MODULE__, :Polyhedra; fun_name="convert")
-    P = polyhedron(P; backend=backend)
+    P = LazySets.polyhedron(P; backend=backend)
     return VPolyhedron(P)
 end
 

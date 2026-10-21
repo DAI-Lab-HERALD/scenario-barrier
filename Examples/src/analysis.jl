@@ -1,8 +1,13 @@
 using CSV, DataFrames
 using HypothesisTests
 
-function analyze_problem_data(problem_name)
-    df = DataFrame(CSV.File("results/$problem_name.csv"))
+function analyze_problem_data(problem_name; subdir="")
+    path = joinpath("results", subdir, "$problem_name.csv")
+    if !isfile(path)
+        println((problem_name, "missing"))
+        return
+    end
+    df = DataFrame(CSV.File(path))
 
     succes_ratio = nrow(subset(df, :success => success -> success)) / nrow(df)
 
@@ -74,6 +79,43 @@ probs_to_analyze = [
 #     "cdc_linear1d_ssa",
 # ]
 
-for problem in probs_to_analyze
-    analyze_problem_data(problem)
+# Results of arXiv:2410.06662 (written by src/arxiv_2410_06662.jl), in the row order of Tables 1 and 2
+probs_arxiv_2410_06662 = [
+    # Table 1
+    "linear1d_uncertain_1e_9",
+    "drone_uncertain",
+    "car_with_sidewind_no_partitioning",
+    "car_with_sidewind_lon_partitioning",
+    "car_with_sidewind_lat_partitioning",
+    "car_with_sidewind_latlon_partitioning",
+    "nndm_pendulum_1layer_120regions_1e_9",
+    "nndm_pendulum_1layer_240regions_1e_9",
+    "nndm_pendulum_1layer_480regions_1e_9",
+    "nndm_pendulum_2layer_120regions_1e_9",
+    "nndm_pendulum_2layer_240regions_1e_9",
+    "nndm_pendulum_2layer_480regions_1e_9",
+    "dubins_car_1000regions",
+    # Table 2
+    "linear1d_uncertain_1e_2",
+    "linear1d_uncertain_1e_3",
+    "linear1d_uncertain_1e_4",
+    "linear1d_uncertain_1e_2_saa",
+    "linear1d_uncertain_1e_3_saa",
+    "linear1d_uncertain_1e_4_saa",
+    "nndm_pendulum_1layer_480regions_1e_2",
+    "nndm_pendulum_1layer_480regions_1e_3",
+    "nndm_pendulum_1layer_480regions_1e_4",
+    "nndm_pendulum_1layer_480regions_1e_2_saa",
+    "nndm_pendulum_1layer_480regions_1e_3_saa",
+    "nndm_pendulum_1layer_480regions_1e_4_saa",
+]
+
+if "arxiv_2410_06662" in ARGS
+    for problem in probs_arxiv_2410_06662
+        analyze_problem_data(problem; subdir="arxiv_2410_06662")
+    end
+else
+    for problem in probs_to_analyze
+        analyze_problem_data(problem)
+    end
 end

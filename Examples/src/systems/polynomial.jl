@@ -12,7 +12,7 @@ function polynomial()
 
     μ = [0, 0]
     Σ = PDiagMat([0.1^2, 0.1^2])  # Square to make std.dev. to variance.
-    η = DiagNormal(μ, Σ)
+    η = MvNormal(μ, Σ)
 
     X0 = @set (x[1] - 1.5)^2 + x[2]^2 ≤ 0.5^2
     Xs = @set (x[1] + 1)^2 + (x[2] + 1)^2 ≥ 0.4^2

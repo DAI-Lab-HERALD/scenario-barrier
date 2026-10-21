@@ -38,7 +38,7 @@ function drone(uncertain=true)
 
     μ = [0, 0]
     Σ = PDiagMat([0.1^2, 0.1^2])  # Square to make std.dev. to variance.
-    η = DiagNormal(μ, Σ)
+    η = MvNormal(μ, Σ)
 
     # Start in a box [0.5m, 1.0m] × [-0.5m/s, 0.5m/s]
     X0 = Hyperrectangle(low=[0.5, -0.5], high=[1.0, 0.5])
@@ -115,7 +115,7 @@ function polynomial_drone(uncertain=true)
 
     μ = [0, 0]
     Σ = PDiagMat([0.1^2, 0.1^2])  # Square to make std.dev. to variance.
-    η = DiagNormal(μ, Σ)
+    η = MvNormal(μ, Σ)
 
     # Start in a box [-0.5m, -0.5m] × [-0.5m/s, 0.5m/s]
     X0 = Hyperrectangle(low=[-0.5, -0.5], high=[0.5, 0.5])
@@ -184,7 +184,7 @@ function cdc_drone()
 
     μ = [0, 0]
     Σ = PDiagMat([0.1^2, 0.1^2])  # Square to make std.dev. to variance.
-    η = DiagNormal(μ, Σ)
+    η = MvNormal(μ, Σ)
 
     # Start in a box [0.5m, 1.0m] × [-0.5m/s, 0.5m/s]
     X0 = Hyperrectangle(low=[0.5, -0.5], high=[1.0, 0.5])
@@ -232,7 +232,7 @@ function cdc_drone_saa()
 
     μ = [0, 0]
     Σ = PDiagMat([0.1^2, 0.1^2])  # Square to make std.dev. to variance.
-    η = DiagNormal(μ, Σ)
+    η = MvNormal(μ, Σ)
 
     # Start in a box [0.5m, 1.0m] × [-0.5m/s, 0.5m/s]
     X0 = @set (x[1] - 0.75)^2 ≤ 0.25^2 && x[2]^2 ≤ 0.5^2

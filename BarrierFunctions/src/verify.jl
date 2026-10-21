@@ -170,7 +170,12 @@ function initial_constraint!(model, system, B::BarrierRegion{<:LinearBarrier}, �
         return nothing
     end
 
-    H₀, h₀ = tosimplehrep(intersection(X₀, region(B)))
+    X₀ᵢ = intersection(X₀, region(B))
+    if X₀ᵢ isa EmptySet  # isdisjoint is tolerance-based, so sets separated by a tiny gap may reach here
+        return nothing
+    end
+
+    H₀, h₀ = tosimplehrep(X₀ᵢ)
     H₀ = sparse(H₀)
 
     p, v = B.fun.p, B.fun.v

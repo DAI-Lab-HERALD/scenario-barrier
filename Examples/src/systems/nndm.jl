@@ -43,7 +43,7 @@ function load_mat_system(path, initial_region_cb, stddev; eps=1e-12)
 
     μ = zero(stddev)
     Σ = PDiagMat(stddev .^ 2)  # Square to make std.dev. to variance.
-    η = DiagNormal(μ, Σ)
+    η = MvNormal(μ, Σ)
 
     X0 = initial_region_cb(x, vars)
 
@@ -157,7 +157,7 @@ function load_mat_polynomial_system(path, initial_region_cb, stddev; eps=1e-12)
 
     μ = zero(stddev)
     Σ = PDiagMat(stddev .^ 2)  # Square to make std.dev. to variance.
-    η = DiagNormal(μ, Σ)
+    η = MvNormal(μ, Σ)
 
     X0 = initial_region_cb(x, vars)
 
@@ -232,24 +232,34 @@ function nndm_polynomial_system(system_name, num_layers, num_regions; download_m
     end
 end
 
+const NNDM_MODELS_DIR = normpath(joinpath(@__DIR__, "../../models"))
+
 function download_nndm_models!()
     # Download entire repo
     tmp_path = download("https://github.com/aria-systems-group/NeuralNetControlBarrier/archive/9a927f3a90c1d79260cf0ddab89e734b5dea5b96.zip")
-    
-    # Extract models from zip
+
+    # Extract models from zip into the directory that `load_mat_system` reads from
     zarchive = ZipFile.Reader(tmp_path)
     folder = joinpath("NeuralNetControlBarrier-9a927f3a90c1d79260cf0ddab89e734b5dea5b96", "NeuralNetControlBarrier.jl", "models")
     for f in zarchive.files
         if startswith(f.name, folder)
-            output_path = joinpath(splitpath(f.name)[3:end])
-            if isdirpath(f.name)
-                mkdir(output_path)
+            output_path = joinpath(NNDM_MODELS_DIR, splitpath(f.name)[4:end]...)
+            if endswith(f.name, "/")
+                mkpath(output_path)
             else
+                mkpath(dirname(output_path))
                 write(output_path, read(f))
             end
         end
     end
     close(zarchive)
+end
+
+function ensure_nndm_models!()
+    if !isdir(joinpath(NNDM_MODELS_DIR, "pendulum"))
+        @info "Downloading NNDM models" path=NNDM_MODELS_DIR
+        download_nndm_models!()
+    end
 end
 
 function plot_dynamics_bounds(system)

@@ -33,7 +33,7 @@ function room_temp()
 
     μ = [0, 0, 0]
     Σ = PDiagMat([0.01^2, 0.01^2, 0.01^2])  # Square to make std.dev. to variance.
-    η = DiagNormal(μ, Σ)
+    η = MvNormal(μ, Σ)
 
     # Start in a box [17ᵒC, 18ᵒC]^3
     X0 = Hyperrectangle(low=[17.0, 17.0, 17.0], high=[18.0, 18.0, 18.0])

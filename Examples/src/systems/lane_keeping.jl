@@ -40,7 +40,7 @@ function load_lk_nc_system(path; eps=1e-12)
         stddev = [0.01, 0.01, 0.001]
         μ = zero(stddev)
         Σ = PDiagMat(stddev .^ 2)  # Square to make std.dev. to variance.
-        η = DiagNormal(μ, Σ)
+        η = MvNormal(μ, Σ)
 
         X0 = Hyperrectangle(;low=[1.0, -0.5, -0.005], high=[2.0, 0.05, 0.005])
 

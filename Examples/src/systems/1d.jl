@@ -31,11 +31,11 @@ function martingale1d(uncertain=true, gaussian=true)
     if gaussian
         μ = [0]
         Σ = PDiagMat([0.01^2])  # Square to make std.dev. to variance.
-        η = DiagNormal(μ, Σ)
+        η = MvNormal(μ, Σ)
     else
         μ = [-5.0]
         Σ = PDiagMat([0.1^2])  # Square to make std.dev. to variance.
-        η = MvLogNormal(DiagNormal(μ, Σ))
+        η = MvLogNormal(MvNormal(μ, Σ))
     end
 
     # Start in a box [-0.5, 0.5]
@@ -95,11 +95,11 @@ function polynomial_martingale1d(uncertain=true, gaussian=true)
     if gaussian
         μ = [0]
         Σ = PDiagMat([0.01^2])  # Square to make std.dev. to variance.
-        η = DiagNormal(μ, Σ)
+        η = MvNormal(μ, Σ)
     else
         μ = [-5.0]
         Σ = PDiagMat([0.1^2])  # Square to make std.dev. to variance.
-        η = MvLogNormal(DiagNormal(μ, Σ))
+        η = MvLogNormal(MvNormal(μ, Σ))
     end
 
     # Start in a box [-0.5, 0.5]
@@ -182,7 +182,7 @@ function cdc_martingale1d()
 
     μ = [0]
     Σ = PDiagMat([0.01^2])  # Square to make std.dev. to variance.
-    η = DiagNormal(μ, Σ)
+    η = MvNormal(μ, Σ)
 
     # Start in a box [-0.5, 0.5]
     X0 = LazySets.Interval(-0.5, 0.5)
@@ -213,7 +213,7 @@ function cdc_martingale1d_polynomial()
 
     μ = [0]
     Σ = PDiagMat([0.01^2])  # Square to make std.dev. to variance.
-    η = DiagNormal(μ, Σ)
+    η = MvNormal(μ, Σ)
 
     X0 = @set x^2 ≤ 0.5^2
     Xs = @set x^2 ≤ 2.5^2

@@ -1,6 +1,9 @@
 # Scenario barrier
 
-Research code underlying the publications Mathiesen, F. B., Romao, L., Calvert, S. C., Abate, A., & Laurenti, L. (2023, December). Inner approximations of stochastic programs for data-driven stochastic barrier function design. In 2023 62nd IEEE Conference on Decision and Control (CDC) (pp. 3073-3080). IEEE. and ...
+Research code underlying the publications
+
+- Mathiesen, F. B., Romao, L., Calvert, S. C., Abate, A., & Laurenti, L. (2023, December). Inner approximations of stochastic programs for data-driven stochastic barrier function design. In 2023 62nd IEEE Conference on Decision and Control (CDC) (pp. 3073-3080). IEEE.
+- Mathiesen, F. B., Romao, L., Calvert, S. C., Laurenti, L., & Abate, A. (2024). A data-driven approach for safety quantification of non-linear stochastic systems with unknown additive noise distribution. arXiv preprint [arXiv:2410.06662](https://arxiv.org/abs/2410.06662). See [Reproducing arXiv:2410.06662](#reproducing-arxiv241006662).
 
 ## What This Repository Contains
 
@@ -61,7 +64,7 @@ julia --project=. -e 'using Pkg; Pkg.instantiate(); Pkg.precompile()'
 julia --project=. src/main.jl
 ```
 
-The first command downloads the exact package versions pinned by [Examples/Manifest.toml](Examples/Manifest.toml). The second command runs the full experiment batch.
+The first command resolves and installs the package versions compatible with [Examples/Project.toml](Examples/Project.toml). The second command runs the full experiment batch.
 
 `src/main.jl` does the following for each problem:
 
@@ -78,6 +81,39 @@ If you want to rerun the post-processing on already generated CSV files, run:
 cd Examples
 julia --project=. src/analysis.jl
 ```
+
+Set `BARRIER_REPETITIONS` (e.g. `BARRIER_REPETITIONS=1`) to run fewer timed repetitions per problem as a quick smoke test of the pipeline.
+
+## Reproducing arXiv:2410.06662
+
+[Examples/src/arxiv_2410_06662.jl](Examples/src/arxiv_2410_06662.jl) runs every experiment in Tables 1 and 2 of the paper, with the horizon fixed to T = 10 and ϵ = 0.005 for all benchmarks as stated in Section 8.
+
+```bash
+cd Examples
+julia --project=. src/arxiv_2410_06662.jl                # Table 1 and Table 2
+julia --project=. src/arxiv_2410_06662.jl table1         # only Table 1
+julia --project=. src/arxiv_2410_06662.jl table2         # only Table 2
+julia --project=. src/arxiv_2410_06662.jl table2_oom     # SAA with β = 1e-4 (reported as OOM with 16GB of memory)
+julia --project=. src/analysis.jl arxiv_2410_06662       # mean and 95% CI of certified safety and time per row
+```
+
+Logs and CSV files are written to `Examples/logs/arxiv_2410_06662/` and `Examples/results/arxiv_2410_06662/`. The rows of the paper map to the following problems:
+
+| Paper | Problem name(s) |
+| --- | --- |
+| Table 1, Linear (27 regions) | `linear1d_uncertain_1e_9` |
+| Table 1, Drone | `drone_uncertain` |
+| Table 1, Vehicle (18 / 42 / 54 / 150 regions) | `car_with_sidewind_{no,lon,lat,latlon}_partitioning` |
+| Table 1, Pendulum NNDM, 2 layers (1 hidden) | `nndm_pendulum_1layer_{120,240,480}regions_1e_9` |
+| Table 1, Pendulum NNDM, 3 layers (2 hidden) | `nndm_pendulum_2layer_{120,240,480}regions_1e_9` |
+| Table 1, Dubin's car (1000 regions) | `dubins_car_1000regions` |
+| Table 2, Linear, ours / SAA | `linear1d_uncertain_1e_{2,3,4}`, `linear1d_uncertain_1e_{2,3,4}_saa` |
+| Table 2, Pendulum, ours / SAA | `nndm_pendulum_1layer_480regions_1e_{2,3,4}`, `nndm_pendulum_1layer_480regions_1e_{2,3,4}_saa` |
+
+### Models
+
+- **NNDM pendulum**: downloaded automatically on first run from a pinned commit of [NeuralNetControlBarrier](https://github.com/aria-systems-group/NeuralNetControlBarrier) into `Examples/models/pendulum/`.
+- **Dubin's car**: the PWA relaxation is stored in `Examples/models/dubins_car/dynamics_1000regions.nc`. It was computed with linear bound propagation using the Dubin's car dynamics from [neural-barrier-functions](https://github.com/DAI-Lab-HERALD/neural-barrier-functions) (Mathiesen, Calvert & Laurenti, L-CSS 2023) and can be regenerated with `Examples/scripts/generate_dubins_car_model.sh`, which requires `git` and [`uv`](https://docs.astral.sh/uv/) and installs pinned versions of the Python dependencies in a temporary environment.
 
 ## Running Individual Scripts
 

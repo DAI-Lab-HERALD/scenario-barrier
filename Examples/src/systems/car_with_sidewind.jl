@@ -47,7 +47,7 @@ function car_with_sidewind(;split="none")
 
     μ = [0, 0]
     Σ = PDiagMat([0.01^2, 0.01^2])  # Square to make std.dev. to variance.
-    η = DiagNormal(μ, Σ)
+    η = MvNormal(μ, Σ)
 
     # Start in a box [5m, 10m] × [-0.5m, 0.5m]
     X0 = Hyperrectangle(low=[5, -0.5], high=[10, 0.5])
@@ -145,7 +145,7 @@ function polynomial_car_with_sidewind(;split="none")
 
     μ = [0, 0]
     Σ = PDiagMat([0.01^2, 0.01^2])  # Square to make std.dev. to variance.
-    η = DiagNormal(μ, Σ)
+    η = MvNormal(μ, Σ)
 
     # Start in a box [5m, 10m] × [-0.5m, 0.5m]
     X0 = Hyperrectangle(low=[5, -0.5], high=[10, 0.5])
@@ -230,7 +230,7 @@ function cdc_car_with_sidewind(;split="none")
 
     μ = [0, 0]
     Σ = PDiagMat([0.01^2, 0.01^2])  # Square to make std.dev. to variance.
-    η = DiagNormal(μ, Σ)
+    η = MvNormal(μ, Σ)
 
     # Start in a box [5m, 10m] × [-0.5m, 0.5m]
     X0 = Hyperrectangle(low=[5, -0.5], high=[10, 0.5])

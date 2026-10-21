@@ -58,7 +58,7 @@ direction(i::Int, j::Int, sign_i, sign_j) = x -> sign_i * x[i] + sign_j * x[j]
 function prune_interior(polygon::AbstractMatrix{T}, A::AbstractMatrix{T}, solver) where {T <: Real}
     n = size(polygon, 1)
 
-    v = polyhedron(vrep([copy(p) for p in eachcol(polygon)]))
+    v = Polyhedra.polyhedron(vrep([copy(p) for p in eachcol(polygon)]))
     h = hrep(v)
 
     inellipsoid = inscribed_ellipsoid(h, n, solver)

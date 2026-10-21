@@ -70,7 +70,7 @@ X = Hyperrectangle(low=[10, 0.5], high=[24, 0.6])
 
 μ = [0, 0]
 Σ = PDiagMat([0.01^2, 0.01^2])  # Square to make std.dev. to variance.
-η = DiagNormal(μ, Σ)
+η = MvNormal(μ, Σ)
 ηs = VPolytope([copy(η) for η in eachcol(rand(η, 10000))])
 ηs = remove_redundant_vertices(ηs)
 println(ηs)
