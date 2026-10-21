@@ -180,3 +180,7 @@ For research replication, record the following alongside any results:
 - any random seeds used in custom experiments
 
 The committed example batch is deterministic at the script level, but solver behavior and stochastic methods can still vary across versions and solver configurations. For exact replay, use the same manifest and the same solver installation that produced the original data.
+
+## License
+
+This code is released under the GNU General Public License v3.0. See [LICENSE](LICENSE) for the full text.
